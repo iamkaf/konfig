@@ -629,6 +629,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         @Override
+        protected int getScrollbarPosition() {
+            return this.x1 - 6;
+        }
+
+        @Override
         protected void renderBackground(PoseStack poseStack) {
             GuiComponent.fill(poseStack, this.x0, this.y0, this.x1, this.y1, 0x66000000);
         }
@@ -1464,6 +1469,11 @@ public final class KonfigConfigScreen extends Screen {
             @Override
             public int getRowWidth() {
                 return StringListEditorScreen.this.width - 28;
+            }
+
+            @Override
+            protected int getScrollbarPosition() {
+                return this.x1 - 6;
             }
 
             @Override
