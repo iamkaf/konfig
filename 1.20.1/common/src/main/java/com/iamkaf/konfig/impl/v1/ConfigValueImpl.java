@@ -7,6 +7,7 @@ import com.iamkaf.konfig.api.v1.RestartRequirement;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final String path;
@@ -16,10 +17,13 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final Function<T, JsonElement> encoder;
     private final Predicate<T> validator;
     private final String validationMessage;
+    private final UnaryOperator<T> canonicalizer;
     private final boolean sync;
     private final boolean clientOnly;
     private final boolean serverOnly;
     private final RestartRequirement restartRequirement;
+    private final Number rangeMin;
+    private final Number rangeMax;
 
     private volatile T localValue;
     private volatile T syncedValue;
@@ -32,13 +36,17 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
             Function<T, JsonElement> encoder,
             Predicate<T> validator,
             String validationMessage,
+            UnaryOperator<T> canonicalizer,
             boolean sync,
             boolean clientOnly,
             boolean serverOnly,
-            RestartRequirement restartRequirement
+            RestartRequirement restartRequirement,
+            Number rangeMin,
+            Number rangeMax
     ) {
         this.path = path;
-        this.defaultValue = defaultValue;
+        this.canonicalizer = canonicalizer == null ? UnaryOperator.identity() : canonicalizer;
+        this.defaultValue = canonicalize(defaultValue);
         this.kind = kind;
         this.decoder = decoder;
         this.encoder = encoder;
@@ -48,7 +56,9 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.clientOnly = clientOnly;
         this.serverOnly = serverOnly;
         this.restartRequirement = restartRequirement;
-        this.localValue = defaultValue;
+        this.rangeMin = rangeMin;
+        this.rangeMax = rangeMax;
+        this.localValue = this.defaultValue;
     }
 
     @Override
@@ -117,6 +127,18 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
         return this.restartRequirement;
     }
 
+    boolean hasNumericRange() {
+        return this.rangeMin != null && this.rangeMax != null;
+    }
+
+    Number rangeMin() {
+        return this.rangeMin;
+    }
+
+    Number rangeMax() {
+        return this.rangeMax;
+    }
+
     EntryKind kind() {
         return this.kind;
     }
@@ -125,14 +147,20 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
         if (value == null) {
             return this.defaultValue;
         }
-        return this.validator.test(value) ? value : this.defaultValue;
+        T canonical = canonicalize(value);
+        return this.validator.test(canonical) ? canonical : this.defaultValue;
     }
 
     private T validateOrThrow(T value) {
         Objects.requireNonNull(value, "Config value cannot be null for " + this.path);
-        if (!this.validator.test(value)) {
+        T canonical = canonicalize(value);
+        if (!this.validator.test(canonical)) {
             throw new IllegalArgumentException(this.validationMessage + " (" + this.path + ")");
         }
-        return value;
+        return canonical;
+    }
+
+    private T canonicalize(T value) {
+        return this.canonicalizer.apply(value);
     }
 }

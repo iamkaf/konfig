@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.api.v1;
 
+import java.util.List;
+
 public interface ConfigBuilder {
     ConfigBuilder scope(ConfigScope scope);
 
@@ -29,7 +31,13 @@ public interface ConfigBuilder {
 
     ValueBuilder<String> string(String key, String defaultValue, int minLen, int maxLen);
 
+    ValueBuilder<List<String>> stringList(String key, List<String> defaultValue);
+
     <E extends Enum<E>> ValueBuilder<E> enumValue(String key, E defaultValue);
+
+    ValueBuilder<Integer> colorRgb(String key, int defaultValue);
+
+    ValueBuilder<Integer> colorArgb(String key, int defaultValue);
 
     <T> ValueBuilder<T> custom(String key, T defaultValue, KonfigCodec<T> codec);
 

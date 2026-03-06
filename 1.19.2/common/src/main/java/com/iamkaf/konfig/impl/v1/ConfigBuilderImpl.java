@@ -7,6 +7,7 @@ import com.iamkaf.konfig.api.v1.*;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 
@@ -136,7 +137,8 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 EntryKind.INTEGER,
                 JsonElement::getAsInt,
                 JsonPrimitive::new
-        ).validate(value -> value != null && value.intValue() >= min && value.intValue() <= max, "Integer out of range");
+        ).range(Integer.valueOf(min), Integer.valueOf(max))
+                .validate(value -> value != null && value.intValue() >= min && value.intValue() <= max, "Integer out of range");
     }
 
     @Override
@@ -152,7 +154,8 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 EntryKind.LONG,
                 JsonElement::getAsLong,
                 JsonPrimitive::new
-        ).validate(value -> value != null && value.longValue() >= min && value.longValue() <= max, "Long out of range");
+        ).range(Long.valueOf(min), Long.valueOf(max))
+                .validate(value -> value != null && value.longValue() >= min && value.longValue() <= max, "Long out of range");
     }
 
     @Override
@@ -168,7 +171,8 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 EntryKind.DOUBLE,
                 JsonElement::getAsDouble,
                 JsonPrimitive::new
-        ).validate(value -> value != null && value.doubleValue() >= min && value.doubleValue() <= max, "Double out of range");
+        ).range(Double.valueOf(min), Double.valueOf(max))
+                .validate(value -> value != null && value.doubleValue() >= min && value.doubleValue() <= max, "Double out of range");
     }
 
     @Override
@@ -189,6 +193,20 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     }
 
     @Override
+    public ValueBuilder<List<String>> stringList(String key, List<String> defaultValue) {
+        Objects.requireNonNull(defaultValue, "defaultValue");
+        String path = path(key);
+        return new ValueBuilderImpl<List<String>>(
+                this,
+                path,
+                StringListValueHelper.immutableCopy(defaultValue, path),
+                EntryKind.STRING_LIST,
+                json -> StringListValueHelper.decode(json, path),
+                value -> StringListValueHelper.encode(value, path)
+        ).canonicalize(value -> StringListValueHelper.immutableCopy(value, path));
+    }
+
+    @Override
     public <E extends Enum<E>> ValueBuilder<E> enumValue(String key, E defaultValue) {
         Objects.requireNonNull(defaultValue, "defaultValue");
         final Class<E> enumClass = (Class<E>) defaultValue.getDeclaringClass();
@@ -200,6 +218,33 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 EntryKind.ENUM,
                 json -> Enum.valueOf(enumClass, json.getAsString()),
                 value -> new JsonPrimitive(value.name())
+        );
+    }
+
+    @Override
+    public ValueBuilder<Integer> colorRgb(String key, int defaultValue) {
+        String path = path(key);
+        ColorValueHelper.requireRgb(defaultValue, path);
+        return new ValueBuilderImpl<Integer>(
+                this,
+                path,
+                Integer.valueOf(defaultValue),
+                EntryKind.COLOR_RGB,
+                json -> Integer.valueOf(ColorValueHelper.parseRgb(json.getAsString(), path)),
+                value -> new JsonPrimitive(ColorValueHelper.formatRgb(value.intValue()))
+        ).canonicalize(value -> Integer.valueOf(ColorValueHelper.requireRgb(value.intValue(), path)));
+    }
+
+    @Override
+    public ValueBuilder<Integer> colorArgb(String key, int defaultValue) {
+        String path = path(key);
+        return new ValueBuilderImpl<Integer>(
+                this,
+                path,
+                Integer.valueOf(defaultValue),
+                EntryKind.COLOR_ARGB,
+                json -> Integer.valueOf(ColorValueHelper.parseArgb(json.getAsString(), path)),
+                value -> new JsonPrimitive(ColorValueHelper.formatArgb(value.intValue()))
         );
     }
 

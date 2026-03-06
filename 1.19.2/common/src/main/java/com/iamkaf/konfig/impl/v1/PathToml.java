@@ -39,7 +39,7 @@ final class PathToml {
         StringWriter writer = new StringWriter();
         new TomlWriter().write(root, writer);
 
-        String content = writer.toString();
+        String content = normalizeCommentSpacing(writer.toString());
         String header = renderHeaderComment(fileComment);
         if (!header.isEmpty()) {
             content = header + System.lineSeparator() + content;
@@ -179,6 +179,52 @@ final class PathToml {
             }
         }
         return builder.toString();
+    }
+
+    private static String normalizeCommentSpacing(String content) {
+        if (content == null || content.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder(content.length() + 32);
+        String lineSeparator = System.lineSeparator();
+        String[] lines = content.split("\\R", -1);
+        for (int i = 0; i < lines.length; i++) {
+            builder.append(normalizeCommentLine(lines[i]));
+            if (i + 1 < lines.length) {
+                builder.append(lineSeparator);
+            }
+        }
+        return builder.toString();
+    }
+
+    private static String normalizeCommentLine(String line) {
+        if (line == null || line.isEmpty()) {
+            return line == null ? "" : line;
+        }
+
+        int hashIndex = line.indexOf('#');
+        if (hashIndex < 0) {
+            return line;
+        }
+
+        for (int i = 0; i < hashIndex; i++) {
+            char character = line.charAt(i);
+            if (!Character.isWhitespace(character)) {
+                return line;
+            }
+        }
+
+        if (hashIndex + 1 >= line.length()) {
+            return line;
+        }
+
+        char next = line.charAt(hashIndex + 1);
+        if (Character.isWhitespace(next) || next == '#') {
+            return line;
+        }
+
+        return line.substring(0, hashIndex + 1) + ' ' + line.substring(hashIndex + 1);
     }
 
     private static String appendPath(String prefix, String child) {

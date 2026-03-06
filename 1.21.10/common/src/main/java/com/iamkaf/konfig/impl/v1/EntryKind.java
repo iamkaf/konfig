@@ -6,6 +6,9 @@ enum EntryKind {
     LONG,
     DOUBLE,
     STRING,
+    STRING_LIST,
     ENUM,
+    COLOR_RGB,
+    COLOR_ARGB,
     CUSTOM
 }

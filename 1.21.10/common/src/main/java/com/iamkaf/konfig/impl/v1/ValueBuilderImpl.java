@@ -7,6 +7,7 @@ import com.iamkaf.konfig.api.v1.ValueBuilder;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 
 final class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private final ConfigBuilderImpl owner;
@@ -23,6 +24,9 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private boolean serverOnly;
     private Predicate<T> validator = value -> true;
     private String validationMessage = "Invalid value";
+    private UnaryOperator<T> canonicalizer = UnaryOperator.identity();
+    private Number rangeMin;
+    private Number rangeMax;
 
     ValueBuilderImpl(
             ConfigBuilderImpl owner,
@@ -79,6 +83,17 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
         return this;
     }
 
+    ValueBuilderImpl<T> canonicalize(UnaryOperator<T> canonicalizer) {
+        this.canonicalizer = canonicalizer == null ? UnaryOperator.identity() : canonicalizer;
+        return this;
+    }
+
+    ValueBuilderImpl<T> range(Number rangeMin, Number rangeMax) {
+        this.rangeMin = rangeMin;
+        this.rangeMax = rangeMax;
+        return this;
+    }
+
     @Override
     public ConfigValue<T> build() {
         ConfigValueImpl<T> entry = new ConfigValueImpl<>(
@@ -89,10 +104,13 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
                 this.encoder,
                 this.validator,
                 this.validationMessage,
+                this.canonicalizer,
                 this.sync,
                 this.clientOnly,
                 this.serverOnly,
-                this.restartRequirement
+                this.restartRequirement,
+                this.rangeMin,
+                this.rangeMax
         );
 
         this.owner.addEntry(this.path, entry, this.comment);
