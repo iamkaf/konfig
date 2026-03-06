@@ -26,6 +26,7 @@ public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
     private final List<EntryRef> entries;
     private final Map<ConfigValue<?>, Object> drafts = new LinkedHashMap<ConfigValue<?>, Object>();
+    private final Map<ConfigValue<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValue<?>, Object>();
     private final Map<ConfigValue<?>, EditBox> visibleTextInputs = new LinkedHashMap<ConfigValue<?>, EditBox>();
 
     private int page;
@@ -44,7 +45,11 @@ public final class KonfigConfigScreen extends Screen {
             Constants.LOG.info("[Konfig/Debug] creating screen parent={} entries={}", parent == null ? "null" : parent.getClass().getName(), this.entries.size());
         }
         for (EntryRef entry : this.entries) {
-            this.drafts.put(entry.value, entry.value.get());
+            Object value = entry.value.get();
+            this.drafts.put(entry.value, value);
+            if (entry.editable) {
+                this.sessionStartValues.put(entry.value, value);
+            }
         }
     }
 
@@ -64,6 +69,10 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public void onClose() {
+        this.closeScreen();
+    }
+
+    private void closeScreen() {
         this.minecraft.setScreen(this.parent);
     }
 
@@ -116,9 +125,8 @@ public final class KonfigConfigScreen extends Screen {
         next.active = this.page + 1 < pages;
 
         int footerY = this.height - 26;
-        this.addButton(new Button(this.width / 2 - 122, footerY, 80, 20, translate("konfig.screen.save"), button -> this.saveDrafts()));
-        this.addButton(new Button(this.width / 2 - 40, footerY, 80, 20, translate("konfig.screen.reload"), button -> this.reloadFromDisk()));
-        this.addButton(new Button(this.width / 2 + 42, footerY, 80, 20, translate("konfig.screen.done"), button -> this.onClose()));
+        this.addButton(new Button(this.width / 2 - 82, footerY, 80, 20, translate("konfig.screen.reset"), button -> this.resetEntries()));
+        this.addButton(new Button(this.width / 2 + 2, footerY, 80, 20, translate("konfig.screen.done"), button -> this.onClose()));
 
         this.visibleStart = this.page * this.entriesPerPage;
         this.visibleEnd = Math.min(this.entries.size(), this.visibleStart + this.entriesPerPage);
@@ -146,18 +154,26 @@ public final class KonfigConfigScreen extends Screen {
         Object defaultValue = entry.value.defaultValue();
         if (defaultValue instanceof Boolean) {
             this.addButton(new Button(x, y, width, 20, text(booleanString(entry.value)), button -> {
+                Object previousDraft = this.drafts.get(entry.value);
                 boolean next = !readBoolean(entry.value);
                 this.drafts.put(entry.value, Boolean.valueOf(next));
-                button.setMessage(text(Boolean.toString(next)));
+                if (!this.persistEntry(entry)) {
+                    this.drafts.put(entry.value, previousDraft);
+                }
+                button.setMessage(text(booleanString(entry.value)));
             }));
             return;
         }
 
         if (defaultValue instanceof Enum<?>) {
             this.addButton(new Button(x, y, width, 20, text(enumString(entry.value)), button -> {
+                Object previousDraft = this.drafts.get(entry.value);
                 Enum<?> next = cycleEnum(entry.value);
                 this.drafts.put(entry.value, next);
-                button.setMessage(text(next.name()));
+                if (!this.persistEntry(entry)) {
+                    this.drafts.put(entry.value, previousDraft);
+                }
+                button.setMessage(text(enumString(entry.value)));
             }));
             return;
         }
@@ -165,60 +181,65 @@ public final class KonfigConfigScreen extends Screen {
         EditBox input = this.addButton(new EditBox(this.font, x, y, width, 20, entry.label));
         input.setMaxLength(256);
         input.setValue(stringValue(this.drafts.get(entry.value)));
-        input.setResponder(value -> this.drafts.put(entry.value, value));
+        input.setResponder(value -> {
+            this.drafts.put(entry.value, value);
+            this.persistEntry(entry);
+        });
         this.visibleTextInputs.put(entry.value, input);
     }
 
-    private void saveDrafts() {
+    private boolean persistEntry(EntryRef entry) {
+        Object previousValue = entry.value.get();
         try {
-            Map<ConfigValue<?>, Object> parsed = new LinkedHashMap<ConfigValue<?>, Object>();
+            Object parsed = parseDraft(entry.value, this.drafts.get(entry.value));
+            if (sameValue(previousValue, parsed)) {
+                this.statusMessage = translate("konfig.screen.status.saved").getString();
+                this.statusColor = 0xFF80FF80;
+                return true;
+            }
 
+            setRawValue(entry.value, parsed);
+            entry.handle.save();
+            this.statusMessage = translate("konfig.screen.status.saved").getString();
+            this.statusColor = 0xFF80FF80;
+            return true;
+        } catch (Exception exception) {
+            setRawValue(entry.value, previousValue);
+            this.statusMessage = exception.getMessage() == null ? translate("konfig.screen.status.save_failed").getString() : exception.getMessage();
+            this.statusColor = 0xFFFF8080;
+            return false;
+        }
+    }
+
+    private void resetEntries() {
+        Map<ConfigValue<?>, Object> previousValues = new LinkedHashMap<ConfigValue<?>, Object>();
+        Set<ConfigHandleImpl> handles = new LinkedHashSet<ConfigHandleImpl>();
+        try {
             for (EntryRef entry : this.entries) {
                 if (!entry.editable) {
                     continue;
                 }
-                Object value = parseDraft(entry.value, this.drafts.get(entry.value));
-                parsed.put(entry.value, value);
+                Object resetValue = this.sessionStartValues.get(entry.value);
+                previousValues.put(entry.value, entry.value.get());
+                this.drafts.put(entry.value, resetValue);
+                setRawValue(entry.value, resetValue);
+                handles.add(entry.handle);
             }
 
-            Set<ConfigHandleImpl> touchedHandles = new LinkedHashSet<ConfigHandleImpl>();
-            for (EntryRef entry : this.entries) {
-                if (!parsed.containsKey(entry.value)) {
-                    continue;
-                }
-                setRawValue(entry.value, parsed.get(entry.value));
-                touchedHandles.add(entry.handle);
-            }
-
-            for (ConfigHandleImpl handle : touchedHandles) {
+            for (ConfigHandleImpl handle : handles) {
                 handle.save();
             }
 
-            this.statusMessage = translate("konfig.screen.status.saved").getString();
+            this.statusMessage = translate("konfig.screen.status.reset").getString();
             this.statusColor = 0xFF80FF80;
         } catch (Exception exception) {
+            for (Map.Entry<ConfigValue<?>, Object> previousValue : previousValues.entrySet()) {
+                setRawValue(previousValue.getKey(), previousValue.getValue());
+                this.drafts.put(previousValue.getKey(), previousValue.getValue());
+            }
             this.statusMessage = exception.getMessage() == null ? translate("konfig.screen.status.save_failed").getString() : exception.getMessage();
             this.statusColor = 0xFFFF8080;
         }
-    }
-
-    private void reloadFromDisk() {
-        Set<ConfigHandleImpl> handles = new LinkedHashSet<ConfigHandleImpl>();
-        for (EntryRef entry : this.entries) {
-            handles.add(entry.handle);
-        }
-
-        for (ConfigHandleImpl handle : handles) {
-            handle.load();
-        }
-
-        this.drafts.clear();
-        for (EntryRef entry : this.entries) {
-            this.drafts.put(entry.value, entry.value.get());
-        }
-
-        this.statusMessage = translate("konfig.screen.status.reloaded").getString();
-        this.statusColor = 0xFF80FF80;
         this.rebuildEntryWidgets();
     }
 
@@ -337,6 +358,10 @@ public final class KonfigConfigScreen extends Screen {
 
     private static String stringValue(Object value) {
         return value == null ? "" : String.valueOf(value);
+    }
+
+    private static boolean sameValue(Object left, Object right) {
+        return left == right || (left != null && left.equals(right));
     }
 
     private boolean readBoolean(ConfigValue<?> value) {

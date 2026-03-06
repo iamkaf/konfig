@@ -3,14 +3,13 @@
   "konfig.screen.page": "Page %s/%s - %s entries",
   "konfig.screen.previous": "<",
   "konfig.screen.next": ">",
-  "konfig.screen.save": "Save",
-  "konfig.screen.reload": "Reload",
+  "konfig.screen.reset": "Reset",
   "konfig.screen.done": "Done",
   "konfig.screen.unsupported": "Unsupported",
   "konfig.screen.read_only": " (read-only)",
   "konfig.screen.empty": "No registered Konfig handles were found.",
-  "konfig.screen.status.saved": "Saved.",
-  "konfig.screen.status.reloaded": "Reloaded from disk.",
+  "konfig.screen.status.saved": "Auto-saved.",
+  "konfig.screen.status.reset": "Reset this screen's changes.",
   "konfig.screen.status.save_failed": "Failed to save values.",
   "konfig.config.konfig.konfig.debug.enabled": "Enable Debug Logging"
 }
