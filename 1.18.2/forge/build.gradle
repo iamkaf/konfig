@@ -1,0 +1,122 @@
+plugins {
+    id 'multiloader-loader'
+    id 'net.minecraftforge.gradle'
+}
+
+minecraft {
+    mappings channel: 'official', version: libs.versions.minecraft.get()
+
+    def at = file('src/main/resources/META-INF/accesstransformer.cfg')
+    if (at.exists()) {
+        accessTransformer = at
+    }
+
+    runs {
+        configureEach {
+            workingDir.convention layout.projectDirectory.dir('run')
+        }
+
+        register('client') {
+        }
+
+        register('server') {
+            args '--nogui'
+        }
+    }
+}
+
+repositories {
+    minecraft.mavenizer(it)
+    maven fg.forgeMaven
+    maven fg.minecraftLibsMaven
+}
+
+dependencies {
+    implementation minecraft.dependency("net.minecraftforge:forge:${libs.versions.minecraft.get()}-${libs.forge.get().version.toString()}")
+    implementation('net.sf.jopt-simple:jopt-simple:5.0.4') { version { strictly '5.0.4' } }
+}
+
+def java17Launcher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(17)
+}
+
+def bootstrapLauncherJar = providers.provider {
+    def jar = configurations.detachedConfiguration(dependencies.create('cpw.mods:bootstraplauncher:1.1.2'))
+        .resolve()
+        .find { it.name == 'bootstraplauncher-1.1.2.jar' }
+    if (jar == null) {
+        throw new GradleException('Missing bootstraplauncher-1.1.2.jar')
+    }
+    jar
+}
+
+def legacyBootstrapLauncherJar = providers.provider {
+    fileTree(new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1/cpw.mods/bootstraplauncher/1.0.0')) {
+        include '**/bootstraplauncher-1.0.0.jar'
+        exclude '**/*sources.jar'
+    }.singleFile
+}
+
+def lwjglNativesDir = layout.buildDirectory.dir('lwjgl-natives')
+def lwjglNativeJars = providers.provider {
+    def jars = [] as Set<File>
+    jars.addAll(fileTree(new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1/org.lwjgl')) {
+        include '**/*natives-linux.jar'
+    }.files)
+    jars.addAll(fileTree(new File(gradle.gradleUserHomeDir, 'caches/modules-2/files-2.1/com.mojang')) {
+        include '**/text2speech-*-natives-linux.jar'
+    }.files)
+
+    if (jars.empty) {
+        throw new GradleException('Missing LWJGL native jars for 1.18.2 Forge runClient')
+    }
+
+    jars
+}
+
+def patchLegacyBootstrapLauncher = tasks.register('patchLegacyBootstrapLauncher') {
+    doLast {
+        def source = bootstrapLauncherJar.get()
+        def target = legacyBootstrapLauncherJar.get()
+        def backup = new File(target.parentFile, "${target.name}.konfig-backup")
+
+        if (!backup.exists()) {
+            java.nio.file.Files.copy(target.toPath(), backup.toPath())
+        }
+
+        if (target.length() != source.length() || !java.util.Arrays.equals(target.bytes, source.bytes)) {
+            java.nio.file.Files.copy(source.toPath(), target.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+            logger.lifecycle("Patched cached bootstraplauncher-1.0.0.jar with 1.1.2 contents for 1.18.2 Forge dev runs.")
+        }
+    }
+}
+
+def extractLwjglNatives = tasks.register('extractLwjglNatives', Sync) {
+    dependsOn 'slimeLauncherMetadataForForge'
+    into lwjglNativesDir
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from({
+        lwjglNativeJars.get().collect { zipTree(it) }
+    }) {
+        exclude 'META-INF/**', '**/*.sha1', '**/*.git'
+    }
+}
+
+tasks.configureEach { task ->
+    if (task.name in ['runClient', 'runServer'] && task.hasProperty('javaLauncher')) {
+        task.dependsOn(patchLegacyBootstrapLauncher)
+        task.javaLauncher.set(java17Launcher)
+    }
+
+    if (task.name == 'runClient' && task.hasProperty('javaLauncher')) {
+        task.dependsOn(extractLwjglNatives)
+        task.systemProperty 'java.library.path', lwjglNativesDir.get().asFile.absolutePath
+        task.systemProperty 'org.lwjgl.librarypath', lwjglNativesDir.get().asFile.absolutePath
+    }
+}
+
+sourceSets.each {
+    def dir = layout.buildDirectory.dir("sourcesSets/$it.name")
+    it.output.resourcesDir = dir
+    it.java.destinationDirectory = dir
+}

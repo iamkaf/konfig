@@ -1,0 +1,52 @@
+plugins {
+    id 'multiloader-loader'
+    id 'fabric-loom'
+}
+
+dependencies {
+    minecraft libs.minecraft
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment(libs.parchment)
+    }
+    modImplementation libs.fabric.loader
+    modImplementation libs.fabric.api
+    implementation(include("com.electronwill.night-config:core:${nightconfig_version}"))
+    implementation(include("com.electronwill.night-config:toml:${nightconfig_version}"))
+    modCompileOnly libs.modmenu
+    modLocalRuntime(libs.modmenu) { transitive = false }
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir('runs/server')
+        }
+    }
+}
+
+def java17Launcher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(17)
+}
+
+tasks.named('runClient', JavaExec).configure {
+    javaLauncher.set(java17Launcher)
+}
+
+tasks.named('runServer', JavaExec).configure {
+    javaLauncher.set(java17Launcher)
+}

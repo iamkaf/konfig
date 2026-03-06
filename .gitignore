@@ -1,0 +1,12 @@
+# Root-level gitignore for monorepo
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.iml
+.gradle/
+*.log
+
+# Local verification artifacts
+.runclient-*/
+.screens/

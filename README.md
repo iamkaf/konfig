@@ -1,0 +1,194 @@
+# Konfig
+
+Konfig is a multiloader config library for Minecraft mods.
+
+It gives you a typed API, side-aware config scopes (`CLIENT`, `COMMON`, `SERVER`), and built-in server to client sync for shared values.
+
+## What You Get
+
+- Typed config values in common code
+- Category-based builder API (`push` / `pop`)
+- Runtime validation and fallback to defaults
+- Built-in sync modes (`NONE`, `LOGIN`, `LOGIN_AND_RELOAD`)
+- Commented TOML config files at `config/<modid>/<name>.toml`
+- Built-in config screen generation for registered handles
+- Fabric ModMenu integration (`modmenu` entrypoint)
+- Forge and NeoForge config button integration in the mod list
+- Fabric + Forge support across old and new versions
+- NeoForge support on modern versions
+
+## Supported Versions
+
+| Minecraft | Fabric | Forge | NeoForge |
+| --- | --- | --- | --- |
+| 1.21.11 | yes | yes | yes |
+| 1.21.10 | yes | yes | yes |
+| 1.21.1 | yes | yes | yes |
+| 1.20.1 | yes | yes | no |
+| 1.19.2 | yes | yes | no |
+| 1.18.2 | yes | yes | no |
+| 1.16.5 | yes | yes | no |
+
+## Toolchain Notes
+
+- ForgeGradle 7 is used on `1.18.2+`.
+- `1.16.5` stays on ForgeGradle 6 because the FG7 pre-1.17 MCP pipeline is not stable.
+- `1.18.2` Forge dev runs use a Java 17 launcher, patch the cached `bootstraplauncher-1.0.0.jar` with `1.1.2` contents, and extract LWJGL natives explicitly. FG7's Slime Launcher path for Forge `40.3.12` does not boot cleanly without those runtime fixes.
+- `1.16.5` Forge dev runs intentionally keep `build/resources/main` and `build/classes/java/main` separate. FG6's exploded `MOD_CLASSES` scanner needs a resource root plus at least one class root; collapsing them into one directory prevents `@Mod` discovery.
+- `1.16.5` Fabric still targets Java 8 bytecode, but the dev run tasks use a Java 17 launcher. Old Fabric Loader/Mixin builds do not run cleanly on Java 21.
+- Gradle wrapper versions follow that split:
+  - `1.18.2+`: Gradle `9.3.1`
+  - `1.16.5`: Gradle `8.14`
+
+## Quick Example
+
+```java
+import com.iamkaf.konfig.api.v1.*;
+
+public final class ExampleConfig {
+    public static final ConfigHandle HANDLE;
+    public static final ConfigValue<Boolean> ENABLED;
+    public static final ConfigValue<Integer> RANGE;
+
+    static {
+        ConfigBuilder builder = Konfig.builder("examplemod", "common")
+                .scope(ConfigScope.COMMON)
+                .syncMode(SyncMode.LOGIN)
+                .comment("Example mod config");
+
+        builder.push("general");
+        builder.categoryComment("General gameplay tuning");
+        ENABLED = builder.bool("enabled", true)
+                .comment("Master toggle")
+                .sync(true)
+                .build();
+
+        RANGE = builder.intRange("range", 8, 1, 64)
+                .comment("Effect radius")
+                .sync(true)
+                .restart(RestartRequirement.WORLD)
+                .build();
+        builder.pop();
+
+        HANDLE = builder.build();
+    }
+}
+```
+
+## Migrations
+
+Konfig can migrate persisted configs forward as your schema changes.
+
+```java
+import com.iamkaf.konfig.api.v1.*;
+
+public final class ExampleConfig {
+    public static final ConfigHandle HANDLE;
+
+    static {
+        ConfigBuilder builder = Konfig.builder("examplemod", "common")
+                .scope(ConfigScope.COMMON)
+                .syncMode(SyncMode.LOGIN)
+                .schemaVersion(2)
+                .migrate(0, ctx -> ctx.rename("general.enabled", "general.master_toggle"))
+                .migrate(1, ctx -> {
+                    if (!ctx.contains("general.range")) {
+                        ctx.set("general.range", 8);
+                    }
+                });
+
+        builder.push("general");
+        builder.bool("master_toggle", true).build();
+        builder.intRange("range", 8, 1, 64).build();
+        builder.pop();
+
+        HANDLE = builder.build();
+    }
+}
+```
+
+Migration rules:
+
+- Konfig stores schema metadata in the TOML file at `[__konfig] version = <n>`.
+- `__konfig` is a reserved top-level namespace and cannot be used by consumer config keys.
+- Missing schema metadata is treated as version `0`.
+- Konfig runs migrations step-by-step from `fromVersion` to `fromVersion + 1`.
+- If a file is newer than the running schema version, Konfig warns and skips the automatic rewrite during load.
+- If a required migration step is missing, Konfig fails loudly instead of silently dropping data.
+
+## Screen Labels
+
+Konfig localizes its own screen chrome out of the box. Consumer mods can also localize generated config entry labels.
+
+Entry label key format:
+
+```text
+konfig.config.<modid>.<handle>.<path>
+```
+
+Example:
+
+```json
+{
+  "konfig.config.examplemod.common.general.enabled": "Master Toggle",
+  "konfig.config.examplemod.common.general.range": "Effect Radius"
+}
+```
+
+If a key is missing, Konfig falls back to a humanized breadcrumb label such as `Common > General > Enabled`.
+
+Hover tooltips come from the config definition itself:
+
+- `categoryComment(...)` contributes category-level tooltip lines
+- `ValueBuilder.comment(...)` contributes the entry tooltip line
+- Konfig combines them in path order, so nested categories read naturally
+
+## Build
+
+From the repo root:
+
+```bash
+just versions
+just build version=1.21.11
+```
+
+Or directly:
+
+```bash
+cd 1.21.11
+./gradlew :common:build :fabric:build :neoforge:build :forge:build
+```
+
+For versions without NeoForge (`1.20.1` and older):
+
+```bash
+./gradlew :common:build :fabric:build :forge:build
+```
+
+## Debug Logging
+
+Konfig can dogfood itself through `config/konfig/konfig.toml`:
+
+```toml
+# Konfig internal debug settings.
+
+[debug]
+# Verbose diagnostics for config lifecycle and screen creation.
+
+# Enable verbose Konfig internal logs
+enabled = true
+```
+
+When enabled, Konfig logs runtime internals and config lifecycle events, including:
+
+- `config found ...`
+- `config not found, created defaults ...`
+- `creating screen ...`
+
+## Project Layout
+
+- `1.21.11`, `1.21.10`, `1.21.1`, `1.20.1`, `1.19.2`, `1.18.2`, `1.16.5`: version-specific multiloader projects
+
+## Status
+
+Konfig provides first-class config definitions, sync, and built-in loader-integrated screens across the supported version matrix.

@@ -1,0 +1,6 @@
+plugins {
+    alias(libs.plugins.fabric.loom) apply false
+    alias(libs.plugins.legacyforge) apply false
+    alias(libs.plugins.forgegradle) apply false
+    alias(libs.plugins.mixin) apply false
+}

@@ -1,0 +1,40 @@
+plugins {
+    id 'multiloader-loader'
+    id 'fabric-loom'
+}
+
+dependencies {
+    minecraft libs.minecraft
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment(libs.parchment)
+    }
+    modImplementation "net.fabricmc:fabric-loader:0.14.9"
+    modImplementation libs.fabric.api
+    implementation(include("com.electronwill.night-config:core:"))
+    implementation(include("com.electronwill.night-config:toml:"))
+    modCompileOnly libs.modmenu
+    modLocalRuntime(libs.modmenu) { transitive = false }
+}
+
+loom {
+    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
+    if (aw.exists()) {
+        accessWidenerPath.set(aw)
+    }
+
+    runs {
+        client {
+            client()
+            setConfigName('Fabric Client')
+            ideConfigGenerated(true)
+            runDir('runs/client')
+        }
+        server {
+            server()
+            setConfigName('Fabric Server')
+            ideConfigGenerated(true)
+            runDir('runs/server')
+        }
+    }
+}

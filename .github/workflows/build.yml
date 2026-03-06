@@ -1,0 +1,125 @@
+name: Build All Versions
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.set-versions.outputs.versions }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed versions
+        id: set-versions
+        run: |
+          all_versions=$(find . -maxdepth 1 -type d -regex '\./[0-9]+\.[0-9]+.*' | sed 's|./||' | sort)
+
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | grep -oP '^[0-9]+\.[0-9]+[^/]*' | sort -u || true)
+            versions=$(comm -12 <(echo "$all_versions") <(echo "$changed"))
+          elif [ "${{ github.event_name }}" = "push" ]; then
+            if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+              versions="$all_versions"
+            else
+              changed=$(git diff --name-only ${{ github.event.before }}...${{ github.sha }} | grep -oP '^[0-9]+\.[0-9]+[^/]*' | sort -u || true)
+              versions=$(comm -12 <(echo "$all_versions") <(echo "$changed"))
+            fi
+          else
+            versions="$all_versions"
+          fi
+
+          versions_json=$(echo "$versions" | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "versions=$versions_json" >> "$GITHUB_OUTPUT"
+          echo "Building versions: $versions_json"
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.versions != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: ${{ fromJson(needs.detect-changes.outputs.versions) }}
+        loader: [fabric, forge, neoforge]
+      fail-fast: false
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Setup just
+        uses: taiki-e/install-action@just
+
+      - name: Check loader enabled
+        id: loader_enabled
+        run: echo "enabled=$(just loader-enabled ${{ matrix.version }} ${{ matrix.loader }})" >> "$GITHUB_OUTPUT"
+
+      - name: Build ${{ matrix.loader }}
+        if: steps.loader_enabled.outputs.enabled == 'true'
+        run: just build-loader ${{ matrix.version }} ${{ matrix.loader }}
+
+      - name: Upload artifacts
+        if: steps.loader_enabled.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: konfig-${{ matrix.version }}-${{ matrix.loader }}
+          path: ${{ matrix.version }}/${{ matrix.loader }}/build/libs/*.jar
+          if-no-files-found: error
+
+  test:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.versions != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        version: ${{ fromJson(needs.detect-changes.outputs.versions) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Setup just
+        uses: taiki-e/install-action@just
+
+      - name: Run tests
+        run: just test ${{ matrix.version }}
+
+  summary:
+    needs: [build, test]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Summary
+        run: |
+          echo "## Build Results" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Build status: ${{ needs.build.result }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Test status: ${{ needs.test.result }}" >> "$GITHUB_STEP_SUMMARY"
