@@ -1,7 +1,6 @@
 package com.iamkaf.konfig.forge;
 
 import com.iamkaf.konfig.Constants;
-import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.impl.v1.ColorValueHelper;
 import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.ConfigValueImpl;
@@ -9,16 +8,25 @@ import com.iamkaf.konfig.impl.v1.EntryKind;
 import com.iamkaf.konfig.impl.v1.KonfigManager;
 import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.StringListValueHelper;
+import com.iamkaf.konfig.KonfigDebugConfig;
+import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.mojang.blaze3d.matrix.MatrixStack;
+import net.minecraft.client.gui.AbstractGui;
 import net.minecraft.client.gui.widget.AbstractSlider;
+import net.minecraft.client.gui.widget.Widget;
 import net.minecraft.client.gui.widget.button.Button;
+import net.minecraft.client.gui.widget.list.ExtendedList;
 import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.gui.IGuiEventListener;
+import net.minecraft.client.gui.INestedGuiEventHandler;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
+import net.minecraft.util.math.MathHelper;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -29,24 +37,19 @@ import java.util.Map;
 import java.util.Set;
 
 public final class KonfigConfigScreen extends Screen {
+    private static final int LIST_TOP = 28;
+    private static final int LIST_BOTTOM_MARGIN = 52;
     private static final int ROW_HEIGHT = 34;
     private static final int CONTROL_HEIGHT = 20;
     private static final int CONTROL_MIN_WIDTH = 132;
     private static final int CONTROL_MAX_WIDTH = 200;
-    private static final int LIST_ROW_HEIGHT = 24;
-    private static final int LIST_EDITOR_TOP = 56;
 
     private final Screen parent;
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
     private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
-    private final Map<ConfigValueImpl<?>, TextFieldWidget> visibleTextInputs = new LinkedHashMap<ConfigValueImpl<?>, TextFieldWidget>();
 
-    private int page;
-    private int entriesPerPage = 6;
-    private int visibleStart;
-    private int visibleEnd;
-
+    private EntryList list;
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -68,15 +71,17 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     protected void init() {
-        this.entriesPerPage = Math.max(1, (this.height - 84) / ROW_HEIGHT);
-        this.rebuildEntryWidgets();
+        this.rebuildScreenWidgets();
     }
 
     @Override
     public void tick() {
         super.tick();
-        for (TextFieldWidget input : this.visibleTextInputs.values()) {
-            input.tick();
+        if (this.list == null) {
+            return;
+        }
+        for (ConfigRow row : this.list.children()) {
+            row.tick();
         }
     }
 
@@ -91,24 +96,14 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public void render(MatrixStack poseStack, int mouseX, int mouseY, float partialTick) {
-        fill(poseStack, 0, 0, this.width, this.height, 0xC0101010);
+        AbstractGui.fill(poseStack, 0, 0, this.width, this.height, 0xC0101010);
+        if (this.list != null) {
+            this.list.render(poseStack, mouseX, mouseY, partialTick);
+        }
         super.render(poseStack, mouseX, mouseY, partialTick);
 
         drawCenteredString(poseStack, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
-        this.font.draw(poseStack, translate("konfig.screen.page", Integer.valueOf(this.page + 1), Integer.valueOf(totalPages()), Integer.valueOf(this.entries.size())), 12.0F, 12.0F, 0xFFC0C0C0);
-
-        int row = 0;
-        for (int index = this.visibleStart; index < this.visibleEnd; index++) {
-            EntryRef entry = this.entries.get(index);
-            int y = 32 + row * ROW_HEIGHT;
-            int color = entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0;
-            this.font.draw(poseStack, entry.contextLabel, 12.0F, y + 1.0F, 0xFFA0A0A0);
-            this.font.draw(poseStack, entry.displayLabel(), 12.0F, y + 12.0F, color);
-            if (isHoveringRow(mouseX, mouseY, y) && !isBlank(entry.tooltip)) {
-                this.renderTooltip(poseStack, this.font.split(text(entry.tooltip), Math.max(this.width / 2, 200)), mouseX, mouseY);
-            }
-            row++;
-        }
+        this.font.draw(poseStack, text(entryCountText()), 12.0F, 12.0F, 0xFFC0C0C0);
 
         if (!this.statusMessage.isEmpty()) {
             drawCenteredString(poseStack, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
@@ -119,117 +114,55 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
-    private void rebuildEntryWidgets() {
+    private void rebuildScreenWidgets() {
         this.buttons.clear();
         this.children.clear();
-        this.visibleTextInputs.clear();
 
-        int pages = totalPages();
-        if (this.page >= pages) {
-            this.page = pages - 1;
+        int listHeight = Math.max(48, this.height - LIST_TOP - LIST_BOTTOM_MARGIN);
+        this.list = new EntryList(this.minecraft, this.width, listHeight, LIST_TOP);
+        this.children.add(this.list);
+        for (EntryRef entry : this.entries) {
+            this.list.addKonfigEntry(createRow(entry));
         }
-        if (this.page < 0) {
-            this.page = 0;
-        }
-
-        Button prev = this.addButton(new Button(this.width - 56, 8, 20, 20, translate("konfig.screen.previous"), button -> this.changePage(-1)));
-        prev.active = this.page > 0;
-
-        Button next = this.addButton(new Button(this.width - 32, 8, 20, 20, translate("konfig.screen.next"), button -> this.changePage(1)));
-        next.active = this.page + 1 < pages;
 
         int footerY = this.height - 26;
         this.addButton(new Button(this.width / 2 - 82, footerY, 80, 20, translate("konfig.screen.reset"), button -> this.resetEntries()));
         this.addButton(new Button(this.width / 2 + 2, footerY, 80, 20, translate("konfig.screen.done"), button -> this.onClose()));
-
-        this.visibleStart = this.page * this.entriesPerPage;
-        this.visibleEnd = Math.min(this.entries.size(), this.visibleStart + this.entriesPerPage);
-
-        int row = 0;
-        for (int index = this.visibleStart; index < this.visibleEnd; index++) {
-            EntryRef entry = this.entries.get(index);
-            int y = 32 + row * ROW_HEIGHT;
-            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, this.width / 2 - 24));
-            int controlX = this.width - 12 - controlWidth;
-            int controlY = y + 7;
-            this.addControl(entry, controlX, controlY, controlWidth);
-            row++;
-        }
     }
 
-    private void addControl(EntryRef entry, int x, int y, int width) {
+    private ConfigRow createRow(EntryRef entry) {
         if (!entry.editable) {
-            Button unsupported = this.addButton(new Button(x, y, width, CONTROL_HEIGHT, translate("konfig.screen.unsupported"), button -> {
-            }));
-            unsupported.active = false;
-            return;
+            return new UnsupportedRow(entry);
         }
-
         if (entry.value.kind() == EntryKind.BOOLEAN) {
-            this.addButton(new Button(x, y, width, CONTROL_HEIGHT, booleanText(entry.value), button -> {
-                Object previousDraft = snapshotValue(entry.value, entry.value.get());
-                this.drafts.put(entry.value, Boolean.valueOf(!this.readBoolean(entry.value)));
-                if (!this.persistEntry(entry)) {
-                    this.drafts.put(entry.value, copyDraftValue(entry.value, previousDraft));
-                }
-                button.setMessage(booleanText(entry.value));
-            }));
-            return;
+            return new BooleanRow(entry);
         }
-
         if (entry.value.kind() == EntryKind.ENUM) {
-            this.addButton(new Button(x, y, width, CONTROL_HEIGHT, enumText(entry, this.currentEnum(entry.value)), button -> {
-                Object previousDraft = snapshotValue(entry.value, entry.value.get());
-                this.drafts.put(entry.value, this.cycleEnum(entry.value));
-                if (!this.persistEntry(entry)) {
-                    this.drafts.put(entry.value, copyDraftValue(entry.value, previousDraft));
-                }
-                button.setMessage(enumText(entry, this.currentEnum(entry.value)));
-            }));
-            return;
+            return new EnumRow(entry);
         }
-
         if (entry.value.kind() == EntryKind.COLOR_RGB || entry.value.kind() == EntryKind.COLOR_ARGB) {
-            this.addButton(new Button(x, y, width, CONTROL_HEIGHT, colorText(entry.value), button -> this.minecraft.setScreen(new ColorEditorScreen(entry))));
-            return;
+            return new ColorRow(entry);
         }
-
         if (entry.value.kind() == EntryKind.STRING_LIST) {
-            this.addButton(new Button(x, y, width, CONTROL_HEIGHT, stringListText(entry.value), button -> this.minecraft.setScreen(new StringListEditorScreen(entry))));
-            return;
+            return new StringListRow(entry);
         }
-
         if (entry.value.kind() == EntryKind.INTEGER && entry.value.hasNumericRange()) {
-            this.addButton(new IntegerSliderWidget(entry, x, y, width));
-            return;
+            return new IntegerSliderRow(entry);
         }
-
         if (entry.value.kind() == EntryKind.LONG && entry.value.hasNumericRange()) {
-            this.addButton(new LongSliderWidget(entry, x, y, width));
-            return;
+            return new LongSliderRow(entry);
         }
-
         if (entry.value.kind() == EntryKind.DOUBLE && entry.value.hasNumericRange()) {
-            this.addButton(new DoubleSliderWidget(entry, x, y, width));
-            return;
+            return new DoubleSliderRow(entry);
         }
-
-        TextFieldWidget input = this.addButton(new TextFieldWidget(this.font, x, y, width, CONTROL_HEIGHT, entry.label));
-        input.setMaxLength(256);
-        input.setValue(stringValue(this.drafts.get(entry.value)));
-        input.setResponder(value -> {
-            this.drafts.put(entry.value, value);
-            this.persistEntry(entry);
-        });
-        this.visibleTextInputs.put(entry.value, input);
+        return new TextInputRow(entry);
     }
 
     private boolean persistEntry(EntryRef entry) {
-        Object previousValue = snapshotValue(entry.value, entry.value.get());
+        Object previousValue = entry.value.get();
         try {
             Object parsed = parseDraft(entry.value, this.drafts.get(entry.value));
             if (sameValue(previousValue, parsed)) {
-                this.drafts.put(entry.value, copyDraftValue(entry.value, parsed));
                 this.statusMessage = translate("konfig.screen.status.saved").getString();
                 this.statusColor = 0xFF80FF80;
                 return true;
@@ -237,7 +170,6 @@ public final class KonfigConfigScreen extends Screen {
 
             setRawValue(entry.value, parsed);
             entry.handle.save();
-            this.drafts.put(entry.value, copyDraftValue(entry.value, parsed));
             this.statusMessage = translate("konfig.screen.status.saved").getString();
             this.statusColor = 0xFF80FF80;
             return true;
@@ -257,7 +189,7 @@ public final class KonfigConfigScreen extends Screen {
                 if (!entry.editable) {
                     continue;
                 }
-                Object resetValue = this.sessionStartValues.get(entry.value);
+                Object resetValue = snapshotValue(entry.value, this.sessionStartValues.get(entry.value));
                 previousValues.put(entry.value, snapshotValue(entry.value, entry.value.get()));
                 this.drafts.put(entry.value, copyDraftValue(entry.value, resetValue));
                 setRawValue(entry.value, resetValue);
@@ -278,38 +210,27 @@ public final class KonfigConfigScreen extends Screen {
             this.statusMessage = exception.getMessage() == null ? translate("konfig.screen.status.save_failed").getString() : exception.getMessage();
             this.statusColor = 0xFFFF8080;
         }
-        this.rebuildEntryWidgets();
+        this.rebuildScreenWidgets();
     }
 
-    private void changePage(int delta) {
-        int next = this.page + delta;
-        if (next < 0 || next >= totalPages()) {
-            return;
-        }
-        this.page = next;
-        this.rebuildEntryWidgets();
-    }
-
-    private int totalPages() {
-        if (this.entries.isEmpty()) {
-            return 1;
-        }
-        return (this.entries.size() + this.entriesPerPage - 1) / this.entriesPerPage;
-    }
-
-    private boolean isHoveringRow(int mouseX, int mouseY, int y) {
-        return mouseX >= 12 && mouseX <= this.width - 12 && mouseY >= y && mouseY < y + ROW_HEIGHT - 2;
+    private String entryCountText() {
+        return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
     }
 
     private static List<EntryRef> collectEntries() {
         List<EntryRef> result = new ArrayList<EntryRef>();
 
         for (ConfigHandleImpl handle : KonfigManager.get().all()) {
-            for (com.iamkaf.konfig.api.v1.ConfigValue<?> value : handle.values()) {
+            for (ConfigValue<?> value : handle.values()) {
+                if (!(value instanceof ConfigValueImpl)) {
+                    continue;
+                }
+
                 ConfigValueImpl<?> impl = (ConfigValueImpl<?>) value;
                 if (!isVisibleOnThisSide(impl)) {
                     continue;
                 }
+
                 boolean editable = impl.kind() != EntryKind.CUSTOM;
                 result.add(new EntryRef(handle, impl, editable));
             }
@@ -347,6 +268,7 @@ public final class KonfigConfigScreen extends Screen {
                 case ENUM:
                     return parseEnum(value, draft);
                 case COLOR_RGB:
+                    return Integer.valueOf(parseColor(value, draft));
                 case COLOR_ARGB:
                     return Integer.valueOf(parseColor(value, draft));
                 case CUSTOM:
@@ -421,7 +343,7 @@ public final class KonfigConfigScreen extends Screen {
 
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void setRawValue(ConfigValueImpl<?> value, Object parsed) {
-        ((com.iamkaf.konfig.api.v1.ConfigValue) value).set(parsed);
+        ((ConfigValue) value).set(parsed);
     }
 
     private static String stringValue(Object value) {
@@ -480,7 +402,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private Enum<?> cycleEnum(ConfigValueImpl<?> value) {
-        Enum<?> current = this.currentEnum(value);
+        Enum<?> current = currentEnum(value);
         Object[] constants = current.getDeclaringClass().getEnumConstants();
 
         int index = 0;
@@ -494,10 +416,6 @@ public final class KonfigConfigScreen extends Screen {
         return (Enum<?>) constants[(index + 1) % constants.length];
     }
 
-    private List<String> currentStringList(ConfigValueImpl<?> value) {
-        return stringListValue(this.drafts.get(value), value.path());
-    }
-
     private int currentColor(ConfigValueImpl<?> value) {
         Object current = this.drafts.get(value);
         if (current instanceof Number) {
@@ -506,25 +424,26 @@ public final class KonfigConfigScreen extends Screen {
         return ((Number) value.get()).intValue();
     }
 
-    private static ITextComponent booleanText(ConfigValueImpl<?> value, boolean enabled) {
-        return translate(enabled ? "options.on" : "options.off");
+    private List<String> currentStringList(ConfigValueImpl<?> value) {
+        Object current = this.drafts.get(value);
+        if (current instanceof List<?>) {
+            return StringListValueHelper.mutableCopy(stringListValue(current, value.path()));
+        }
+        return StringListValueHelper.mutableCopy(stringListValue(value.get(), value.path()));
     }
 
     private ITextComponent booleanText(ConfigValueImpl<?> value) {
-        return booleanText(value, this.readBoolean(value));
+        return translate(readBoolean(value) ? "options.on" : "options.off");
     }
 
-    private static ITextComponent enumText(EntryRef entry, Enum<?> value) {
-        String enumKey = "konfig.config." + entry.handle.modId() + "." + entry.handle.name() + "." + entry.value.path() + "." + value.name().toLowerCase(Locale.ROOT);
-        ITextComponent translated = translate(enumKey);
-        if (!enumKey.equals(translated.getString())) {
-            return translated;
-        }
-        return text(prettySegment(value.name()));
+    private ITextComponent enumText(EntryRef entry, Enum<?> value) {
+        String key = "konfig.value." + entry.handle.modId() + "." + entry.handle.name() + "." + entry.value.path() + "." + value.name().toLowerCase(Locale.ROOT);
+        ITextComponent translated = translate(key);
+        return key.equals(translated.getString()) ? text(prettySegment(value.name())) : translated;
     }
 
     private ITextComponent colorText(ConfigValueImpl<?> value) {
-        int color = this.currentColor(value);
+        int color = currentColor(value);
         if (value.kind() == EntryKind.COLOR_ARGB) {
             return text(ColorValueHelper.formatArgb(color));
         }
@@ -532,7 +451,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private ITextComponent stringListText(ConfigValueImpl<?> value) {
-        List<String> values = this.currentStringList(value);
+        List<String> values = currentStringList(value);
         if (values.isEmpty()) {
             return translate("konfig.screen.list.empty");
         }
@@ -550,7 +469,7 @@ public final class KonfigConfigScreen extends Screen {
         if (span <= 0.0D) {
             return 0.0D;
         }
-        return clampProgress((current - min) / span);
+        return MathHelper.clamp((current - min) / span, 0.0D, 1.0D);
     }
 
     private static int intFromProgress(double progress, int min, int max) {
@@ -574,18 +493,8 @@ public final class KonfigConfigScreen extends Screen {
         return min + (max - min) * progress;
     }
 
-    private static double clampProgress(double progress) {
-        if (progress < 0.0D) {
-            return 0.0D;
-        }
-        if (progress > 1.0D) {
-            return 1.0D;
-        }
-        return progress;
-    }
-
     private static String formatDouble(double value) {
-        String formatted = String.format(Locale.ROOT, "%.3f", Double.valueOf(value));
+        String formatted = String.format(Locale.ROOT, "%.3f", value);
         while (formatted.contains(".") && (formatted.endsWith("0") || formatted.endsWith("."))) {
             formatted = formatted.substring(0, formatted.length() - 1);
         }
@@ -593,13 +502,13 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private static void drawColorSwatch(MatrixStack poseStack, int x, int y, int size, int color, EntryKind kind) {
-        fill(poseStack, x - 1, y - 1, x + size + 1, y + size + 1, 0xFF202020);
+        AbstractGui.fill(poseStack, x - 1, y - 1, x + size + 1, y + size + 1, 0xFF202020);
         if (kind == EntryKind.COLOR_ARGB && ColorValueHelper.alpha(color) < 255) {
             int cell = Math.max(2, size / 4);
             for (int row = 0; row < size; row += cell) {
                 for (int column = 0; column < size; column += cell) {
                     boolean dark = ((row / cell) + (column / cell)) % 2 == 0;
-                    fill(
+                    AbstractGui.fill(
                             poseStack,
                             x + column,
                             y + row,
@@ -610,9 +519,9 @@ public final class KonfigConfigScreen extends Screen {
                 }
             }
         } else {
-            fill(poseStack, x, y, x + size, y + size, 0xFFFFFFFF);
+            AbstractGui.fill(poseStack, x, y, x + size, y + size, 0xFFFFFFFF);
         }
-        fill(poseStack, x, y, x + size, y + size, ColorValueHelper.toRenderColor(kind, color));
+        AbstractGui.fill(poseStack, x, y, x + size, y + size, ColorValueHelper.toRenderColor(kind, color));
     }
 
     private static String normalizeHexInput(String value) {
@@ -716,6 +625,504 @@ public final class KonfigConfigScreen extends Screen {
         return value == null || value.trim().isEmpty();
     }
 
+    private final class EntryList extends ExtendedList<ConfigRow> {
+        private EntryList(net.minecraft.client.Minecraft minecraft, int width, int height, int y) {
+            super(minecraft, width, height, y, y + height, ROW_HEIGHT);
+            this.setRenderBackground(false);
+            this.setRenderTopAndBottom(false);
+        }
+
+        private void addKonfigEntry(ConfigRow row) {
+            super.addEntry(row);
+        }
+
+        @Override
+        public int getRowWidth() {
+            return KonfigConfigScreen.this.width - 28;
+        }
+
+        @Override
+        protected void renderBackground(MatrixStack poseStack) {
+            AbstractGui.fill(poseStack, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+        }
+    }
+
+    private abstract class ConfigRow extends ExtendedList.AbstractListEntry<ConfigRow> implements INestedGuiEventHandler {
+        protected final EntryRef entry;
+        private IGuiEventListener focused;
+        private boolean dragging;
+
+        private ConfigRow(EntryRef entry) {
+            this.entry = entry;
+        }
+
+        protected abstract Widget control();
+
+        protected void tick() {
+        }
+
+        @Override
+        public void render(MatrixStack poseStack, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            this.renderRow(poseStack, x, y, width, height, mouseX, mouseY, hovered, partialTick);
+        }
+
+        protected void renderRow(MatrixStack poseStack, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                AbstractGui.fill(poseStack, x, y, x + width, y + height, 0x22000000);
+            }
+
+            if (!isBlank(this.entry.tooltip)) {
+                if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                    KonfigConfigScreen.this.renderTooltip(
+                            poseStack,
+                            KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
+                            mouseX,
+                            mouseY
+                    );
+                }
+            }
+
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+            int controlX = x + width - controlWidth;
+            int controlY = y + (height - CONTROL_HEIGHT) / 2;
+            layoutControl(this.control(), controlX, controlY, controlWidth);
+
+            KonfigConfigScreen.this.font.draw(poseStack, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
+            KonfigConfigScreen.this.font.draw(poseStack, this.entry.displayLabel(), x + 4.0F, y + 12.0F, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+            this.control().render(poseStack, mouseX, mouseY, partialTick);
+        }
+
+        @Override
+        public List<? extends IGuiEventListener> children() {
+            return Collections.singletonList(this.control());
+        }
+
+        @Override
+        public IGuiEventListener getFocused() {
+            return this.focused;
+        }
+
+        @Override
+        public void setFocused(IGuiEventListener listener) {
+            this.focused = listener;
+        }
+
+        @Override
+        public boolean isDragging() {
+            return this.dragging;
+        }
+
+        @Override
+        public void setDragging(boolean dragging) {
+            this.dragging = dragging;
+        }
+
+        protected final void layoutControl(Widget control, int x, int y, int width) {
+            control.x = x;
+            control.y = y;
+            control.setWidth(width);
+        }
+
+        protected void revertDraft(Object previousValue) {
+            KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+        }
+
+        protected void commitOrRevert(Object previousValue) {
+            if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
+                this.revertDraft(previousValue);
+                this.syncFromDraft();
+            }
+        }
+
+        protected void syncFromDraft() {
+        }
+    }
+
+    private final class UnsupportedRow extends ConfigRow {
+        private final Button button;
+
+        private UnsupportedRow(EntryRef entry) {
+            super(entry);
+            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, translate("konfig.screen.unsupported"), ignored -> {
+            });
+            this.button.active = false;
+        }
+
+        @Override
+        protected Widget control() {
+            return this.button;
+        }
+    }
+
+    private final class BooleanRow extends ConfigRow {
+        private final Button button;
+
+        private BooleanRow(EntryRef entry) {
+            super(entry);
+            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, booleanText(entry.value), button -> {
+                Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
+                KonfigConfigScreen.this.drafts.put(entry.value, Boolean.valueOf(!KonfigConfigScreen.this.readBoolean(entry.value)));
+                this.commitOrRevert(previousDraft);
+                this.syncFromDraft();
+            });
+        }
+
+        @Override
+        protected Widget control() {
+            return this.button;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.button.setMessage(booleanText(this.entry.value));
+        }
+    }
+
+    private final class EnumRow extends ConfigRow {
+        private final Button button;
+
+        private EnumRow(EntryRef entry) {
+            super(entry);
+            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, enumText(entry, KonfigConfigScreen.this.currentEnum(entry.value)), button -> {
+                Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
+                KonfigConfigScreen.this.drafts.put(entry.value, KonfigConfigScreen.this.cycleEnum(entry.value));
+                this.commitOrRevert(previousDraft);
+                this.syncFromDraft();
+            });
+        }
+
+        @Override
+        protected Widget control() {
+            return this.button;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.button.setMessage(enumText(this.entry, KonfigConfigScreen.this.currentEnum(this.entry.value)));
+        }
+    }
+
+    private final class ColorRow extends ConfigRow {
+        private static final int PREVIEW_SIZE = 16;
+        private static final int PREVIEW_GAP = 6;
+
+        private final Button button;
+
+        private ColorRow(EntryRef entry) {
+            super(entry);
+            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, colorText(entry.value), ignored -> {
+                KonfigConfigScreen.this.minecraft.setScreen(new ColorEditorScreen(entry));
+            });
+        }
+
+        @Override
+        protected Widget control() {
+            return this.button;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.button.setMessage(colorText(this.entry.value));
+        }
+
+        @Override
+        protected void renderRow(MatrixStack poseStack, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                AbstractGui.fill(poseStack, x, y, x + width, y + height, 0x22000000);
+            }
+
+            if (!isBlank(this.entry.tooltip)) {
+                if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                    KonfigConfigScreen.this.renderTooltip(
+                            poseStack,
+                            KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
+                            mouseX,
+                            mouseY
+                    );
+                }
+            }
+
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+            int previewX = x + width - controlWidth - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = y + (height - PREVIEW_SIZE) / 2;
+            int buttonWidth = controlWidth;
+            layoutControl(this.control(), x + width - buttonWidth, y + (height - CONTROL_HEIGHT) / 2, buttonWidth);
+
+            KonfigConfigScreen.this.font.draw(poseStack, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
+            KonfigConfigScreen.this.font.draw(poseStack, this.entry.displayLabel(), x + 4.0F, y + 12.0F, 0xFFFFFFFF);
+            drawColorSwatch(poseStack, previewX, previewY, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+            this.control().render(poseStack, mouseX, mouseY, partialTick);
+        }
+    }
+
+    private final class StringListRow extends ConfigRow {
+        private final Button button;
+
+        private StringListRow(EntryRef entry) {
+            super(entry);
+            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, stringListText(entry.value), ignored -> {
+                KonfigConfigScreen.this.minecraft.setScreen(new StringListEditorScreen(entry));
+            });
+        }
+
+        @Override
+        protected Widget control() {
+            return this.button;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.button.setMessage(stringListText(this.entry.value));
+        }
+    }
+
+    private abstract class BaseSliderWidget extends AbstractSlider {
+        private BaseSliderWidget(double initialProgress) {
+            super(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, new StringTextComponent(""), initialProgress);
+        }
+
+        protected final void syncToProgress(double progress) {
+            this.value = MathHelper.clamp(progress, 0.0D, 1.0D);
+            this.updateMessage();
+        }
+    }
+
+    private final class IntegerSliderRow extends ConfigRow {
+        private final int min;
+        private final int max;
+        private final SliderWidget slider;
+
+        private IntegerSliderRow(EntryRef entry) {
+            super(entry);
+            this.min = entry.value.rangeMin().intValue();
+            this.max = entry.value.rangeMax().intValue();
+            this.slider = new SliderWidget();
+        }
+
+        @Override
+        protected Widget control() {
+            return this.slider;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.slider.syncToProgress(progressFor(this.currentValue(), this.min, this.max));
+        }
+
+        private int currentValue() {
+            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
+            if (draft instanceof Number) {
+                return ((Number) draft).intValue();
+            }
+            return ((Number) this.entry.value.get()).intValue();
+        }
+
+        private void updateDraftFromSlider(double progress) {
+            KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(intFromProgress(progress, this.min, this.max)));
+        }
+
+        private final class SliderWidget extends BaseSliderWidget {
+            private SliderWidget() {
+                super(progressFor(IntegerSliderRow.this.currentValue(), IntegerSliderRow.this.min, IntegerSliderRow.this.max));
+                this.updateMessage();
+            }
+
+            @Override
+            protected void updateMessage() {
+                this.setMessage(text(Integer.toString(IntegerSliderRow.this.currentValue())));
+            }
+
+            @Override
+            protected void applyValue() {
+                IntegerSliderRow.this.updateDraftFromSlider(this.value);
+            }
+
+            @Override
+            public void onRelease(double mouseX, double mouseY) {
+                Object previousValue = IntegerSliderRow.this.entry.value.get();
+                super.onRelease(mouseX, mouseY);
+                IntegerSliderRow.this.commitOrRevert(previousValue);
+            }
+
+            @Override
+            public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+                int previousValue = IntegerSliderRow.this.currentValue();
+                boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
+                if (handled && previousValue != IntegerSliderRow.this.currentValue()) {
+                    IntegerSliderRow.this.commitOrRevert(Integer.valueOf(previousValue));
+                }
+                return handled;
+            }
+        }
+    }
+
+    private final class LongSliderRow extends ConfigRow {
+        private final long min;
+        private final long max;
+        private final SliderWidget slider;
+
+        private LongSliderRow(EntryRef entry) {
+            super(entry);
+            this.min = entry.value.rangeMin().longValue();
+            this.max = entry.value.rangeMax().longValue();
+            this.slider = new SliderWidget();
+        }
+
+        @Override
+        protected Widget control() {
+            return this.slider;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.slider.syncToProgress(progressFor(this.currentValue(), this.min, this.max));
+        }
+
+        private long currentValue() {
+            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
+            if (draft instanceof Number) {
+                return ((Number) draft).longValue();
+            }
+            return ((Number) this.entry.value.get()).longValue();
+        }
+
+        private void updateDraftFromSlider(double progress) {
+            KonfigConfigScreen.this.drafts.put(this.entry.value, Long.valueOf(longFromProgress(progress, this.min, this.max)));
+        }
+
+        private final class SliderWidget extends BaseSliderWidget {
+            private SliderWidget() {
+                super(progressFor(LongSliderRow.this.currentValue(), LongSliderRow.this.min, LongSliderRow.this.max));
+                this.updateMessage();
+            }
+
+            @Override
+            protected void updateMessage() {
+                this.setMessage(text(Long.toString(LongSliderRow.this.currentValue())));
+            }
+
+            @Override
+            protected void applyValue() {
+                LongSliderRow.this.updateDraftFromSlider(this.value);
+            }
+
+            @Override
+            public void onRelease(double mouseX, double mouseY) {
+                Object previousValue = LongSliderRow.this.entry.value.get();
+                super.onRelease(mouseX, mouseY);
+                LongSliderRow.this.commitOrRevert(previousValue);
+            }
+
+            @Override
+            public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+                long previousValue = LongSliderRow.this.currentValue();
+                boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
+                if (handled && previousValue != LongSliderRow.this.currentValue()) {
+                    LongSliderRow.this.commitOrRevert(Long.valueOf(previousValue));
+                }
+                return handled;
+            }
+        }
+    }
+
+    private final class DoubleSliderRow extends ConfigRow {
+        private final double min;
+        private final double max;
+        private final SliderWidget slider;
+
+        private DoubleSliderRow(EntryRef entry) {
+            super(entry);
+            this.min = entry.value.rangeMin().doubleValue();
+            this.max = entry.value.rangeMax().doubleValue();
+            this.slider = new SliderWidget();
+        }
+
+        @Override
+        protected Widget control() {
+            return this.slider;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.slider.syncToProgress(progressFor(this.currentValue(), this.min, this.max));
+        }
+
+        private double currentValue() {
+            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
+            if (draft instanceof Number) {
+                return ((Number) draft).doubleValue();
+            }
+            return ((Number) this.entry.value.get()).doubleValue();
+        }
+
+        private void updateDraftFromSlider(double progress) {
+            KonfigConfigScreen.this.drafts.put(this.entry.value, Double.valueOf(doubleFromProgress(progress, this.min, this.max)));
+        }
+
+        private final class SliderWidget extends BaseSliderWidget {
+            private SliderWidget() {
+                super(progressFor(DoubleSliderRow.this.currentValue(), DoubleSliderRow.this.min, DoubleSliderRow.this.max));
+                this.updateMessage();
+            }
+
+            @Override
+            protected void updateMessage() {
+                this.setMessage(text(formatDouble(DoubleSliderRow.this.currentValue())));
+            }
+
+            @Override
+            protected void applyValue() {
+                DoubleSliderRow.this.updateDraftFromSlider(this.value);
+            }
+
+            @Override
+            public void onRelease(double mouseX, double mouseY) {
+                Object previousValue = DoubleSliderRow.this.entry.value.get();
+                super.onRelease(mouseX, mouseY);
+                DoubleSliderRow.this.commitOrRevert(previousValue);
+            }
+
+            @Override
+            public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+                double previousValue = DoubleSliderRow.this.currentValue();
+                boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
+                if (handled && !sameValue(Double.valueOf(previousValue), Double.valueOf(DoubleSliderRow.this.currentValue()))) {
+                    DoubleSliderRow.this.commitOrRevert(Double.valueOf(previousValue));
+                }
+                return handled;
+            }
+        }
+    }
+
+    private final class TextInputRow extends ConfigRow {
+        private final TextFieldWidget input;
+
+        private TextInputRow(EntryRef entry) {
+            super(entry);
+            this.input = new TextFieldWidget(KonfigConfigScreen.this.font, 0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, entry.label);
+            this.input.setMaxLength(256);
+            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
+            this.input.setResponder(value -> {
+                KonfigConfigScreen.this.drafts.put(entry.value, value);
+                KonfigConfigScreen.this.persistEntry(entry);
+            });
+        }
+
+        @Override
+        protected Widget control() {
+            return this.input;
+        }
+
+        @Override
+        protected void tick() {
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(this.entry.value)));
+        }
+    }
+
     private abstract class EntryEditorScreen extends Screen {
         protected static final int EDITOR_TITLE_Y = 8;
         protected static final int EDITOR_CONTEXT_Y = 24;
@@ -735,13 +1142,8 @@ public final class KonfigConfigScreen extends Screen {
             this.returnToParent();
         }
 
-        protected final void clearEditorWidgets() {
-            this.buttons.clear();
-            this.children.clear();
-        }
-
         protected final void returnToParent() {
-            KonfigConfigScreen.this.rebuildEntryWidgets();
+            KonfigConfigScreen.this.rebuildScreenWidgets();
             this.minecraft.setScreen(KonfigConfigScreen.this);
         }
 
@@ -784,13 +1186,10 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         protected final void renderEditorChrome(MatrixStack poseStack, int mouseX, int mouseY, float partialTick) {
-            fill(poseStack, 0, 0, this.width, this.height, 0xC0101010);
+            AbstractGui.fill(poseStack, 0, 0, this.width, this.height, 0xC0101010);
             super.render(poseStack, mouseX, mouseY, partialTick);
             drawCenteredString(poseStack, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
             this.font.draw(poseStack, this.entry.contextLabel, 12.0F, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
-            if (!isBlank(this.entry.tooltip) && mouseX >= 12 && mouseX <= this.width - 12 && mouseY >= 8 && mouseY <= EDITOR_CONTENT_TOP - 4) {
-                this.renderTooltip(poseStack, this.font.split(text(this.entry.tooltip), Math.max(this.width / 2, 200)), mouseX, mouseY);
-            }
             if (!this.statusMessage.isEmpty()) {
                 drawCenteredString(poseStack, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
             }
@@ -811,10 +1210,10 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private final class ColorEditorScreen extends EntryEditorScreen {
-        private static final int PREVIEW_SIZE = 28;
+        private static final int PREVIEW_SIZE = 32;
         private static final int PREVIEW_Y = EDITOR_CONTENT_TOP;
         private static final int HEX_WIDTH = 108;
-        private static final int HEX_Y = PREVIEW_Y + PREVIEW_SIZE + 10;
+        private static final int HEX_Y = PREVIEW_Y + PREVIEW_SIZE + 8;
         private static final int SLIDER_WIDTH = 220;
         private static final int SLIDER_Y = HEX_Y + 28;
         private static final int SLIDER_STEP = 26;
@@ -832,9 +1231,10 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void init() {
-            this.clearEditorWidgets();
+            this.buttons.clear();
+        this.children.clear();
 
-            this.hexInput = this.addButton(new TextFieldWidget(this.font, this.width / 2 - HEX_WIDTH / 2, HEX_Y, HEX_WIDTH, CONTROL_HEIGHT, this.entry.label));
+            this.hexInput = this.addButton(new TextFieldWidget(this.font, this.width / 2 - HEX_WIDTH / 2, HEX_Y, HEX_WIDTH, 20, this.entry.label));
             this.hexInput.setMaxLength(this.entry.value.kind() == EntryKind.COLOR_ARGB ? 9 : 7);
             this.hexInput.setValue(this.currentHex());
             this.hexInput.setResponder(this::onHexChanged);
@@ -859,18 +1259,15 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         @Override
-        public void tick() {
-            super.tick();
-            if (this.hexInput != null) {
-                this.hexInput.tick();
-            }
-        }
-
-        @Override
         public void render(MatrixStack poseStack, int mouseX, int mouseY, float partialTick) {
             this.renderEditorChrome(poseStack, mouseX, mouseY, partialTick);
             int previewX = this.width / 2 - PREVIEW_SIZE / 2;
             drawColorSwatch(poseStack, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+        }
+
+        @Override
+        public void tick() {
+            super.tick();
         }
 
         private void onHexChanged(String value) {
@@ -898,8 +1295,11 @@ public final class KonfigConfigScreen extends Screen {
             try {
                 int parsed = parseColor(this.entry.value, value);
                 KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(parsed));
-                this.persistEditedValue(previousValue);
-                this.syncWidgetsFromDraft();
+                if (this.persistEditedValue(previousValue)) {
+                    this.syncWidgetsFromDraft();
+                } else {
+                    this.syncWidgetsFromDraft();
+                }
             } catch (Exception exception) {
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
                 this.statusMessage = exception.getMessage() == null
@@ -980,8 +1380,11 @@ public final class KonfigConfigScreen extends Screen {
             private final ColorChannel channel;
 
             private ChannelSlider(ColorChannel channel, int x, int y) {
-                super(x, y, SLIDER_WIDTH, ColorEditorScreen.this.currentChannel(channel) / 255.0D);
+                super(ColorEditorScreen.this.currentChannel(channel) / 255.0D);
                 this.channel = channel;
+                this.x = x;
+                this.y = y;
+                this.setWidth(SLIDER_WIDTH);
                 this.updateMessage();
             }
 
@@ -1010,30 +1413,23 @@ public final class KonfigConfigScreen extends Screen {
 
             @Override
             public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
                 int before = ColorEditorScreen.this.currentChannel(this.channel);
-                boolean arrow = keyCode == 263 || keyCode == 262;
-                super.keyPressed(keyCode, scanCode, modifiers);
-                int after = ColorEditorScreen.this.currentChannel(this.channel);
-                if (arrow && before != after) {
-                    Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
-                    KonfigConfigScreen.this.drafts.put(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, before)));
-                    KonfigConfigScreen.this.drafts.put(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, after)));
-                    if (ColorEditorScreen.this.persistEditedValue(Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, before)))) {
+                boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
+                if (handled && before != ColorEditorScreen.this.currentChannel(this.channel)) {
+                    if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
                         ColorEditorScreen.this.syncWidgetsFromDraft();
                     }
-                    return true;
                 }
-                return arrow;
+                return handled;
             }
         }
     }
 
     private final class StringListEditorScreen extends EntryEditorScreen {
-        private final Map<Integer, TextFieldWidget> visibleInputs = new LinkedHashMap<Integer, TextFieldWidget>();
-        private int page;
-        private int itemsPerPage = 5;
-        private int visibleStart;
-        private int visibleEnd;
+        private static final int ITEM_ROW_HEIGHT = 28;
+
+        private ListEntryList list;
 
         private StringListEditorScreen(EntryRef entry) {
             super(entry);
@@ -1041,344 +1437,216 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void init() {
-            this.itemsPerPage = Math.max(1, (this.height - 96) / LIST_ROW_HEIGHT);
             this.rebuildEditorWidgets();
-        }
-
-        @Override
-        public void tick() {
-            super.tick();
-            for (TextFieldWidget input : this.visibleInputs.values()) {
-                input.tick();
-            }
         }
 
         @Override
         public void render(MatrixStack poseStack, int mouseX, int mouseY, float partialTick) {
             this.renderEditorChrome(poseStack, mouseX, mouseY, partialTick);
+            if (this.list != null) {
+                this.list.render(poseStack, mouseX, mouseY, partialTick);
+            }
             String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
             this.font.draw(poseStack, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
-            this.font.draw(poseStack, translate("konfig.screen.page", Integer.valueOf(this.page + 1), Integer.valueOf(this.totalPages()), Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())), 12.0F, 36.0F, 0xFFC0C0C0);
-
             if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
                 drawCenteredString(poseStack, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
             }
+        }
 
-            for (int index = this.visibleStart; index < this.visibleEnd; index++) {
-                int row = index - this.visibleStart;
-                int y = LIST_EDITOR_TOP + row * LIST_ROW_HEIGHT;
-                this.font.draw(poseStack, text(Integer.toString(index + 1)), 18.0F, y + 6.0F, 0xFFA0A0A0);
+        @Override
+        public void tick() {
+            super.tick();
+            if (this.list == null) {
+                return;
+            }
+            for (ListEntryRow row : this.list.children()) {
+                row.tick();
             }
         }
 
         private void rebuildEditorWidgets() {
-            this.clearEditorWidgets();
-            this.visibleInputs.clear();
-
-            int pages = this.totalPages();
-            if (this.page >= pages) {
-                this.page = pages - 1;
-            }
-            if (this.page < 0) {
-                this.page = 0;
-            }
-
-            Button prev = this.addButton(new Button(this.width - 56, 8, 20, 20, translate("konfig.screen.previous"), ignored -> this.changePage(-1)));
-            prev.active = this.page > 0;
-
-            Button next = this.addButton(new Button(this.width - 32, 8, 20, 20, translate("konfig.screen.next"), ignored -> this.changePage(1)));
-            next.active = this.page + 1 < pages;
-
-            this.visibleStart = this.page * this.itemsPerPage;
+            this.buttons.clear();
+            this.children.clear();
+            int listTop = EDITOR_CONTENT_TOP;
+            int listHeight = Math.max(48, this.height - listTop - LIST_BOTTOM_MARGIN);
+            this.list = new ListEntryList(this.minecraft, this.width, listHeight, listTop);
+            this.children.add(this.list);
             List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
-            this.visibleEnd = Math.min(values.size(), this.visibleStart + this.itemsPerPage);
-
-            int inputX = 40;
-            int inputWidth = Math.max(120, this.width - 124);
-            for (int index = this.visibleStart; index < this.visibleEnd; index++) {
-                int row = index - this.visibleStart;
-                int y = LIST_EDITOR_TOP + row * LIST_ROW_HEIGHT;
-                this.addListRow(index, inputX, y, inputWidth);
+            for (int i = 0; i < values.size(); i++) {
+                this.list.addListEntry(new ListEntryRow(i, values.get(i)));
             }
 
             int footerY = this.height - 26;
             this.addButton(new Button(this.width / 2 - 122, footerY, 80, 20, translate("konfig.screen.list.add"), ignored -> this.addValue()));
             this.addButton(new Button(this.width / 2 - 40, footerY, 80, 20, translate("konfig.screen.reset"), ignored -> {
                 if (this.resetToSessionStart()) {
-                    this.page = 0;
                     this.rebuildEditorWidgets();
                 }
             }));
             this.addButton(new Button(this.width / 2 + 42, footerY, 80, 20, translate("konfig.screen.done"), ignored -> this.onClose()));
         }
 
-        private void addListRow(int index, int inputX, int y, int inputWidth) {
-            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
-            TextFieldWidget input = this.addButton(new TextFieldWidget(this.font, inputX, y, inputWidth, CONTROL_HEIGHT, this.entry.label));
-            input.setMaxLength(256);
-            input.setValue(values.get(index));
-            input.setResponder(value -> this.onValueChanged(index, input, value));
-            this.visibleInputs.put(Integer.valueOf(index), input);
-
-            int buttonX = inputX + inputWidth + 4;
-            Button up = this.addButton(new Button(buttonX, y, 20, 20, text("^"), ignored -> this.move(index, -1)));
-            up.active = index > 0;
-            Button down = this.addButton(new Button(buttonX + 22, y, 20, 20, text("v"), ignored -> this.move(index, 1)));
-            down.active = index + 1 < values.size();
-            this.addButton(new Button(buttonX + 44, y, 20, 20, text("-"), ignored -> this.remove(index)));
-        }
-
-        private void onValueChanged(int index, TextFieldWidget input, String value) {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            List<String> values = StringListValueHelper.mutableCopy(KonfigConfigScreen.this.currentStringList(this.entry.value));
-            values.set(index, value);
-            KonfigConfigScreen.this.drafts.put(this.entry.value, values);
-            if (!this.persistEditedValue(previousValue)) {
-                input.setValue(KonfigConfigScreen.this.currentStringList(this.entry.value).get(index));
-            }
-        }
-
         private void addValue() {
             Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            List<String> values = StringListValueHelper.mutableCopy(KonfigConfigScreen.this.currentStringList(this.entry.value));
+            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
             values.add(translate("konfig.screen.list.new_item").getString());
             KonfigConfigScreen.this.drafts.put(this.entry.value, values);
             if (this.persistEditedValue(previousValue)) {
-                this.page = this.totalPages() - 1;
                 this.rebuildEditorWidgets();
             }
         }
 
-        private void move(int index, int delta) {
-            int target = index + delta;
-            List<String> currentValues = KonfigConfigScreen.this.currentStringList(this.entry.value);
-            if (target < 0 || target >= currentValues.size()) {
-                return;
+        private final class ListEntryList extends ExtendedList<ListEntryRow> {
+            private ListEntryList(net.minecraft.client.Minecraft minecraft, int width, int height, int y) {
+                super(minecraft, width, height, y, y + height, ITEM_ROW_HEIGHT);
+                this.setRenderBackground(false);
+                this.setRenderTopAndBottom(false);
             }
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            List<String> values = StringListValueHelper.mutableCopy(currentValues);
-            String moved = values.remove(index);
-            values.add(target, moved);
-            KonfigConfigScreen.this.drafts.put(this.entry.value, values);
-            if (this.persistEditedValue(previousValue)) {
-                this.rebuildEditorWidgets();
-            }
-        }
 
-        private void remove(int index) {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            List<String> values = StringListValueHelper.mutableCopy(KonfigConfigScreen.this.currentStringList(this.entry.value));
-            values.remove(index);
-            KonfigConfigScreen.this.drafts.put(this.entry.value, values);
-            if (this.persistEditedValue(previousValue)) {
-                this.rebuildEditorWidgets();
+            private void addListEntry(ListEntryRow row) {
+                super.addEntry(row);
+            }
+
+            @Override
+            public int getRowWidth() {
+                return StringListEditorScreen.this.width - 28;
+            }
+
+            @Override
+            protected void renderBackground(MatrixStack poseStack) {
+                AbstractGui.fill(poseStack, this.x0, this.y0, this.x1, this.y1, 0x66000000);
             }
         }
 
-        private void changePage(int delta) {
-            int next = this.page + delta;
-            if (next < 0 || next >= this.totalPages()) {
-                return;
+        private final class ListEntryRow extends ExtendedList.AbstractListEntry<ListEntryRow> implements INestedGuiEventHandler {
+            private final int index;
+            private final TextFieldWidget input;
+            private final Button moveUpButton;
+            private final Button moveDownButton;
+            private final Button removeButton;
+            private boolean suppressResponder;
+            private IGuiEventListener focused;
+            private boolean dragging;
+
+            private ListEntryRow(int index, String value) {
+                this.index = index;
+                this.input = new TextFieldWidget(StringListEditorScreen.this.font, 0, 0, 140, CONTROL_HEIGHT, StringListEditorScreen.this.entry.label);
+                this.input.setMaxLength(256);
+                this.input.setValue(value);
+                this.input.setResponder(this::onValueChanged);
+
+                this.moveUpButton = new Button(0, 0, 20, 20, text("^"), ignored -> this.move(-1));
+                this.moveDownButton = new Button(0, 0, 20, 20, text("v"), ignored -> this.move(1));
+                this.removeButton = new Button(0, 0, 20, 20, text("-"), ignored -> this.remove());
             }
-            this.page = next;
-            this.rebuildEditorWidgets();
-        }
 
-        private int totalPages() {
-            int size = KonfigConfigScreen.this.currentStringList(this.entry.value).size();
-            if (size == 0) {
-                return 1;
+            private void tick() {
             }
-            return (size + this.itemsPerPage - 1) / this.itemsPerPage;
-        }
-    }
 
-    private abstract class BaseSliderWidget extends AbstractSlider {
-        private BaseSliderWidget(int x, int y, int width, double initialProgress) {
-            super(x, y, width, CONTROL_HEIGHT, text(""), clampProgress(initialProgress));
-        }
-
-        protected final void syncToProgress(double progress) {
-            this.value = clampProgress(progress);
-            this.updateMessage();
-        }
-    }
-
-    private final class IntegerSliderWidget extends BaseSliderWidget {
-        private final EntryRef entry;
-        private final int min;
-        private final int max;
-
-        private IntegerSliderWidget(EntryRef entry, int x, int y, int width) {
-            super(x, y, width, progressFor(currentInteger(entry.value), entry.value.rangeMin().intValue(), entry.value.rangeMax().intValue()));
-            this.entry = entry;
-            this.min = entry.value.rangeMin().intValue();
-            this.max = entry.value.rangeMax().intValue();
-            this.updateMessage();
-        }
-
-        @Override
-        protected void updateMessage() {
-            this.setMessage(text(Integer.toString(currentInteger(this.entry.value))));
-        }
-
-        @Override
-        protected void applyValue() {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(intFromProgress(this.value, this.min, this.max)));
-            this.updateMessage();
-        }
-
-        @Override
-        public void onRelease(double mouseX, double mouseY) {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            super.onRelease(mouseX, mouseY);
-            if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                this.syncToProgress(progressFor(currentInteger(this.entry.value), this.min, this.max));
-            }
-        }
-
-        @Override
-        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            int before = currentInteger(this.entry.value);
-            boolean arrow = keyCode == 263 || keyCode == 262;
-            super.keyPressed(keyCode, scanCode, modifiers);
-            int after = currentInteger(this.entry.value);
-            if (arrow && before != after) {
-                if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                    KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(before));
-                    this.syncToProgress(progressFor(before, this.min, this.max));
+            private void onValueChanged(String value) {
+                if (this.suppressResponder) {
+                    return;
                 }
-                return true;
-            }
-            return arrow;
-        }
-    }
 
-    private final class LongSliderWidget extends BaseSliderWidget {
-        private final EntryRef entry;
-        private final long min;
-        private final long max;
-
-        private LongSliderWidget(EntryRef entry, int x, int y, int width) {
-            super(x, y, width, progressFor(currentLong(entry.value), entry.value.rangeMin().longValue(), entry.value.rangeMax().longValue()));
-            this.entry = entry;
-            this.min = entry.value.rangeMin().longValue();
-            this.max = entry.value.rangeMax().longValue();
-            this.updateMessage();
-        }
-
-        @Override
-        protected void updateMessage() {
-            this.setMessage(text(Long.toString(currentLong(this.entry.value))));
-        }
-
-        @Override
-        protected void applyValue() {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Long.valueOf(longFromProgress(this.value, this.min, this.max)));
-            this.updateMessage();
-        }
-
-        @Override
-        public void onRelease(double mouseX, double mouseY) {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            super.onRelease(mouseX, mouseY);
-            if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                this.syncToProgress(progressFor(currentLong(this.entry.value), this.min, this.max));
-            }
-        }
-
-        @Override
-        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            long before = currentLong(this.entry.value);
-            boolean arrow = keyCode == 263 || keyCode == 262;
-            super.keyPressed(keyCode, scanCode, modifiers);
-            long after = currentLong(this.entry.value);
-            if (arrow && before != after) {
-                if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                    KonfigConfigScreen.this.drafts.put(this.entry.value, Long.valueOf(before));
-                    this.syncToProgress(progressFor(before, this.min, this.max));
+                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                List<String> values = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
+                values.set(this.index, value);
+                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, values);
+                if (!StringListEditorScreen.this.persistEditedValue(previousValue)) {
+                    this.suppressResponder = true;
+                    this.input.setValue(currentStringList(StringListEditorScreen.this.entry.value).get(this.index));
+                    this.suppressResponder = false;
                 }
-                return true;
             }
-            return arrow;
-        }
-    }
 
-    private final class DoubleSliderWidget extends BaseSliderWidget {
-        private final EntryRef entry;
-        private final double min;
-        private final double max;
-
-        private DoubleSliderWidget(EntryRef entry, int x, int y, int width) {
-            super(x, y, width, progressFor(currentDouble(entry.value), entry.value.rangeMin().doubleValue(), entry.value.rangeMax().doubleValue()));
-            this.entry = entry;
-            this.min = entry.value.rangeMin().doubleValue();
-            this.max = entry.value.rangeMax().doubleValue();
-            this.updateMessage();
-        }
-
-        @Override
-        protected void updateMessage() {
-            this.setMessage(text(formatDouble(currentDouble(this.entry.value))));
-        }
-
-        @Override
-        protected void applyValue() {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Double.valueOf(doubleFromProgress(this.value, this.min, this.max)));
-            this.updateMessage();
-        }
-
-        @Override
-        public void onRelease(double mouseX, double mouseY) {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            super.onRelease(mouseX, mouseY);
-            if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                this.syncToProgress(progressFor(currentDouble(this.entry.value), this.min, this.max));
-            }
-        }
-
-        @Override
-        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            double before = currentDouble(this.entry.value);
-            boolean arrow = keyCode == 263 || keyCode == 262;
-            super.keyPressed(keyCode, scanCode, modifiers);
-            double after = currentDouble(this.entry.value);
-            if (arrow && !sameValue(Double.valueOf(before), Double.valueOf(after))) {
-                if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                    KonfigConfigScreen.this.drafts.put(this.entry.value, Double.valueOf(before));
-                    this.syncToProgress(progressFor(before, this.min, this.max));
+            private void move(int delta) {
+                int targetIndex = this.index + delta;
+                List<String> current = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
+                if (targetIndex < 0 || targetIndex >= current.size()) {
+                    return;
                 }
-                return true;
+
+                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                Collections.swap(current, this.index, targetIndex);
+                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, current);
+                if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
+                    StringListEditorScreen.this.rebuildEditorWidgets();
+                }
             }
-            return arrow;
-        }
-    }
 
-    private int currentInteger(ConfigValueImpl<?> value) {
-        Object draft = this.drafts.get(value);
-        if (draft instanceof Number) {
-            return ((Number) draft).intValue();
-        }
-        return ((Number) value.get()).intValue();
-    }
+            private void remove() {
+                List<String> current = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
+                if (this.index < 0 || this.index >= current.size()) {
+                    return;
+                }
 
-    private long currentLong(ConfigValueImpl<?> value) {
-        Object draft = this.drafts.get(value);
-        if (draft instanceof Number) {
-            return ((Number) draft).longValue();
-        }
-        return ((Number) value.get()).longValue();
-    }
+                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                current.remove(this.index);
+                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, current);
+                if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
+                    StringListEditorScreen.this.rebuildEditorWidgets();
+                }
+            }
 
-    private double currentDouble(ConfigValueImpl<?> value) {
-        Object draft = this.drafts.get(value);
-        if (draft instanceof Number) {
-            return ((Number) draft).doubleValue();
+            @Override
+            public void render(MatrixStack poseStack, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+                if (hovered) {
+                    AbstractGui.fill(poseStack, x, y, x + width, y + height, 0x22000000);
+                }
+
+                int buttonY = y + 4;
+                int removeX = x + width - 20;
+                int downX = removeX - 24;
+                int upX = downX - 24;
+                int inputWidth = Math.max(60, upX - x - 8);
+
+                this.input.x = x;
+                this.input.y = buttonY;
+                this.input.setWidth(inputWidth);
+
+                this.moveUpButton.x = upX;
+                this.moveUpButton.y = buttonY;
+                this.moveUpButton.active = this.index > 0;
+
+                this.moveDownButton.x = downX;
+                this.moveDownButton.y = buttonY;
+                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
+
+                this.removeButton.x = removeX;
+                this.removeButton.y = buttonY;
+
+                this.input.render(poseStack, mouseX, mouseY, partialTick);
+                this.moveUpButton.render(poseStack, mouseX, mouseY, partialTick);
+                this.moveDownButton.render(poseStack, mouseX, mouseY, partialTick);
+                this.removeButton.render(poseStack, mouseX, mouseY, partialTick);
+            }
+
+            @Override
+            public List<? extends IGuiEventListener> children() {
+                return Arrays.asList(this.input, this.moveUpButton, this.moveDownButton, this.removeButton);
+            }
+
+            @Override
+            public IGuiEventListener getFocused() {
+                return this.focused;
+            }
+
+            @Override
+            public void setFocused(IGuiEventListener listener) {
+                this.focused = listener;
+            }
+
+            @Override
+            public boolean isDragging() {
+                return this.dragging;
+            }
+
+            @Override
+            public void setDragging(boolean dragging) {
+                this.dragging = dragging;
+            }
+
         }
-        return ((Number) value.get()).doubleValue();
     }
 
     private static final class EntryRef {
