@@ -27,8 +27,20 @@ gradle version *args:
   @if [ ! -d "{{version}}" ]; then echo "Version {{version}} not found."; exit 1; fi
   @cd "{{version}}" && chmod +x gradlew && ./gradlew {{args}}
 
-run version *args:
-  @just gradle "{{version}}" {{args}}
+# Run arbitrary Gradle tasks.
+# - If the first arg is a version directory, run only there.
+# - Otherwise run across all versions.
+run first="" *rest:
+  @if [ -z "{{first}}" ]; then echo "Usage: just run [version] <gradle args>"; exit 1; fi
+  @if [ -d "{{first}}" ] && echo "{{first}}" | grep -Eq '^[0-9]'; then \
+    if [ -z "{{rest}}" ]; then echo "Usage: just run [version] <gradle args>"; exit 1; fi; \
+    just gradle "{{first}}" {{rest}}; \
+  else \
+    for v in $(just list-versions); do \
+      echo "==> $v"; \
+      just gradle "$v" {{first}} {{rest}}; \
+    done; \
+  fi
 
 build version="":
   @if [ -z "{{version}}" ]; then \

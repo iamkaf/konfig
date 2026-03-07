@@ -29,6 +29,8 @@ pluginManagement {
                 includeGroupAndSubgroups('net.minecraftforge')
             }
         }
+        // Mod Publisher
+        maven { url "https://maven.firstdark.dev/releases" }
     }
 }
 

@@ -1,6 +1,7 @@
 plugins {
     id 'multiloader-loader'
     id 'net.minecraftforge.gradle'
+    id 'com.hypherionmc.modutils.modpublisher'
 }
 
 minecraft {
@@ -45,3 +46,41 @@ dependencies {
 }
 
 sourceSets.main.resources.srcDir 'src/generated/resources'
+
+def publisherJavaVersions = java_version.toInteger() >= 21
+    ? [JavaVersion.VERSION_21, JavaVersion.VERSION_22]
+    : [JavaVersion.toVersion(java_version)]
+
+publisher {
+    apiKeys {
+        modrinth System.getenv("MODRINTH_TOKEN")
+        curseforge System.getenv("CURSEFORGE_TOKEN")
+    }
+
+    setDebug(Boolean.valueOf(dry_run))
+    setCurseID(curse_id)
+    setModrinthID(modrinth_id)
+    setVersionType(release_type)
+    setChangelog(extractHeaderLatestFooterFromChangelog(file('../../changelog.md').text))
+    setProjectVersion(rootProject.version)
+    setDisplayName("$mod_id-$project.name-$project.version")
+    setGameVersions(game_versions.split(','))
+    setLoaders("forge")
+    setCurseEnvironment(mod_environment)
+    setIsManualRelease(false)
+    setArtifact("build/libs/${mod_id}-${project.name}-${project.version}.jar")
+    setDisableEmptyJarCheck(false)
+    setJavaVersions(publisherJavaVersions)
+
+    if (mod_modrinth_depends?.trim()) {
+        modrinthDepends {
+            required(mod_modrinth_depends.split(','))
+        }
+    }
+
+    if (mod_curse_depends?.trim()) {
+        curseDepends {
+            required(mod_curse_depends.split(','))
+        }
+    }
+}
