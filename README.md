@@ -11,7 +11,9 @@ It gives you a typed API, side-aware config scopes (`CLIENT`, `COMMON`, `SERVER`
 - Runtime validation and fallback to defaults
 - Built-in sync modes (`NONE`, `LOGIN`, `LOGIN_AND_RELOAD`)
 - Commented TOML config files at `config/<modid>/<name>.toml`
-- Built-in config screen generation for registered handles
+- Built-in config screen generation for registered handles with auto-save status
+- Rich generated editors for string lists and RGB/ARGB color values
+- Registry-backed autocomplete for string and string-list entries
 - Fabric ModMenu integration (`modmenu` entrypoint)
 - Forge and NeoForge config button integration in the mod list
 - Fabric + Forge support across old and new versions
@@ -143,6 +145,26 @@ Hover tooltips come from the config definition itself:
 - `ValueBuilder.comment(...)` contributes the entry tooltip line
 - Konfig combines them in path order, so nested categories read naturally
 
+## Rich Editors
+
+Generated screens now cover more than plain scalar values:
+
+```java
+builder.stringList("quickbar_items", List.of("minecraft:torch", "minecraft:bread"))
+        .comment("Suggested quickbar items")
+        .build();
+
+builder.colorRgb("beam_color", 0x3FA7FF)
+        .comment("Primary beam color")
+        .build();
+
+builder.colorArgb("overlay_tint", 0xCC3366FF)
+        .comment("Overlay tint with alpha")
+        .build();
+```
+
+Konfig renders string lists in a dedicated list editor and color values in a dedicated color editor with a swatch, hex input, and channel sliders. Screen edits auto-save as you work, and legacy branches use scrollable layouts to keep the same workflow usable on older UI APIs.
+
 ## Registry Suggestions
 
 String values can opt into registry-backed suggestions in the generated screen:
@@ -158,6 +180,8 @@ builder.stringList("quickbar_items", List.of("minecraft:torch", "minecraft:bread
         .comment("Suggested item ids")
         .build();
 ```
+
+On `1.18.2+`, pass a registry key such as `Registries.ITEM`. On `1.16.5`, the legacy API takes a registry id string such as `"minecraft:item"` instead.
 
 This is suggestion-only UX. Konfig does not hard-reject unknown ids here; it simply offers autocompletion from built-in registry contents in the screen.
 
