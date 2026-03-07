@@ -143,6 +143,24 @@ Hover tooltips come from the config definition itself:
 - `ValueBuilder.comment(...)` contributes the entry tooltip line
 - Konfig combines them in path order, so nested categories read naturally
 
+## Registry Suggestions
+
+String values can opt into registry-backed suggestions in the generated screen:
+
+```java
+builder.string("target_item", "minecraft:iron_ingot", 3, 64)
+        .registry(Registries.ITEM)
+        .comment("Suggested item id")
+        .build();
+
+builder.stringList("quickbar_items", List.of("minecraft:torch", "minecraft:bread"))
+        .registry(Registries.ITEM)
+        .comment("Suggested item ids")
+        .build();
+```
+
+This is suggestion-only UX. Konfig does not hard-reject unknown ids here; it simply offers autocompletion from built-in registry contents in the screen.
+
 ## Build
 
 From the repo root:
