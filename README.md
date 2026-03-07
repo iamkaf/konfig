@@ -31,6 +31,49 @@ It gives you a typed API, side-aware config scopes (`CLIENT`, `COMMON`, `SERVER`
 | 1.18.2 | yes | yes | no |
 | 1.16.5 | yes | yes | no |
 
+## Adding Konfig
+
+Konfig is published as a loader-specific artifact. Add the Kaf Maven repository to your project:
+
+```groovy
+repositories {
+    maven { url = "https://maven.kaf.sh" }
+}
+```
+
+If you want to browse published versions in a UI, start here:
+
+- https://z.kaf.sh/artifact/com.iamkaf.konfig/konfig-fabric
+
+Use the artifact that matches your loader and Minecraft version. Versions are branch-aligned, for example `0.1.0+1.21.11`.
+
+Fabric:
+
+```groovy
+dependencies {
+    modImplementation "com.iamkaf.konfig:konfig-fabric:<version>"
+}
+```
+
+Forge:
+
+```groovy
+dependencies {
+    implementation "com.iamkaf.konfig:konfig-forge:<version>"
+}
+```
+
+NeoForge:
+
+```groovy
+dependencies {
+    implementation "com.iamkaf.konfig:konfig-neoforge:<version>"
+}
+```
+
+- NeoForge is available on `1.21.1+`. `1.20.1` and older publish Fabric and Forge only.
+- Do not depend on `common` directly.
+
 ## Toolchain Notes
 
 - ForgeGradle 7 is used on `1.18.2+`.
