@@ -5,9 +5,7 @@ import com.iamkaf.konfig.api.v1.ConfigScope;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.SyncMode;
-
 import java.util.Arrays;
-import java.util.List;
 
 public final class KonfigShowcaseConfig {
     private static boolean initialized;
@@ -92,6 +90,12 @@ public final class KonfigShowcaseConfig {
                 .build();
         builder.intRange("structure_weight", 12, 0, 100)
                 .comment("Relative spawn weight for showcase structures in test worlds.")
+                .restart(RestartRequirement.WORLD)
+                .sync(true)
+                .build();
+        builder.string("target_block", "minecraft:iron_ore", 3, 64)
+                .registry("minecraft:block")
+                .comment("Registry-backed block id used by the showcase scanner target picker.")
                 .restart(RestartRequirement.WORLD)
                 .sync(true)
                 .build();
@@ -193,6 +197,16 @@ public final class KonfigShowcaseConfig {
                 .build();
         builder.string("status_template", "Mining: {vein}", 3, 48)
                 .comment("Template string used when rendering short status updates.")
+                .clientOnly()
+                .build();
+        builder.string("status_icon_item", "minecraft:iron_pickaxe", 3, 64)
+                .registry("minecraft:item")
+                .comment("Registry-backed item id used for the HUD status icon preview.")
+                .clientOnly()
+                .build();
+        builder.stringList("quickbar_items", Arrays.asList("minecraft:iron_pickaxe", "minecraft:torch", "minecraft:cooked_beef"))
+                .registry("minecraft:item")
+                .comment("Registry-backed quickbar preview items used to exercise list suggestions and icons.")
                 .clientOnly()
                 .build();
         builder.stringList("status_examples", Arrays.asList("Scanner ready", "Charge stable", "Ore detected"))

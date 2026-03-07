@@ -176,33 +176,24 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     }
 
     @Override
-    public ValueBuilder<String> string(String key, String defaultValue, int minLen, int maxLen) {
+    public StringValueBuilder string(String key, String defaultValue, int minLen, int maxLen) {
         Objects.requireNonNull(defaultValue, "defaultValue");
         if (defaultValue.length() < minLen || defaultValue.length() > maxLen) {
             throw new IllegalArgumentException("Default string length out of range");
         }
         String path = path(key);
-        return new ValueBuilderImpl<String>(
-                this,
-                path,
-                defaultValue,
-                EntryKind.STRING,
-                JsonElement::getAsString,
-                JsonPrimitive::new
-        ).validate(value -> value != null && value.length() >= minLen && value.length() <= maxLen, "String length out of range");
+        return new StringValueBuilderImpl(this, path, defaultValue)
+                .validate(value -> value != null && value.length() >= minLen && value.length() <= maxLen, "String length out of range");
     }
 
     @Override
-    public ValueBuilder<List<String>> stringList(String key, List<String> defaultValue) {
+    public StringListValueBuilder stringList(String key, List<String> defaultValue) {
         Objects.requireNonNull(defaultValue, "defaultValue");
         String path = path(key);
-        return new ValueBuilderImpl<List<String>>(
+        return new StringListValueBuilderImpl(
                 this,
                 path,
-                StringListValueHelper.immutableCopy(defaultValue, path),
-                EntryKind.STRING_LIST,
-                json -> StringListValueHelper.decode(json, path),
-                value -> StringListValueHelper.encode(value, path)
+                StringListValueHelper.immutableCopy(defaultValue, path)
         ).canonicalize(value -> StringListValueHelper.immutableCopy(value, path));
     }
 

@@ -3,7 +3,6 @@ package com.iamkaf.konfig.impl.v1;
 import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
-
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -24,6 +23,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
+    private final String boundRegistryId;
 
     private volatile T localValue;
     private volatile T syncedValue;
@@ -42,7 +42,8 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             boolean serverOnly,
             RestartRequirement restartRequirement,
             Number rangeMin,
-            Number rangeMax
+            Number rangeMax,
+            String boundRegistryId
     ) {
         this.path = path;
         this.canonicalizer = canonicalizer == null ? UnaryOperator.identity() : canonicalizer;
@@ -58,6 +59,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
+        this.boundRegistryId = boundRegistryId;
         this.localValue = this.defaultValue;
     }
 
@@ -141,6 +143,14 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
 
     public EntryKind kind() {
         return this.kind;
+    }
+
+    public boolean hasBoundRegistry() {
+        return this.boundRegistryId != null && !this.boundRegistryId.isEmpty();
+    }
+
+    public String boundRegistryId() {
+        return this.boundRegistryId;
     }
 
     private T validateOrFallback(T value) {

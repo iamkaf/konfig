@@ -3,7 +3,9 @@ package com.iamkaf.konfig.impl.v1;
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigValue;
+import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -13,10 +15,19 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.Registry;
+
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,13 +46,18 @@ public final class KonfigConfigScreen extends Screen {
     private static final int CONTROL_HEIGHT = 20;
     private static final int CONTROL_MIN_WIDTH = 132;
     private static final int CONTROL_MAX_WIDTH = 200;
+    private static final int SUGGESTION_LIMIT = 7;
+    private static final int SUGGESTION_ROW_HEIGHT = 14;
 
     private final Screen parent;
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
     private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
+    private final Map<ResourceKey<? extends Registry<?>>, List<String>> registrySuggestionCache = new LinkedHashMap<ResourceKey<? extends Registry<?>>, List<String>>();
 
     private EntryList list;
+    private RegistryTextInputRow activeRegistryRow;
+    private RegistryTextInputRow renderedRegistryRow;
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -87,19 +103,54 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     @Override
-    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
-        GuiComponent.fill(poseStack, 0, 0, this.width, this.height, 0xC0101010);
-        super.render(poseStack, mouseX, mouseY, partialTick);
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionClick(mouseX, mouseY)) {
+            return true;
+        }
 
-        drawCenteredString(poseStack, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
-        this.font.draw(poseStack, text(entryCountText()), 12.0F, 12.0F, 0xFFC0C0C0);
+        boolean handled = super.mouseClicked(mouseX, mouseY, button);
+        RegistryTextInputRow focusedRow = this.findFocusedRegistryRow();
+        if (focusedRow != null) {
+            this.setActiveRegistryRow(focusedRow);
+            focusedRow.activateSuggestions();
+        } else if (this.activeRegistryRow != null && !this.activeRegistryRow.isPointInsideInput(mouseX, mouseY)) {
+            this.activeRegistryRow.closeSuggestions();
+        }
+
+        return handled;
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionKey(keyCode)) {
+            return true;
+        }
+        boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
+        if (this.activeRegistryRow != null && this.activeRegistryRow.isFocused()) {
+            this.activeRegistryRow.refreshSuggestions();
+        }
+        return handled;
+    }
+
+    @Override
+    public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+        this.renderedRegistryRow = null;
+        GuiComponent.fill(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+
+        drawCenteredString(guiGraphics, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
+        this.font.draw(guiGraphics, text(entryCountText()), 12, 12, 0xFFC0C0C0);
 
         if (!this.statusMessage.isEmpty()) {
-            drawCenteredString(poseStack, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+            drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
         }
 
         if (this.entries.isEmpty()) {
-            drawCenteredString(poseStack, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+            drawCenteredString(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+        }
+
+        if (this.renderedRegistryRow != null) {
+            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
     }
 
@@ -141,6 +192,9 @@ public final class KonfigConfigScreen extends Screen {
         }
         if (entry.value.kind() == EntryKind.DOUBLE && entry.value.hasNumericRange()) {
             return new DoubleSliderRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.STRING && entry.value.hasBoundRegistry()) {
+            return new RegistryTextInputRow(entry);
         }
         return new TextInputRow(entry);
     }
@@ -420,7 +474,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private Component booleanText(ConfigValueImpl<?> value) {
-        return translate(readBoolean(value) ? "options.on" : "options.off");
+        return CommonComponents.optionStatus(readBoolean(value));
     }
 
     private Component enumText(EntryRef entry, Enum<?> value) {
@@ -449,6 +503,14 @@ public final class KonfigConfigScreen extends Screen {
             return text(values.get(0) + ", " + values.get(1));
         }
         return translate("konfig.screen.list.summary", values.get(0), Integer.valueOf(values.size() - 1));
+    }
+
+    private String currentStringValue(ConfigValueImpl<?> value) {
+        Object current = this.drafts.get(value);
+        if (current instanceof String) {
+            return (String) current;
+        }
+        return stringValue(value.get());
     }
 
     private static double progressFor(double current, double min, double max) {
@@ -488,15 +550,14 @@ public final class KonfigConfigScreen extends Screen {
         return formatted;
     }
 
-    private static void drawColorSwatch(PoseStack poseStack, int x, int y, int size, int color, EntryKind kind) {
-        GuiComponent.fill(poseStack, x - 1, y - 1, x + size + 1, y + size + 1, 0xFF202020);
+    private static void drawColorSwatch(PoseStack guiGraphics, int x, int y, int size, int color, EntryKind kind) {
+        GuiComponent.fill(guiGraphics, x - 1, y - 1, x + size + 1, y + size + 1, 0xFF202020);
         if (kind == EntryKind.COLOR_ARGB && ColorValueHelper.alpha(color) < 255) {
             int cell = Math.max(2, size / 4);
             for (int row = 0; row < size; row += cell) {
                 for (int column = 0; column < size; column += cell) {
                     boolean dark = ((row / cell) + (column / cell)) % 2 == 0;
-                    GuiComponent.fill(
-                            poseStack,
+                    GuiComponent.fill(guiGraphics, 
                             x + column,
                             y + row,
                             x + Math.min(size, column + cell),
@@ -506,9 +567,62 @@ public final class KonfigConfigScreen extends Screen {
                 }
             }
         } else {
-            GuiComponent.fill(poseStack, x, y, x + size, y + size, 0xFFFFFFFF);
+            GuiComponent.fill(guiGraphics, x, y, x + size, y + size, 0xFFFFFFFF);
         }
-        GuiComponent.fill(poseStack, x, y, x + size, y + size, ColorValueHelper.toRenderColor(kind, color));
+        GuiComponent.fill(guiGraphics, x, y, x + size, y + size, ColorValueHelper.toRenderColor(kind, color));
+    }
+
+    private static ResourceLocation parseIdentifier(String value) {
+        if (isBlank(value)) {
+            return null;
+        }
+
+        try {
+            return ResourceLocation.tryParse(value.trim());
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    private static boolean supportsRegistryIcon(ResourceKey<? extends Registry<?>> registryKey) {
+        return registryKey == Registry.ITEM_REGISTRY || registryKey == Registry.BLOCK_REGISTRY;
+    }
+
+    private static ItemStack registryIconStack(ResourceKey<? extends Registry<?>> registryKey, String value) {
+        if (!supportsRegistryIcon(registryKey)) {
+            return ItemStack.EMPTY;
+        }
+
+        ResourceLocation identifier = parseIdentifier(value);
+        if (identifier == null) {
+            return ItemStack.EMPTY;
+        }
+
+        if (registryKey == Registry.ITEM_REGISTRY) {
+            Item item = Registry.ITEM.get(identifier);
+            if (item != null && item != Items.AIR) {
+                return new ItemStack(item);
+            }
+            return ItemStack.EMPTY;
+        }
+
+        Block block = Registry.BLOCK.get(identifier);
+        if (block == null) {
+            return ItemStack.EMPTY;
+        }
+
+        Item item = block.asItem();
+        if (item == null || item == Items.AIR) {
+            return ItemStack.EMPTY;
+        }
+        return new ItemStack(item);
+    }
+
+    private static void renderRegistryIcon(PoseStack guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
+        ItemStack stack = registryIconStack(registryKey, value);
+        if (!stack.isEmpty()) {
+            Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(stack, x, y);
+        }
     }
 
     private static String normalizeHexInput(String value) {
@@ -612,6 +726,117 @@ public final class KonfigConfigScreen extends Screen {
         return value == null || value.trim().isEmpty();
     }
 
+    private RegistryTextInputRow findFocusedRegistryRow() {
+        if (this.list == null) {
+            return null;
+        }
+        for (ConfigRow row : this.list.children()) {
+            if (row instanceof RegistryTextInputRow registryRow && registryRow.isFocused()) {
+                return registryRow;
+            }
+        }
+        return null;
+    }
+
+    private void setActiveRegistryRow(RegistryTextInputRow row) {
+        if (this.activeRegistryRow == row) {
+            return;
+        }
+        if (this.activeRegistryRow != null) {
+            this.activeRegistryRow.closeSuggestions();
+        }
+        this.activeRegistryRow = row;
+    }
+
+    private List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+        List<String> cached = this.registrySuggestionCache.get(registryKey);
+        if (cached != null) {
+            return cached;
+        }
+
+        List<String> values = new ArrayList<String>();
+        Registry<?> registry = builtInRegistry(registryKey);
+        if (registry != null) {
+            for (Object key : registry.keySet()) {
+                values.add(String.valueOf(key));
+            }
+            Collections.sort(values);
+        }
+
+        List<String> immutable = Collections.unmodifiableList(values);
+        this.registrySuggestionCache.put(registryKey, immutable);
+        return immutable;
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Registry<?> builtInRegistry(ResourceKey<? extends Registry<?>> registryKey) {
+        if (registryKey == null || !Registry.REGISTRY.containsKey(registryKey.location())) {
+            return null;
+        }
+        return (Registry<?>) Registry.REGISTRY.get(registryKey.location());
+    }
+
+    private static List<String> filterRegistrySuggestions(List<String> allSuggestions, String query) {
+        if (allSuggestions.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        List<String> exact = new ArrayList<String>();
+        List<String> prefix = new ArrayList<String>();
+        List<String> contains = new ArrayList<String>();
+
+        for (String candidate : allSuggestions) {
+            String lowerCandidate = candidate.toLowerCase(Locale.ROOT);
+            String pathCandidate = registryPath(lowerCandidate);
+            if (normalized.isEmpty()) {
+                prefix.add(candidate);
+                continue;
+            }
+            if (lowerCandidate.equals(normalized) || pathCandidate.equals(normalized)) {
+                exact.add(candidate);
+            } else if (lowerCandidate.startsWith(normalized) || pathCandidate.startsWith(normalized)) {
+                prefix.add(candidate);
+            } else if (lowerCandidate.contains(normalized) || pathCandidate.contains(normalized)) {
+                contains.add(candidate);
+            }
+        }
+
+        List<String> result = new ArrayList<String>(SUGGESTION_LIMIT);
+        appendSuggestions(result, exact);
+        appendSuggestions(result, prefix);
+        appendSuggestions(result, contains);
+        return result;
+    }
+
+    private static void appendSuggestions(List<String> target, List<String> source) {
+        for (String value : source) {
+            if (target.size() >= SUGGESTION_LIMIT) {
+                return;
+            }
+            target.add(value);
+        }
+    }
+
+    private static String registryPath(String registryId) {
+        int separator = registryId.indexOf(':');
+        return separator >= 0 ? registryId.substring(separator + 1) : registryId;
+    }
+
+    private static String suggestionSuffix(String currentValue, String suggestion) {
+        if (isBlank(suggestion)) {
+            return "";
+        }
+        String current = currentValue == null ? "" : currentValue;
+        if (current.isEmpty()) {
+            return suggestion;
+        }
+        if (suggestion.regionMatches(true, 0, current, 0, current.length())) {
+            return suggestion.substring(current.length());
+        }
+        return "";
+    }
+
     private final class EntryList extends ContainerObjectSelectionList<ConfigRow> {
         private EntryList(net.minecraft.client.Minecraft minecraft, int width, int height, int y) {
             super(minecraft, width, height, y, y + height, ROW_HEIGHT);
@@ -634,8 +859,8 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         @Override
-        protected void renderBackground(PoseStack poseStack) {
-            GuiComponent.fill(poseStack, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+        protected void renderBackground(PoseStack guiGraphics) {
+            GuiComponent.fill(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
         }
     }
 
@@ -652,18 +877,18 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         @Override
-        public void render(PoseStack poseStack, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(poseStack, x, y, width, height, mouseX, mouseY, hovered, partialTick);
+        public void render(PoseStack guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            this.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
         }
 
-        protected void renderRow(PoseStack poseStack, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             if (hovered) {
-                GuiComponent.fill(poseStack, x, y, x + width, y + height, 0x22000000);
+                GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderComponentTooltip(poseStack, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
                 }
             }
 
@@ -672,9 +897,9 @@ public final class KonfigConfigScreen extends Screen {
             int controlY = y + (height - CONTROL_HEIGHT) / 2;
             layoutControl(this.control(), controlX, controlY, controlWidth);
 
-            KonfigConfigScreen.this.font.draw(poseStack, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
-            KonfigConfigScreen.this.font.draw(poseStack, this.entry.displayLabel(), x + 4.0F, y + 12.0F, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
-            this.control().render(poseStack, mouseX, mouseY, partialTick);
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+            this.control().render(guiGraphics, mouseX, mouseY, partialTick);
         }
 
         @Override
@@ -796,14 +1021,14 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         @Override
-        protected void renderRow(PoseStack poseStack, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             if (hovered) {
-                GuiComponent.fill(poseStack, x, y, x + width, y + height, 0x22000000);
+                GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderComponentTooltip(poseStack, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
                 }
             }
 
@@ -813,14 +1038,17 @@ public final class KonfigConfigScreen extends Screen {
             int buttonWidth = controlWidth;
             layoutControl(this.control(), x + width - buttonWidth, y + (height - CONTROL_HEIGHT) / 2, buttonWidth);
 
-            KonfigConfigScreen.this.font.draw(poseStack, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
-            KonfigConfigScreen.this.font.draw(poseStack, this.entry.displayLabel(), x + 4.0F, y + 12.0F, 0xFFFFFFFF);
-            drawColorSwatch(poseStack, previewX, previewY, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
-            this.control().render(poseStack, mouseX, mouseY, partialTick);
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, 0xFFFFFFFF);
+            drawColorSwatch(guiGraphics, previewX, previewY, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+            this.control().render(guiGraphics, mouseX, mouseY, partialTick);
         }
     }
 
     private final class StringListRow extends ConfigRow {
+        private static final int PREVIEW_SIZE = 16;
+        private static final int PREVIEW_GAP = 6;
+
         private final Button button;
 
         private StringListRow(EntryRef entry) {
@@ -838,6 +1066,23 @@ public final class KonfigConfigScreen extends Screen {
         @Override
         protected void syncFromDraft() {
             this.button.setMessage(stringListText(this.entry.value));
+        }
+
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
+            if (!this.entry.value.hasBoundRegistry() || !supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                return;
+            }
+
+            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
+            if (values.isEmpty()) {
+                return;
+            }
+
+            int previewX = this.button.x - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = this.button.y + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
+            renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), values.get(0), previewX, previewY);
         }
     }
 
@@ -1059,6 +1304,295 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
+    private final class RegistryTextInputRow extends ConfigRow {
+        private static final int ICON_SIZE = 16;
+        private static final int ICON_GAP = 6;
+
+        private final EditBox input;
+        private final List<String> visibleSuggestions = new ArrayList<String>();
+        private boolean suppressResponder;
+        private boolean suggestionsDismissed;
+        private String dismissedValue = "";
+        private int selectedSuggestionIndex;
+        private int lastInputX;
+        private int lastInputY;
+        private int lastInputWidth;
+        private int lastDropdownX;
+        private int lastDropdownY;
+        private int lastDropdownWidth;
+        private int lastDropdownHeight;
+
+        private RegistryTextInputRow(EntryRef entry) {
+            super(entry);
+            this.input = new EditBox(KonfigConfigScreen.this.font, 0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, entry.label);
+            this.input.setMaxLength(256);
+            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
+            this.input.setResponder(value -> {
+                if (this.suppressResponder) {
+                    return;
+                }
+                this.suggestionsDismissed = false;
+                this.dismissedValue = "";
+                KonfigConfigScreen.this.drafts.put(entry.value, value);
+                KonfigConfigScreen.this.persistEntry(entry);
+                this.refreshSuggestions();
+            });
+        }
+
+        @Override
+        protected AbstractWidget control() {
+            return this.input;
+        }
+
+        @Override
+        protected void tick() {
+            if (this.input.isFocused()) {
+                KonfigConfigScreen.this.setActiveRegistryRow(this);
+                this.refreshSuggestions();
+            }
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.suppressResponder = true;
+            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(this.entry.value)));
+            this.suppressResponder = false;
+            this.suggestionsDismissed = false;
+            this.dismissedValue = "";
+            this.refreshSuggestions();
+        }
+
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
+            }
+
+            if (!isBlank(this.entry.tooltip)) {
+                if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                }
+            }
+
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+            int controlX = x + width - controlWidth;
+            int controlY = y + (height - CONTROL_HEIGHT) / 2;
+            layoutControl(this.control(), controlX, controlY, controlWidth);
+            this.lastInputX = controlX;
+            this.lastInputY = controlY;
+            this.lastInputWidth = controlWidth;
+
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, 0xFFFFFFFF);
+            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                renderRegistryIcon(
+                        guiGraphics,
+                        this.entry.value.boundRegistryKey(),
+                        KonfigConfigScreen.this.currentStringValue(this.entry.value),
+                        controlX - ICON_GAP - ICON_SIZE,
+                        y + (height - ICON_SIZE) / 2
+                );
+            }
+            this.input.render(guiGraphics, mouseX, mouseY, partialTick);
+
+            if (this.input.isFocused()) {
+                KonfigConfigScreen.this.setActiveRegistryRow(this);
+                this.refreshSuggestions();
+            }
+            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                KonfigConfigScreen.this.renderedRegistryRow = this;
+            }
+        }
+
+        public boolean isFocused() {
+            return this.input.isFocused();
+        }
+
+        private boolean isPointInsideInput(double mouseX, double mouseY) {
+            return mouseX >= this.lastInputX
+                    && mouseX <= this.lastInputX + this.lastInputWidth
+                    && mouseY >= this.lastInputY
+                    && mouseY <= this.lastInputY + CONTROL_HEIGHT;
+        }
+
+        private void refreshSuggestions() {
+            if (this.entry.value.boundRegistryKey() == null) {
+                this.closeSuggestions();
+                return;
+            }
+
+            if (this.suggestionsDismissed) {
+                if (sameValue(this.input.getValue(), this.dismissedValue)) {
+                    this.visibleSuggestions.clear();
+                    this.selectedSuggestionIndex = 0;
+                    this.input.setSuggestion("");
+                    return;
+                }
+                this.suggestionsDismissed = false;
+                this.dismissedValue = "";
+            }
+
+            this.visibleSuggestions.clear();
+            this.visibleSuggestions.addAll(filterRegistrySuggestions(
+                    KonfigConfigScreen.this.registrySuggestions(this.entry.value.boundRegistryKey()),
+                    this.input.getValue()
+            ));
+
+            if (this.visibleSuggestions.isEmpty()) {
+                this.selectedSuggestionIndex = 0;
+                this.input.setSuggestion("");
+                return;
+            }
+
+            this.selectedSuggestionIndex = Mth.clamp(this.selectedSuggestionIndex, 0, this.visibleSuggestions.size() - 1);
+            this.updateInlineSuggestion();
+        }
+
+        private void activateSuggestions() {
+            this.suggestionsDismissed = false;
+            this.dismissedValue = "";
+            this.refreshSuggestions();
+        }
+
+        private void dismissSuggestions() {
+            this.suggestionsDismissed = true;
+            this.dismissedValue = this.input.getValue();
+            this.visibleSuggestions.clear();
+            this.selectedSuggestionIndex = 0;
+            this.input.setSuggestion("");
+        }
+
+        private void closeSuggestions() {
+            this.suggestionsDismissed = false;
+            this.dismissedValue = "";
+            this.visibleSuggestions.clear();
+            this.selectedSuggestionIndex = 0;
+            this.input.setSuggestion("");
+            if (KonfigConfigScreen.this.activeRegistryRow == this) {
+                KonfigConfigScreen.this.activeRegistryRow = null;
+            }
+        }
+
+        private void renderSuggestions(PoseStack guiGraphics, int mouseX, int mouseY) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                return;
+            }
+
+            this.layoutSuggestionBox();
+            GuiComponent.fill(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+            GuiComponent.fill(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
+
+            for (int index = 0; index < this.visibleSuggestions.size(); index++) {
+                int rowY = this.lastDropdownY + 2 + (index * SUGGESTION_ROW_HEIGHT);
+                int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
+                boolean hovered = index == this.hoveredSuggestionIndex(mouseX, mouseY);
+                if (hovered || index == this.selectedSuggestionIndex) {
+                    GuiComponent.fill(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, hovered ? 0x80406080 : 0x50303030);
+                }
+                int textX = this.lastDropdownX + 4;
+                if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                    renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), this.visibleSuggestions.get(index), this.lastDropdownX + 2, rowY - 1);
+                    textX += 18;
+                }
+                KonfigConfigScreen.this.font.draw(
+                        guiGraphics,
+                        text(this.visibleSuggestions.get(index)),
+                        (float) textX,
+                        (float) (rowY + 3),
+                        0xFFFFFFFF
+                );
+            }
+        }
+
+        private boolean handleSuggestionClick(double mouseX, double mouseY) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                return false;
+            }
+
+            int hovered = this.hoveredSuggestionIndex((int) mouseX, (int) mouseY);
+            if (hovered < 0) {
+                return false;
+            }
+
+            this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+            return true;
+        }
+
+        private boolean handleSuggestionKey(int keyCode) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this) {
+                return false;
+            }
+
+            if (keyCode == InputConstants.KEY_ESCAPE) {
+                this.dismissSuggestions();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
+                this.dismissSuggestions();
+                return true;
+            }
+            if (this.visibleSuggestions.isEmpty()) {
+                return false;
+            }
+            if (keyCode == InputConstants.KEY_DOWN) {
+                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                this.updateInlineSuggestion();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_UP) {
+                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                this.updateInlineSuggestion();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_TAB) {
+                this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                return true;
+            }
+            return false;
+        }
+
+        private void acceptSuggestion(String suggestion) {
+            this.suppressResponder = true;
+            this.input.setValue(suggestion);
+            this.suppressResponder = false;
+            KonfigConfigScreen.this.drafts.put(this.entry.value, suggestion);
+            KonfigConfigScreen.this.persistEntry(this.entry);
+            this.dismissSuggestions();
+            this.input.setFocus(true);
+        }
+
+        private void updateInlineSuggestion() {
+            if (this.visibleSuggestions.isEmpty()) {
+                this.input.setSuggestion("");
+                return;
+            }
+            this.input.setSuggestion(suggestionSuffix(this.input.getValue(), this.visibleSuggestions.get(this.selectedSuggestionIndex)));
+        }
+
+        private void layoutSuggestionBox() {
+            this.lastDropdownX = this.lastInputX;
+            this.lastDropdownWidth = this.lastInputWidth;
+            this.lastDropdownHeight = (this.visibleSuggestions.size() * SUGGESTION_ROW_HEIGHT) + 4;
+
+            int belowY = this.lastInputY + CONTROL_HEIGHT + 2;
+            int aboveY = this.lastInputY - this.lastDropdownHeight - 2;
+            boolean openAbove = belowY + this.lastDropdownHeight > KonfigConfigScreen.this.height - 32 && aboveY >= LIST_TOP;
+            this.lastDropdownY = openAbove ? aboveY : belowY;
+        }
+
+        private int hoveredSuggestionIndex(int mouseX, int mouseY) {
+            if (mouseX < this.lastDropdownX
+                    || mouseX > this.lastDropdownX + this.lastDropdownWidth
+                    || mouseY < this.lastDropdownY + 2
+                    || mouseY > this.lastDropdownY + this.lastDropdownHeight - 2) {
+                return -1;
+            }
+
+            int index = (mouseY - this.lastDropdownY - 2) / SUGGESTION_ROW_HEIGHT;
+            return index >= 0 && index < this.visibleSuggestions.size() ? index : -1;
+        }
+    }
+
     private final class TextInputRow extends ConfigRow {
         private final EditBox input;
 
@@ -1150,13 +1684,13 @@ public final class KonfigConfigScreen extends Screen {
             this.statusColor = KonfigConfigScreen.this.statusColor;
         }
 
-        protected final void renderEditorChrome(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
-            GuiComponent.fill(poseStack, 0, 0, this.width, this.height, 0xC0101010);
-            super.render(poseStack, mouseX, mouseY, partialTick);
-            drawCenteredString(poseStack, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
-            this.font.draw(poseStack, this.entry.contextLabel, 12.0F, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+        protected final void renderEditorChrome(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+            GuiComponent.fill(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+            super.render(guiGraphics, mouseX, mouseY, partialTick);
+            drawCenteredString(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
+            this.font.draw(guiGraphics, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
             if (!this.statusMessage.isEmpty()) {
-                drawCenteredString(poseStack, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+                drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
             }
         }
     }
@@ -1223,10 +1757,10 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         @Override
-        public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
-            this.renderEditorChrome(poseStack, mouseX, mouseY, partialTick);
+        public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+            this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             int previewX = this.width / 2 - PREVIEW_SIZE / 2;
-            drawColorSwatch(poseStack, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+            drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
         }
 
         @Override
@@ -1394,6 +1928,8 @@ public final class KonfigConfigScreen extends Screen {
         private static final int ITEM_ROW_HEIGHT = 28;
 
         private ListEntryList list;
+        private ListEntryRow activeRegistryRow;
+        private ListEntryRow renderedRegistryRow;
 
         private StringListEditorScreen(EntryRef entry) {
             super(entry);
@@ -1405,13 +1941,46 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         @Override
-        public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
-            this.renderEditorChrome(poseStack, mouseX, mouseY, partialTick);
+        public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+            this.renderedRegistryRow = null;
+            this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
-            this.font.draw(poseStack, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
+            this.font.draw(guiGraphics, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
             if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
-                drawCenteredString(poseStack, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
+                drawCenteredString(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
             }
+            if (this.renderedRegistryRow != null) {
+                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+            }
+        }
+
+        @Override
+        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+            if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionClick(mouseX, mouseY)) {
+                return true;
+            }
+
+            boolean handled = super.mouseClicked(mouseX, mouseY, button);
+            ListEntryRow focusedRow = this.findFocusedRegistryRow();
+            if (focusedRow != null) {
+                this.setActiveRegistryRow(focusedRow);
+                focusedRow.activateSuggestions();
+            } else if (this.activeRegistryRow != null && !this.activeRegistryRow.isPointInsideInput(mouseX, mouseY)) {
+                this.activeRegistryRow.closeSuggestions();
+            }
+            return handled;
+        }
+
+        @Override
+        public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+            if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionKey(keyCode)) {
+                return true;
+            }
+            boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
+            if (this.activeRegistryRow != null && this.activeRegistryRow.isFocused() && this.activeRegistryRow.hasRegistryBinding()) {
+                this.activeRegistryRow.refreshSuggestions();
+            }
+            return handled;
         }
 
         @Override
@@ -1427,6 +1996,8 @@ public final class KonfigConfigScreen extends Screen {
 
         private void rebuildEditorWidgets() {
             this.clearWidgets();
+            this.activeRegistryRow = null;
+            this.renderedRegistryRow = null;
             int listTop = EDITOR_CONTENT_TOP;
             int listHeight = Math.max(48, this.height - listTop - LIST_BOTTOM_MARGIN);
             this.list = this.addRenderableWidget(new ListEntryList(this.minecraft, this.width, listHeight, listTop));
@@ -1448,11 +2019,33 @@ public final class KonfigConfigScreen extends Screen {
         private void addValue() {
             Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
             List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
-            values.add(translate("konfig.screen.list.new_item").getString());
+            values.add(this.entry.value.hasBoundRegistry() ? "" : translate("konfig.screen.list.new_item").getString());
             KonfigConfigScreen.this.drafts.put(this.entry.value, values);
             if (this.persistEditedValue(previousValue)) {
                 this.rebuildEditorWidgets();
             }
+        }
+
+        private ListEntryRow findFocusedRegistryRow() {
+            if (this.list == null) {
+                return null;
+            }
+            for (ListEntryRow row : this.list.children()) {
+                if (row.hasRegistryBinding() && row.isFocused()) {
+                    return row;
+                }
+            }
+            return null;
+        }
+
+        private void setActiveRegistryRow(ListEntryRow row) {
+            if (this.activeRegistryRow == row) {
+                return;
+            }
+            if (this.activeRegistryRow != null) {
+                this.activeRegistryRow.closeSuggestions();
+            }
+            this.activeRegistryRow = row;
         }
 
         private final class ListEntryList extends ContainerObjectSelectionList<ListEntryRow> {
@@ -1477,18 +2070,32 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             @Override
-            protected void renderBackground(PoseStack poseStack) {
-                GuiComponent.fill(poseStack, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+            protected void renderBackground(PoseStack guiGraphics) {
+                GuiComponent.fill(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
             }
         }
 
         private final class ListEntryRow extends ContainerObjectSelectionList.Entry<ListEntryRow> {
+            private static final int ICON_SIZE = 16;
+            private static final int ICON_GAP = 4;
+
             private final int index;
             private final EditBox input;
             private final Button moveUpButton;
             private final Button moveDownButton;
             private final Button removeButton;
+            private final List<String> visibleSuggestions = new ArrayList<String>();
             private boolean suppressResponder;
+            private boolean suggestionsDismissed;
+            private String dismissedValue = "";
+            private int selectedSuggestionIndex;
+            private int lastInputX;
+            private int lastInputY;
+            private int lastInputWidth;
+            private int lastDropdownX;
+            private int lastDropdownY;
+            private int lastDropdownWidth;
+            private int lastDropdownHeight;
 
             private ListEntryRow(int index, String value) {
                 this.index = index;
@@ -1503,6 +2110,10 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             private void tick() {
+                if (this.input.isFocused() && this.hasRegistryBinding()) {
+                    StringListEditorScreen.this.setActiveRegistryRow(this);
+                    this.refreshSuggestions();
+                }
             }
 
             private void onValueChanged(String value) {
@@ -1510,6 +2121,31 @@ public final class KonfigConfigScreen extends Screen {
                     return;
                 }
 
+                this.suggestionsDismissed = false;
+                this.dismissedValue = "";
+                this.persistListValue(value);
+            }
+
+            private boolean hasRegistryBinding() {
+                return StringListEditorScreen.this.entry.value.hasBoundRegistry();
+            }
+
+            private ResourceKey<? extends Registry<?>> registryKey() {
+                return StringListEditorScreen.this.entry.value.boundRegistryKey();
+            }
+
+            public boolean isFocused() {
+                return this.input.isFocused();
+            }
+
+            private boolean isPointInsideInput(double mouseX, double mouseY) {
+                return mouseX >= this.lastInputX
+                        && mouseX <= this.lastInputX + this.lastInputWidth
+                        && mouseY >= this.lastInputY
+                        && mouseY <= this.lastInputY + CONTROL_HEIGHT;
+            }
+
+            private boolean persistListValue(String value) {
                 Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
                 List<String> values = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
                 values.set(this.index, value);
@@ -1518,7 +2154,11 @@ public final class KonfigConfigScreen extends Screen {
                     this.suppressResponder = true;
                     this.input.setValue(currentStringList(StringListEditorScreen.this.entry.value).get(this.index));
                     this.suppressResponder = false;
+                    this.refreshSuggestions();
+                    return false;
                 }
+                this.refreshSuggestions();
+                return true;
             }
 
             private void move(int delta) {
@@ -1551,20 +2191,29 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             @Override
-            public void render(PoseStack poseStack, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            public void render(PoseStack guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
                 if (hovered) {
-                    GuiComponent.fill(poseStack, x, y, x + width, y + height, 0x22000000);
+                    GuiComponent.fill(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
                 }
 
                 int buttonY = y + 4;
                 int removeX = x + width - 20;
                 int downX = removeX - 24;
                 int upX = downX - 24;
-                int inputWidth = Math.max(60, upX - x - 8);
+                int iconOffset = 0;
+                if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
+                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
+                    iconOffset = ICON_SIZE + ICON_GAP;
+                }
+                int inputX = x + iconOffset;
+                int inputWidth = Math.max(60, upX - inputX - 8);
 
-                this.input.x = x;
+                this.input.setX(inputX);
                 this.input.y = buttonY;
                 this.input.setWidth(inputWidth);
+                this.lastInputX = inputX;
+                this.lastInputY = buttonY;
+                this.lastInputWidth = inputWidth;
 
                 this.moveUpButton.x = upX;
                 this.moveUpButton.y = buttonY;
@@ -1577,10 +2226,185 @@ public final class KonfigConfigScreen extends Screen {
                 this.removeButton.x = removeX;
                 this.removeButton.y = buttonY;
 
-                this.input.render(poseStack, mouseX, mouseY, partialTick);
-                this.moveUpButton.render(poseStack, mouseX, mouseY, partialTick);
-                this.moveDownButton.render(poseStack, mouseX, mouseY, partialTick);
-                this.removeButton.render(poseStack, mouseX, mouseY, partialTick);
+                this.input.render(guiGraphics, mouseX, mouseY, partialTick);
+                this.moveUpButton.render(guiGraphics, mouseX, mouseY, partialTick);
+                this.moveDownButton.render(guiGraphics, mouseX, mouseY, partialTick);
+                this.removeButton.render(guiGraphics, mouseX, mouseY, partialTick);
+
+                if (this.hasRegistryBinding() && this.input.isFocused()) {
+                    StringListEditorScreen.this.setActiveRegistryRow(this);
+                    this.refreshSuggestions();
+                }
+                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                    StringListEditorScreen.this.renderedRegistryRow = this;
+                }
+            }
+
+            private void refreshSuggestions() {
+                if (!this.hasRegistryBinding()) {
+                    this.closeSuggestions();
+                    return;
+                }
+
+                if (this.suggestionsDismissed) {
+                    if (sameValue(this.input.getValue(), this.dismissedValue)) {
+                        this.visibleSuggestions.clear();
+                        this.selectedSuggestionIndex = 0;
+                        this.input.setSuggestion("");
+                        return;
+                    }
+                    this.suggestionsDismissed = false;
+                    this.dismissedValue = "";
+                }
+
+                this.visibleSuggestions.clear();
+                this.visibleSuggestions.addAll(filterRegistrySuggestions(
+                        KonfigConfigScreen.this.registrySuggestions(this.registryKey()),
+                        this.input.getValue()
+                ));
+                if (this.visibleSuggestions.isEmpty()) {
+                    this.selectedSuggestionIndex = 0;
+                    this.input.setSuggestion("");
+                    return;
+                }
+
+                this.selectedSuggestionIndex = Mth.clamp(this.selectedSuggestionIndex, 0, this.visibleSuggestions.size() - 1);
+                this.updateInlineSuggestion();
+            }
+
+            private void activateSuggestions() {
+                this.suggestionsDismissed = false;
+                this.dismissedValue = "";
+                this.refreshSuggestions();
+            }
+
+            private void dismissSuggestions() {
+                this.suggestionsDismissed = true;
+                this.dismissedValue = this.input.getValue();
+                this.visibleSuggestions.clear();
+                this.selectedSuggestionIndex = 0;
+                this.input.setSuggestion("");
+            }
+
+            private void closeSuggestions() {
+                this.suggestionsDismissed = false;
+                this.dismissedValue = "";
+                this.visibleSuggestions.clear();
+                this.selectedSuggestionIndex = 0;
+                this.input.setSuggestion("");
+                if (StringListEditorScreen.this.activeRegistryRow == this) {
+                    StringListEditorScreen.this.activeRegistryRow = null;
+                }
+            }
+
+            private void renderSuggestions(PoseStack guiGraphics, int mouseX, int mouseY) {
+                if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                    return;
+                }
+
+                this.layoutSuggestionBox();
+                GuiComponent.fill(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+                GuiComponent.fill(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
+
+                for (int suggestionIndex = 0; suggestionIndex < this.visibleSuggestions.size(); suggestionIndex++) {
+                    int rowY = this.lastDropdownY + 2 + (suggestionIndex * SUGGESTION_ROW_HEIGHT);
+                    int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
+                    boolean suggestionHovered = suggestionIndex == this.hoveredSuggestionIndex(mouseX, mouseY);
+                    if (suggestionHovered || suggestionIndex == this.selectedSuggestionIndex) {
+                        GuiComponent.fill(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
+                    }
+                    int textX = this.lastDropdownX + 4;
+                    if (supportsRegistryIcon(this.registryKey())) {
+                        renderRegistryIcon(guiGraphics, this.registryKey(), this.visibleSuggestions.get(suggestionIndex), this.lastDropdownX + 2, rowY - 1);
+                        textX += 18;
+                    }
+                    StringListEditorScreen.this.font.draw(guiGraphics, text(this.visibleSuggestions.get(suggestionIndex)), (float) textX, (float) (rowY + 3), 0xFFFFFFFF);
+                }
+            }
+
+            private boolean handleSuggestionClick(double mouseX, double mouseY) {
+                if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                    return false;
+                }
+
+                int hovered = this.hoveredSuggestionIndex((int) mouseX, (int) mouseY);
+                if (hovered < 0) {
+                    return false;
+                }
+
+                this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+                return true;
+            }
+
+            private boolean handleSuggestionKey(int keyCode) {
+                if (StringListEditorScreen.this.activeRegistryRow != this) {
+                    return false;
+                }
+                if (keyCode == InputConstants.KEY_ESCAPE) {
+                    this.dismissSuggestions();
+                    return true;
+                }
+                if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
+                    this.dismissSuggestions();
+                    return true;
+                }
+                if (this.visibleSuggestions.isEmpty()) {
+                    return false;
+                }
+                if (keyCode == InputConstants.KEY_DOWN) {
+                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                    this.updateInlineSuggestion();
+                    return true;
+                }
+                if (keyCode == InputConstants.KEY_UP) {
+                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                    this.updateInlineSuggestion();
+                    return true;
+                }
+                if (keyCode == InputConstants.KEY_TAB) {
+                    this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                    return true;
+                }
+                return false;
+            }
+
+            private void acceptSuggestion(String suggestion) {
+                this.suppressResponder = true;
+                this.input.setValue(suggestion);
+                this.suppressResponder = false;
+                if (this.persistListValue(suggestion)) {
+                    this.dismissSuggestions();
+                    this.input.setFocus(true);
+                }
+            }
+
+            private void updateInlineSuggestion() {
+                if (this.visibleSuggestions.isEmpty()) {
+                    this.input.setSuggestion("");
+                    return;
+                }
+                this.input.setSuggestion(suggestionSuffix(this.input.getValue(), this.visibleSuggestions.get(this.selectedSuggestionIndex)));
+            }
+
+            private void layoutSuggestionBox() {
+                this.lastDropdownX = this.lastInputX;
+                this.lastDropdownWidth = this.lastInputWidth;
+                this.lastDropdownHeight = (this.visibleSuggestions.size() * SUGGESTION_ROW_HEIGHT) + 4;
+                int belowY = this.lastInputY + CONTROL_HEIGHT + 2;
+                int aboveY = this.lastInputY - this.lastDropdownHeight - 2;
+                boolean openAbove = belowY + this.lastDropdownHeight > StringListEditorScreen.this.height - 32 && aboveY >= LIST_TOP;
+                this.lastDropdownY = openAbove ? aboveY : belowY;
+            }
+
+            private int hoveredSuggestionIndex(int mouseX, int mouseY) {
+                if (mouseX < this.lastDropdownX
+                        || mouseX > this.lastDropdownX + this.lastDropdownWidth
+                        || mouseY < this.lastDropdownY + 2
+                        || mouseY > this.lastDropdownY + this.lastDropdownHeight - 2) {
+                    return -1;
+                }
+                int suggestionIndex = (mouseY - this.lastDropdownY - 2) / SUGGESTION_ROW_HEIGHT;
+                return suggestionIndex >= 0 && suggestionIndex < this.visibleSuggestions.size() ? suggestionIndex : -1;
             }
 
             @Override
@@ -1616,7 +2440,7 @@ public final class KonfigConfigScreen extends Screen {
             if (this.editable) {
                 return this.label;
             }
-            return new TextComponent("").append(this.label).append(translate("konfig.screen.read_only"));
+            return TextComponent.EMPTY.copy().append(this.label).append(translate("konfig.screen.read_only"));
         }
     }
 }

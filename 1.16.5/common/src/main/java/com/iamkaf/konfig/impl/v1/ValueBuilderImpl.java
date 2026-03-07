@@ -4,12 +4,11 @@ import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.ValueBuilder;
-
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
-final class ValueBuilderImpl<T> implements ValueBuilder<T> {
+class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private final ConfigBuilderImpl owner;
     private final String path;
     private final T defaultValue;
@@ -27,6 +26,7 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private UnaryOperator<T> canonicalizer = UnaryOperator.identity();
     private Number rangeMin;
     private Number rangeMax;
+    private String boundRegistryId;
 
     ValueBuilderImpl(
             ConfigBuilderImpl owner,
@@ -94,6 +94,11 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
         return this;
     }
 
+    ValueBuilderImpl<T> bindRegistry(String registryId) {
+        this.boundRegistryId = registryId == null ? null : registryId.trim();
+        return this;
+    }
+
     @Override
     public ConfigValue<T> build() {
         ConfigValueImpl<T> entry = new ConfigValueImpl<>(
@@ -110,7 +115,8 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
                 this.serverOnly,
                 this.restartRequirement,
                 this.rangeMin,
-                this.rangeMax
+                this.rangeMax,
+                this.boundRegistryId
         );
 
         this.owner.addEntry(this.path, entry, this.comment);

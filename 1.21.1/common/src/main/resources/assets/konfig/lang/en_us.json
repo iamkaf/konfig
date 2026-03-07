@@ -32,6 +32,7 @@
   "konfig.config.konfig.showcase.mining.power.max_charge_buffer": "Max Charge Buffer",
   "konfig.config.konfig.showcase.world.resource_density": "Resource Density",
   "konfig.config.konfig.showcase.world.structure_weight": "Structure Weight",
+  "konfig.config.konfig.showcase.world.target_block": "Target Block",
   "konfig.config.konfig.showcase.world.dimension_allowlist": "Dimension Allowlist",
   "konfig.config.konfig.showcase.network.allow_remote_access": "Allow Remote Access",
   "konfig.config.konfig.showcase.network.sync_interval_ticks": "Sync Interval Ticks",
@@ -48,6 +49,8 @@
   "konfig.config.konfig.showcase_client.hud.hud_anchor": "HUD Anchor",
   "konfig.config.konfig.showcase_client.hud.notification_limit": "Notification Limit",
   "konfig.config.konfig.showcase_client.hud.status_template": "Status Template",
+  "konfig.config.konfig.showcase_client.hud.status_icon_item": "Status Icon Item",
+  "konfig.config.konfig.showcase_client.hud.quickbar_items": "Quickbar Items",
   "konfig.config.konfig.showcase_client.hud.status_examples": "Status Examples",
   "konfig.config.konfig.showcase_client.accessibility.high_contrast_labels": "High Contrast Labels",
   "konfig.config.konfig.showcase_client.accessibility.tooltip_detail": "Tooltip Detail"

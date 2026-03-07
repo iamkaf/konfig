@@ -29,9 +29,9 @@ public interface ConfigBuilder {
 
     ValueBuilder<Double> doubleRange(String key, double defaultValue, double min, double max);
 
-    ValueBuilder<String> string(String key, String defaultValue, int minLen, int maxLen);
+    StringValueBuilder string(String key, String defaultValue, int minLen, int maxLen);
 
-    ValueBuilder<List<String>> stringList(String key, List<String> defaultValue);
+    StringListValueBuilder stringList(String key, List<String> defaultValue);
 
     <E extends Enum<E>> ValueBuilder<E> enumValue(String key, E defaultValue);
 

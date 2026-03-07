@@ -4,12 +4,14 @@ import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.ValueBuilder;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
-final class ValueBuilderImpl<T> implements ValueBuilder<T> {
+class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private final ConfigBuilderImpl owner;
     private final String path;
     private final T defaultValue;
@@ -27,6 +29,7 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private UnaryOperator<T> canonicalizer = UnaryOperator.identity();
     private Number rangeMin;
     private Number rangeMax;
+    private ResourceKey<? extends Registry<?>> boundRegistryKey;
 
     ValueBuilderImpl(
             ConfigBuilderImpl owner,
@@ -94,6 +97,11 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
         return this;
     }
 
+    ValueBuilderImpl<T> bindRegistry(ResourceKey<? extends Registry<?>> registryKey) {
+        this.boundRegistryKey = registryKey;
+        return this;
+    }
+
     @Override
     public ConfigValue<T> build() {
         ConfigValueImpl<T> entry = new ConfigValueImpl<>(
@@ -110,7 +118,8 @@ final class ValueBuilderImpl<T> implements ValueBuilder<T> {
                 this.serverOnly,
                 this.restartRequirement,
                 this.rangeMin,
-                this.rangeMax
+                this.rangeMax,
+                this.boundRegistryKey
         );
 
         this.owner.addEntry(this.path, entry, this.comment);

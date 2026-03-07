@@ -1,8 +1,15 @@
 plugins {
     id 'multiloader-common'
+    id 'fabric-loom'
 }
 
 dependencies {
+    minecraft libs.minecraft
+    mappings loom.layered {
+        officialMojangMappings()
+        parchment(libs.parchment)
+    }
+    modImplementation libs.fabric.loader
     compileOnly libs.mixin
     compileOnly libs.mixin.extras
     compileOnly 'org.apache.logging.log4j:log4j-api:2.17.1'

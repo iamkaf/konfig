@@ -3,6 +3,8 @@ package com.iamkaf.konfig.impl.v1;
 import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
 
 import java.util.Objects;
 import java.util.function.Function;
@@ -24,6 +26,7 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
+    private final ResourceKey<? extends Registry<?>> boundRegistryKey;
 
     private volatile T localValue;
     private volatile T syncedValue;
@@ -42,7 +45,8 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
             boolean serverOnly,
             RestartRequirement restartRequirement,
             Number rangeMin,
-            Number rangeMax
+            Number rangeMax,
+            ResourceKey<? extends Registry<?>> boundRegistryKey
     ) {
         this.path = path;
         this.canonicalizer = canonicalizer == null ? UnaryOperator.identity() : canonicalizer;
@@ -58,6 +62,7 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
+        this.boundRegistryKey = boundRegistryKey;
         this.localValue = this.defaultValue;
     }
 
@@ -141,6 +146,14 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
 
     EntryKind kind() {
         return this.kind;
+    }
+
+    boolean hasBoundRegistry() {
+        return this.boundRegistryKey != null;
+    }
+
+    ResourceKey<? extends Registry<?>> boundRegistryKey() {
+        return this.boundRegistryKey;
     }
 
     private T validateOrFallback(T value) {
