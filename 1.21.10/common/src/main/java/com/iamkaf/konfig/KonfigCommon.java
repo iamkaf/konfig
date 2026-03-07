@@ -12,7 +12,6 @@ public final class KonfigCommon {
         }
 
         KonfigDebugConfig.bootstrap();
-        KonfigShowcaseConfig.bootstrap();
 
         initialized = true;
         if (KonfigDebugConfig.enabled()) {
