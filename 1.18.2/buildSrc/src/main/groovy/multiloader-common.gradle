@@ -52,7 +52,7 @@ repositories {
         forRepository {
             maven {
                 name = 'TerraformersMC'
-                url = 'https://maven.terraformersmc.com/'
+                url = 'https://maven.terraformersmc.com/releases/'
             }
         }
         filter { includeGroupAndSubgroups('com.terraformersmc') }

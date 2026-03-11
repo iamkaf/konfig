@@ -25,14 +25,18 @@ loader-enabled version loader:
   fi
 
 # Run Gradle inside a specific version folder, switching the JVM based on
-# `java_version=` in <version>/gradle.properties.
+# `build_java_version=` in <version>/gradle.properties, falling back to
+# `java_version=` when no dedicated build JVM is declared.
 #
 # We avoid calling `sdk use` because `sdk` is a shell function and is unreliable
 # in non-interactive shells; instead we set JAVA_HOME directly to SDKMAN's
 # installed candidates.
 with-java version *args:
   @cd "{{version}}"; \
-    java_version=$(sed -nE 's/^java_version=([0-9]+).*/\1/p' gradle.properties | head -n1); \
+    java_version=$(sed -nE 's/^build_java_version=([0-9]+).*/\1/p' gradle.properties | head -n1); \
+    if [ -z "$java_version" ]; then \
+      java_version=$(sed -nE 's/^java_version=([0-9]+).*/\1/p' gradle.properties | head -n1); \
+    fi; \
     sdkman_path=""; \
     case "$java_version" in \
       8) sdkman_path="$HOME/.sdkman/candidates/java/8.0.452-tem" ;; \
