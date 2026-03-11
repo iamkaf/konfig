@@ -1,5 +1,5 @@
 plugins {
-    id 'multiloader-common'
+    id 'com.iamkaf.multiloader.common'
     id 'net.neoforged.moddev'
 }
 
@@ -22,20 +22,4 @@ dependencies {
     implementation libs.gson
     implementation "com.electronwill.night-config:core:${nightconfig_version}"
     implementation "com.electronwill.night-config:toml:${nightconfig_version}"
-}
-
-configurations {
-    commonJava {
-        canBeResolved = false
-        canBeConsumed = true
-    }
-    commonResources {
-        canBeResolved = false
-        canBeConsumed = true
-    }
-}
-
-artifacts {
-    commonJava sourceSets.main.java.sourceDirectories.singleFile
-    commonResources sourceSets.main.resources.sourceDirectories.files
 }

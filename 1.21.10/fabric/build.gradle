@@ -1,16 +1,8 @@
 plugins {
-    id 'multiloader-loader'
-    id 'fabric-loom'
-    id 'com.hypherionmc.modutils.modpublisher'
+    id 'com.iamkaf.multiloader.fabric'
 }
 
 dependencies {
-    minecraft libs.minecraft
-    mappings loom.layered {
-        officialMojangMappings()
-        parchment(libs.parchment)
-    }
-    modImplementation libs.fabric.loader
     modImplementation libs.fabric.api
     implementation(include("com.electronwill.night-config:core:${nightconfig_version}"))
     implementation(include("com.electronwill.night-config:toml:${nightconfig_version}"))
@@ -18,69 +10,5 @@ dependencies {
     modLocalRuntime(libs.modmenu) { transitive = false }
 }
 
-fabricApi {
-    configureDataGeneration {
-        client = true
-        outputDirectory = file('../common/src/main/generated')
-    }
-}
 
-loom {
-    def aw = project(':common').file("src/main/resources/${mod_id}.accesswidener")
-    if (aw.exists()) {
-        accessWidenerPath.set(aw)
-    }
-
-    runs {
-        client {
-            client()
-            setConfigName('Fabric Client')
-            ideConfigGenerated(true)
-            runDir('runs/client')
-        }
-        server {
-            server()
-            setConfigName('Fabric Server')
-            ideConfigGenerated(true)
-            runDir('runs/server')
-        }
-    }
-}
-
-def publisherJavaVersions = java_version.toInteger() >= 21
-    ? [JavaVersion.VERSION_21, JavaVersion.VERSION_22]
-    : [JavaVersion.toVersion(java_version)]
-
-publisher {
-    apiKeys {
-        modrinth System.getenv("MODRINTH_TOKEN")
-        curseforge System.getenv("CURSEFORGE_TOKEN")
-    }
-
-    setDebug(Boolean.valueOf(dry_run))
-    setCurseID(curse_id)
-    setModrinthID(modrinth_id)
-    setVersionType(release_type)
-    setChangelog(extractHeaderLatestFooterFromChangelog(file('../../changelog.md').text))
-    setProjectVersion(rootProject.version)
-    setDisplayName("$mod_id-$project.name-$project.version")
-    setGameVersions(game_versions.split(','))
-    setLoaders("fabric")
-    setCurseEnvironment(mod_environment)
-    setIsManualRelease(false)
-    setArtifact("build/libs/${mod_id}-${project.name}-${project.version}.jar")
-    setDisableEmptyJarCheck(false)
-    setJavaVersions(publisherJavaVersions)
-
-    if (mod_modrinth_depends?.trim()) {
-        modrinthDepends {
-            required(mod_modrinth_depends.split(','))
-        }
-    }
-
-    if (mod_curse_depends?.trim()) {
-        curseDepends {
-            required(mod_curse_depends.split(','))
-        }
-    }
-}
+enableCommonFabricDatagen.call()
