@@ -1,13 +1,13 @@
 package com.iamkaf.konfig.forge;
 
-import com.iamkaf.konfig.impl.v1.KonfigConfigScreen;
-import net.minecraftforge.common.MinecraftForge;
+import com.iamkaf.konfig.Constants;
+import com.iamkaf.konfig.forge.api.v1.KonfigForgeClientScreens;
 
 final class KonfigForgeClient {
     private KonfigForgeClient() {
     }
 
     static void init() {
-        MinecraftForge.registerConfigScreen(KonfigConfigScreen::new);
+        KonfigForgeClientScreens.register(Constants.MOD_ID);
     }
 }

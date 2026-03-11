@@ -56,6 +56,7 @@ public final class KonfigConfigScreen extends Screen {
     private static final int SUGGESTION_ROW_HEIGHT = 14;
 
     private final Screen parent;
+    private final String modIdFilter;
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
     private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
@@ -68,11 +69,21 @@ public final class KonfigConfigScreen extends Screen {
     private int statusColor = 0xFFFF8080;
 
     public KonfigConfigScreen(Screen parent) {
+        this(parent, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter) {
         super(translate("konfig.screen.title"));
         this.parent = parent;
-        this.entries = collectEntries();
+        this.modIdFilter = modIdFilter;
+        this.entries = collectEntries(modIdFilter);
         if (KonfigDebugConfig.enabled()) {
-            Constants.LOG.info("[Konfig/Debug] creating screen parent={} entries={}", parent == null ? "null" : parent.getClass().getName(), this.entries.size());
+            Constants.LOG.info(
+                    "[Konfig/Debug] creating screen parent={} modFilter={} entries={}",
+                    parent == null ? "null" : parent.getClass().getName(),
+                    modIdFilter == null ? "<all>" : modIdFilter,
+                    this.entries.size()
+            );
         }
         for (EntryRef entry : this.entries) {
             Object value = entry.value.get();
@@ -269,10 +280,13 @@ public final class KonfigConfigScreen extends Screen {
         return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
     }
 
-    private static List<EntryRef> collectEntries() {
+    private static List<EntryRef> collectEntries(String modIdFilter) {
         List<EntryRef> result = new ArrayList<EntryRef>();
 
         for (ConfigHandleImpl handle : KonfigManager.get().all()) {
+            if (modIdFilter != null && !modIdFilter.equals(handle.modId())) {
+                continue;
+            }
             for (ConfigValue<?> value : handle.values()) {
                 if (!(value instanceof ConfigValueImpl)) {
                     continue;

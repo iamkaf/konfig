@@ -1,16 +1,13 @@
 package com.iamkaf.konfig.forge;
 
-import net.minecraftforge.fml.ExtensionPoint;
-import net.minecraftforge.fml.ModLoadingContext;
+import com.iamkaf.konfig.Constants;
+import com.iamkaf.konfig.forge.api.v1.KonfigForgeClientScreens;
 
 final class KonfigForgeClient {
     private KonfigForgeClient() {
     }
 
     static void init() {
-        ModLoadingContext.get().registerExtensionPoint(
-                ExtensionPoint.CONFIGGUIFACTORY,
-                () -> (minecraft, parent) -> new KonfigConfigScreen(parent)
-        );
+        KonfigForgeClientScreens.register(Constants.MOD_ID);
     }
 }

@@ -74,6 +74,61 @@ dependencies {
 - NeoForge is available on `1.21.1+`. `1.20.1` and older publish Fabric and Forge only.
 - Do not depend on `common` directly.
 
+## Config Screen Integration
+
+Konfig now exposes the same consumer-facing config screen model across every supported version line, but the loader contract is not identical.
+
+Fabric:
+
+- Konfig exposes consumer config screens automatically through Mod Menu.
+- If your mod registers one or more Konfig handles, Mod Menu will show a config button without extra loader-specific code.
+
+Forge:
+
+- Your mod must register its own config screen button.
+- Konfig provides the helper for that registration.
+
+`1.18.2+`:
+
+```java
+import com.iamkaf.konfig.forge.api.v1.KonfigForgeClientScreens;
+
+KonfigForgeClientScreens.register("examplemod");
+```
+
+`1.16.5`:
+
+```java
+import com.iamkaf.konfig.forge.api.v1.KonfigForgeClientScreens;
+
+KonfigForgeClientScreens.register("examplemod");
+```
+
+NeoForge:
+
+- Your mod must register its own config screen extension point on its mod container.
+- Konfig provides the helper for that registration on `1.21.1+`.
+
+```java
+import com.iamkaf.konfig.neoforge.api.v1.KonfigNeoForgeClientScreens;
+import net.neoforged.fml.ModContainer;
+
+KonfigNeoForgeClientScreens.register(container, "examplemod");
+```
+
+Why this differs:
+
+- Fabric Mod Menu supports library-provided config screen factories for other mods.
+- Forge and NeoForge resolve config buttons from the selected mod's own container, so the consumer mod has to opt in explicitly.
+
+Konfig is consistent across supported versions in the API it offers:
+
+- Fabric: automatic consumer buttons
+- Forge: `KonfigForgeClientScreens.register(modId)`
+- NeoForge: `KonfigNeoForgeClientScreens.register(container, modId)` on `1.21.1+`
+
+On `1.16.5`, the underlying client `Screen` types still diverge between Fabric and Forge, so the public helper layout is loader-local there even though the behavior is the same.
+
 ## Toolchain Notes
 
 - ForgeGradle 7 is used on `1.18.2+`.
