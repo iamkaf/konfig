@@ -24,7 +24,6 @@ It gives you a typed API, side-aware config scopes (`CLIENT`, `COMMON`, `SERVER`
 | Minecraft | Fabric | Forge | NeoForge |
 | --- | --- | --- | --- |
 | 1.21.11 | yes | yes | yes |
-| 1.21.10 | yes | yes | yes |
 | 1.21.1 | yes | yes | yes |
 | 1.20.1 | yes | yes | no |
 | 1.19.2 | yes | yes | no |
