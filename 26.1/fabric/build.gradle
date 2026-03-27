@@ -1,0 +1,11 @@
+plugins {
+    id 'com.iamkaf.multiloader.fabric'
+}
+
+dependencies {
+    implementation libs.fabric.api
+    implementation(include("com.electronwill.night-config:core:${nightconfig_version}"))
+    implementation(include("com.electronwill.night-config:toml:${nightconfig_version}"))
+    compileOnly libs.modmenu
+    runtimeOnly(libs.modmenu) { transitive = false }
+}

@@ -23,6 +23,7 @@ It gives you a typed API, side-aware config scopes (`CLIENT`, `COMMON`, `SERVER`
 
 | Minecraft | Fabric | Forge | NeoForge |
 | --- | --- | --- | --- |
+| 26.1 | yes | no | yes |
 | 1.21.11 | yes | yes | yes |
 | 1.21.1 | yes | yes | yes |
 | 1.20.1 | yes | yes | no |
@@ -44,7 +45,7 @@ If you want to browse published versions in a UI, start here:
 
 - https://z.kaf.sh/artifact/com.iamkaf.konfig/konfig-fabric
 
-Use the artifact that matches your loader and Minecraft version. Versions are branch-aligned, for example `0.1.0+1.21.11`.
+Use the artifact that matches your loader and Minecraft version. Versions are branch-aligned, for example `0.1.0+26.1`.
 
 Fabric:
 

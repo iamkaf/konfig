@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.2.0
+
+### Changed
+
+- Added Minecraft 26.1 support.
+- Improved generated config screen labels and titles.
+
 ## 0.1.0
 
 ### Added
