@@ -140,6 +140,12 @@ On `1.16.5`, the underlying client `Screen` types still diverge between Fabric a
   - `1.18.2+`: Gradle `9.3.1`
   - `1.16.5`: Gradle `8.14`
 
+## TODO
+
+- Preserve stable declaration order in generated config screens instead of path-based alphabetical sorting.
+- Define and implement live reload behavior for in-game config edits, especially for synced common configs.
+- Define and implement RestartRequirement behavior in the screen and config lifecycle.
+
 ## Quick Example
 
 ```java
