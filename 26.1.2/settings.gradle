@@ -1,0 +1,35 @@
+pluginManagement {
+    def multiloaderConventionsVersion = providers.gradleProperty('project.plugins').get()
+    def enabledLoaders = providers.gradleProperty('project.enabled-loaders').get()
+        .split(',')
+        .collect { it.trim() }
+        .findAll { !it.isEmpty() }
+    repositories {
+        gradlePluginPortal()
+        maven { url = uri('https://maven.fabricmc.net/') }
+        maven { url = uri('https://maven.minecraftforge.net/') }
+        mavenLocal()
+        maven { url = uri('https://maven.kaf.sh') }
+        mavenCentral()
+    }
+    plugins {
+        id 'com.iamkaf.multiloader.settings' version multiloaderConventionsVersion
+        id 'com.iamkaf.multiloader.root' version multiloaderConventionsVersion
+        id 'com.iamkaf.multiloader.common' version multiloaderConventionsVersion
+        if (enabledLoaders.contains('fabric')) {
+            id 'com.iamkaf.multiloader.fabric' version multiloaderConventionsVersion
+        }
+        if (enabledLoaders.contains('forge')) {
+            id 'com.iamkaf.multiloader.forge' version multiloaderConventionsVersion
+        }
+        if (enabledLoaders.contains('neoforge')) {
+            id 'com.iamkaf.multiloader.neoforge' version multiloaderConventionsVersion
+        }
+        id 'com.iamkaf.multiloader.publishing' version multiloaderConventionsVersion
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+    id 'com.iamkaf.multiloader.settings'
+}
