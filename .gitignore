@@ -1,12 +1,26 @@
-# Root-level gitignore for monorepo
 .DS_Store
 Thumbs.db
 .idea/
 .vscode/
 *.iml
-.gradle/
+*.ipr
+*.iws
+*.bak
 *.log
+*.launch
+.gradle/
+.cache/
+bin/
+out/
+run/
+runs/
 
-# Local verification artifacts
+/build/
+/common/versions/
+/fabric/versions/
+/forge/versions/
+/neoforge/versions/
+/src/main/generated/
+
 .runclient-*/
 .screens/

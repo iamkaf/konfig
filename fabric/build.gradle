@@ -1,0 +1,30 @@
+plugins {
+    id 'com.iamkaf.multiloader.fabric'
+    id 'fabric-loom' version '1.15.5' apply false
+}
+
+def nightConfigVersion = requiredProp(project, 'nightconfig_version')
+def minecraftVersion = requiredProp(project, 'project.minecraft')
+def isModernLine = !minecraftVersion.startsWith('1.')
+def libs = catalogFor(project, minecraftVersion)
+
+dependencies {
+    if (isModernLine) {
+        implementation library(libs, 'fabric-api')
+        implementation(include("com.electronwill.night-config:core:${nightConfigVersion}"))
+        implementation(include("com.electronwill.night-config:toml:${nightConfigVersion}"))
+        compileOnly library(libs, 'modmenu')
+        runtimeOnly(libs.findLibrary('modmenu').get()) { transitive = false }
+    } else {
+        modImplementation library(libs, 'fabric-api')
+        if (minecraftVersion == '1.18.2') {
+            modImplementation('net.fabricmc:fabric-loader:0.14.9') {
+                version { strictly '0.14.9' }
+            }
+        }
+        implementation(include("com.electronwill.night-config:core:${nightConfigVersion}"))
+        implementation(include("com.electronwill.night-config:toml:${nightConfigVersion}"))
+        modCompileOnly library(libs, 'modmenu')
+        modLocalRuntime(libs.findLibrary('modmenu').get()) { transitive = false }
+    }
+}
