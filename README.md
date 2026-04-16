@@ -17,18 +17,13 @@ It provides a typed config API, side-aware scopes (`CLIENT`, `COMMON`, `SERVER`)
 
 ## Supported Versions
 
-| Minecraft | Fabric | Forge | NeoForge |
-| --- | --- | --- | --- |
-| 26.1.2 | yes | yes | yes |
-| 26.1.1 | yes | yes | yes |
-| 26.1 | yes | yes | yes |
-| 1.21.11 | yes | yes | yes |
-| 1.21.10 | yes | yes | yes |
-| 1.21.1 | yes | yes | yes |
-| 1.20.1 | yes | yes | no |
-| 1.19.2 | yes | yes | no |
-| 1.18.2 | yes | yes | no |
-| 1.16.5 | yes | yes | no |
+Current support bands:
+
+- Fabric: every line from `1.14.4` through `26.1.2`
+- Forge: `1.16.5`, `1.17.1`, `1.18` through `1.20.4`, `1.20.6`, `1.21`, `1.21.1`, `1.21.3` through `26.1.2`
+- NeoForge: `1.20.2` through `26.1.2`
+
+Use `just list-nodes` for the exact current matrix.
 
 ## Adding Konfig
 
@@ -93,6 +88,19 @@ just run downloadTranslations
 - `just run <version> <loader> <gradle task>`
 - `just run <version> <gradle task>` for version-wide aggregates like `build`, `publish`, `publishMod`, `publishModrinth`, and `publishCurseforge`
 - `just run <root task>` for global tasks like `downloadTranslations`
+
+Runtime validation:
+
+```bash
+just boot-check 1.21.11-forge 60
+just teakit-boot-check 1.21.11-forge 60
+just teakit-boot-check-all 60
+just scenario-check 1.21.11-forge 240
+just scenario-check-all 240
+```
+
+`just teakit-boot-check` enables TeaKit as an optional dev runtime dependency when that Minecraft line has a shared-catalog TeaKit artifact. It verifies startup from logs, then lets TeaKit close the client cleanly after the title screen appears.
+`just scenario-check` runs a checked-in TeaKit scenario that opens the title-screen Mods menu, opens Konfig’s config screen, and waits for the `Enable Debug Logging` entry.
 
 ## Config Screen Integration
 

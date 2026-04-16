@@ -16,6 +16,7 @@ run/
 runs/
 
 /build/
+/versions/*/build/
 /common/versions/
 /fabric/versions/
 /forge/versions/

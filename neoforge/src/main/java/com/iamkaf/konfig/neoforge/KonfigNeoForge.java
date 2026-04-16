@@ -16,7 +16,11 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 @Mod(Constants.MOD_ID)
 public final class KonfigNeoForge {
     public KonfigNeoForge(IEventBus eventBus) {
+//? if >=1.21.11 {
+        RuntimeEnvironment.initialize(FMLPaths.CONFIGDIR.get(), FMLEnvironment.getDist().isClient());
+//?} else {
         RuntimeEnvironment.initialize(FMLPaths.CONFIGDIR.get(), FMLEnvironment.dist.isClient());
+//?}
         KonfigCommon.init();
 
         eventBus.addListener(this::onRegisterPayloadHandlers);

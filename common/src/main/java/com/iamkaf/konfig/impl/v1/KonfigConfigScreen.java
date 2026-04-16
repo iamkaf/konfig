@@ -1,12 +1,96 @@
+//? if <=1.15.2 {
 package com.iamkaf.konfig.impl.v1;
+
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.TextComponent;
+
+public final class KonfigConfigScreen extends Screen {
+    private final Screen parent;
+
+    public KonfigConfigScreen(Screen parent) {
+        this(parent, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter) {
+        super(new TextComponent("Konfig"));
+        this.parent = parent;
+    }
+
+    @Override
+    protected void init() {
+    }
+
+    @Override
+    public void onClose() {
+        if (this.minecraft != null) {
+            this.minecraft.setScreen(this.parent);
+        }
+    }
+
+    @Override
+    public void render(int mouseX, int mouseY, float partialTick) {
+        this.renderBackground();
+        drawCenteredString(this.font, this.title.getString(), this.width / 2, this.height / 2 - 10, 0xFFFFFFFF);
+        drawCenteredString(this.font, "Use the loader-specific config screen on 1.16.5.", this.width / 2, this.height / 2 + 4, 0xFFA0A0A0);
+        super.render(mouseX, mouseY, partialTick);
+    }
+}
+//?} elif <=1.16.5 {
+package com.iamkaf.konfig.impl.v1;
+
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.TextComponent;
+
+public final class KonfigConfigScreen extends Screen {
+    private final Screen parent;
+
+    public KonfigConfigScreen(Screen parent) {
+        this(parent, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter) {
+        super(new TextComponent("Konfig"));
+        this.parent = parent;
+    }
+
+    @Override
+    protected void init() {
+    }
+
+    @Override
+    public void onClose() {
+        if (this.minecraft != null) {
+            this.minecraft.setScreen(this.parent);
+        }
+    }
+
+    @Override
+    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
+        this.renderBackground(poseStack);
+        drawCenteredString(poseStack, this.font, this.title, this.width / 2, this.height / 2 - 10, 0xFFFFFFFF);
+        drawCenteredString(poseStack, this.font, new TextComponent("Use the loader-specific config screen on 1.16.5."), this.width / 2, this.height / 2 + 4, 0xFFA0A0A0);
+        super.render(poseStack, mouseX, mouseY, partialTick);
+    }
+}
+//?} else {
+package com.iamkaf.konfig.impl.v1;
+
+import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.*;
+import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
+import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.*;
 
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.mojang.blaze3d.platform.InputConstants;
+//? if >=26.1 {
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+//?} elif >=1.20 {
+import net.minecraft.client.gui.GuiGraphics;
+//?} else {
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiComponent;
+//?}
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -15,23 +99,19 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.9 {
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+//?}
 import net.minecraft.core.Registry;
 
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Block;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,6 +131,9 @@ public final class KonfigConfigScreen extends Screen {
 
     private final Screen parent;
     private final String modIdFilter;
+//? if >=26.1 {
+    private final String screenTitle;
+//?}
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
     private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
@@ -63,13 +146,20 @@ public final class KonfigConfigScreen extends Screen {
     private int statusColor = 0xFFFF8080;
 
     public KonfigConfigScreen(Screen parent) {
+//? if >=26.1 {
+        this(parent, null, null);
+//?} else {
         this(parent, null);
+//?}
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter) {
         super(translate("konfig.screen.title"));
         this.parent = parent;
         this.modIdFilter = modIdFilter;
+//? if >=26.1 {
+        this.screenTitle = null;
+//?}
         this.entries = collectEntries(modIdFilter);
         if (KonfigDebugConfig.enabled()) {
             Constants.LOG.info(
@@ -87,6 +177,31 @@ public final class KonfigConfigScreen extends Screen {
             }
         }
     }
+
+//? if >=26.1 {
+    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
+        super(translate("konfig.screen.title"));
+        this.parent = parent;
+        this.modIdFilter = modIdFilter;
+        this.screenTitle = screenTitle;
+        this.entries = collectEntries(modIdFilter);
+        if (KonfigDebugConfig.enabled()) {
+            Constants.LOG.info(
+                    "[Konfig/Debug] creating screen parent={} modFilter={} entries={}",
+                    parent == null ? "null" : parent.getClass().getName(),
+                    modIdFilter == null ? "<all>" : modIdFilter,
+                    this.entries.size()
+            );
+        }
+        for (EntryRef entry : this.entries) {
+            Object value = entry.value.get();
+            this.drafts.put(entry.value, copyDraftValue(entry.value, value));
+            if (entry.editable) {
+                this.sessionStartValues.put(entry.value, snapshotValue(entry.value, value));
+            }
+        }
+    }
+//?}
 
     @Override
     protected void init() {
@@ -113,6 +228,37 @@ public final class KonfigConfigScreen extends Screen {
         this.minecraft.setScreen(this.parent);
     }
 
+//? if >=1.21.9 {
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionClick(event)) {
+            return true;
+        }
+
+        boolean handled = super.mouseClicked(event, doubleClick);
+        RegistryTextInputRow focusedRow = this.findFocusedRegistryRow();
+        if (focusedRow != null) {
+            this.setActiveRegistryRow(focusedRow);
+            focusedRow.activateSuggestions();
+        } else if (this.activeRegistryRow != null && !this.activeRegistryRow.isPointInsideInput(event.x(), event.y())) {
+            this.activeRegistryRow.closeSuggestions();
+        }
+
+        return handled;
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionKey(event)) {
+            return true;
+        }
+        boolean handled = super.keyPressed(event);
+        if (this.activeRegistryRow != null && this.activeRegistryRow.isFocused()) {
+            this.activeRegistryRow.refreshSuggestions();
+        }
+        return handled;
+    }
+//?} else {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionClick(mouseX, mouseY)) {
@@ -142,28 +288,91 @@ public final class KonfigConfigScreen extends Screen {
         }
         return handled;
     }
+//?}
 
+//? if >=26.1 {
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        this.renderedRegistryRow = null;
+        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+        super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+        this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
+    }
+//?} elif >=1.20 {
+    @Override
+    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        this.renderedRegistryRow = null;
+        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
+    }
+//?} else {
     @Override
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
-        GuiComponent.fill(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+        this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
+    }
+//?}
 
-        drawCenteredString(guiGraphics, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
-        this.font.draw(guiGraphics, text(entryCountText()), 12, 12, 0xFFC0C0C0);
-
-        if (!this.statusMessage.isEmpty()) {
-            drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
-        }
-
+//? if >=26.1 {
+    private void renderMainScreenChrome(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
+        drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
+        this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
-            drawCenteredString(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
-
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
     }
+//?} elif >=1.20 {
+    private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
+        drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
+        this.renderMainStatus(guiGraphics);
+        if (this.entries.isEmpty()) {
+            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+        }
+        if (this.renderedRegistryRow != null) {
+            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+        }
+    }
+//?} else {
+    private void renderMainScreenChrome(PoseStack guiGraphics, int mouseX, int mouseY) {
+        drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
+        drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
+        this.renderMainStatus(guiGraphics);
+        if (this.entries.isEmpty()) {
+            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+        }
+        if (this.renderedRegistryRow != null) {
+            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+        }
+    }
+//?}
+
+//? if >=26.1 {
+    private void renderMainStatus(GuiGraphicsExtractor guiGraphics) {
+        if (!this.statusMessage.isEmpty()) {
+            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+        }
+    }
+//?} elif >=1.20 {
+    private void renderMainStatus(GuiGraphics guiGraphics) {
+        if (!this.statusMessage.isEmpty()) {
+            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+        }
+    }
+//?} else {
+    private void renderMainStatus(PoseStack guiGraphics) {
+        if (!this.statusMessage.isEmpty()) {
+            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+        }
+    }
+//?}
 
     private void rebuildScreenWidgets() {
         this.clearWidgets();
@@ -175,8 +384,8 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         int footerY = this.height - 26;
-        this.addRenderableWidget(new Button(this.width / 2 - 82, footerY, 80, 20, translate("konfig.screen.reset"), button -> this.resetEntries()));
-        this.addRenderableWidget(new Button(this.width / 2 + 2, footerY, 80, 20, translate("konfig.screen.done"), button -> this.onClose()));
+        this.addRenderableWidget(button(this.width / 2 - 82, footerY, 80, 20, translate("konfig.screen.reset"), button -> this.resetEntries()));
+        this.addRenderableWidget(button(this.width / 2 + 2, footerY, 80, 20, translate("konfig.screen.done"), button -> this.onClose()));
     }
 
     private ConfigRow createRow(EntryRef entry) {
@@ -269,170 +478,14 @@ public final class KonfigConfigScreen extends Screen {
         return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
     }
 
-    private static List<EntryRef> collectEntries(String modIdFilter) {
-        List<EntryRef> result = new ArrayList<EntryRef>();
-
-        for (ConfigHandleImpl handle : KonfigManager.get().all()) {
-            if (modIdFilter != null && !modIdFilter.equals(handle.modId())) {
-                continue;
-            }
-            for (ConfigValue<?> value : handle.values()) {
-                if (!(value instanceof ConfigValueImpl)) {
-                    continue;
-                }
-
-                ConfigValueImpl<?> impl = (ConfigValueImpl<?>) value;
-                if (!isVisibleOnThisSide(impl)) {
-                    continue;
-                }
-
-                boolean editable = impl.kind() != EntryKind.CUSTOM;
-                result.add(new EntryRef(handle, impl, editable));
-            }
+//? if >=26.1 {
+    private Component screenTitle() {
+        if (this.screenTitle != null && !this.screenTitle.isBlank()) {
+            return text(this.screenTitle);
         }
-
-        Collections.sort(result, Comparator.comparing(entry -> entry.handle.id() + ":" + entry.value.path()));
-        return result;
+        return this.title;
     }
-
-    private static boolean isVisibleOnThisSide(ConfigValueImpl<?> value) {
-        if (value.clientOnly() && !RuntimeEnvironment.isClient()) {
-            return false;
-        }
-        if (value.serverOnly() && RuntimeEnvironment.isClient()) {
-            return false;
-        }
-        return true;
-    }
-
-    private static Object parseDraft(ConfigValueImpl<?> value, Object draft) {
-        try {
-            switch (value.kind()) {
-                case BOOLEAN:
-                    return parseBoolean(draft, value.path());
-                case INTEGER:
-                    return Integer.valueOf(Integer.parseInt(stringValue(draft).trim()));
-                case LONG:
-                    return Long.valueOf(Long.parseLong(stringValue(draft).trim()));
-                case DOUBLE:
-                    return Double.valueOf(Double.parseDouble(stringValue(draft).trim()));
-                case STRING:
-                    return stringValue(draft);
-                case STRING_LIST:
-                    return parseStringList(draft, value.path());
-                case ENUM:
-                    return parseEnum(value, draft);
-                case COLOR_RGB:
-                    return Integer.valueOf(parseColor(value, draft));
-                case COLOR_ARGB:
-                    return Integer.valueOf(parseColor(value, draft));
-                case CUSTOM:
-                default:
-                    return value.get();
-            }
-        } catch (NumberFormatException numberFormatException) {
-            throw new IllegalArgumentException("Invalid number for '" + value.path() + "'.");
-        }
-    }
-
-    private static Boolean parseBoolean(Object draft, String path) {
-        if (draft instanceof Boolean) {
-            return (Boolean) draft;
-        }
-
-        String value = stringValue(draft).trim();
-        if ("true".equalsIgnoreCase(value)) {
-            return Boolean.TRUE;
-        }
-        if ("false".equalsIgnoreCase(value)) {
-            return Boolean.FALSE;
-        }
-        throw new IllegalArgumentException("Invalid boolean for '" + path + "' (expected true/false).");
-    }
-
-    private static Object parseEnum(ConfigValueImpl<?> value, Object draft) {
-        Object defaultValue = value.defaultValue();
-        if (!(defaultValue instanceof Enum<?>)) {
-            return defaultValue;
-        }
-
-        Class<?> enumClass = defaultValue.getClass();
-        if (enumClass.isInstance(draft)) {
-            return draft;
-        }
-
-        String target = stringValue(draft);
-        Object[] constants = enumClass.getEnumConstants();
-        for (Object constant : constants) {
-            if (((Enum<?>) constant).name().equalsIgnoreCase(target)) {
-                return constant;
-            }
-        }
-
-        throw new IllegalArgumentException("Invalid value for '" + value.path() + "'.");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<String> parseStringList(Object draft, String path) {
-        if (draft instanceof List<?>) {
-            return StringListValueHelper.immutableCopy((List<String>) draft, path);
-        }
-        throw new IllegalArgumentException("Invalid list for '" + path + "'.");
-    }
-
-    private static int parseColor(ConfigValueImpl<?> value, Object draft) {
-        if (draft instanceof Number) {
-            int encoded = ((Number) draft).intValue();
-            if (value.kind() == EntryKind.COLOR_RGB) {
-                return ColorValueHelper.requireRgb(encoded, value.path());
-            }
-            return encoded;
-        }
-
-        String raw = stringValue(draft);
-        if (value.kind() == EntryKind.COLOR_ARGB) {
-            return ColorValueHelper.parseArgb(raw, value.path());
-        }
-        return ColorValueHelper.parseRgb(raw, value.path());
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void setRawValue(ConfigValueImpl<?> value, Object parsed) {
-        ((ConfigValue) value).set(parsed);
-    }
-
-    private static String stringValue(Object value) {
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    private static boolean sameValue(Object left, Object right) {
-        return left == right || (left != null && left.equals(right));
-    }
-
-    private static Object snapshotValue(ConfigValueImpl<?> value, Object currentValue) {
-        if (value.kind() == EntryKind.STRING_LIST) {
-            return StringListValueHelper.immutableCopy(stringListValue(currentValue, value.path()), value.path());
-        }
-        return currentValue;
-    }
-
-    private static Object copyDraftValue(ConfigValueImpl<?> value, Object currentValue) {
-        if (value.kind() == EntryKind.STRING_LIST) {
-            return StringListValueHelper.mutableCopy(stringListValue(currentValue, value.path()));
-        }
-        return currentValue;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<String> stringListValue(Object currentValue, String path) {
-        if (currentValue == null) {
-            return Collections.emptyList();
-        }
-        if (!(currentValue instanceof List<?>)) {
-            throw new IllegalArgumentException("Expected list value for '" + path + "'.");
-        }
-        return (List<String>) currentValue;
-    }
+//?}
 
     private boolean readBoolean(ConfigValueImpl<?> value) {
         Object current = this.drafts.get(value);
@@ -527,218 +580,6 @@ public final class KonfigConfigScreen extends Screen {
         return stringValue(value.get());
     }
 
-    private static double progressFor(double current, double min, double max) {
-        double span = max - min;
-        if (span <= 0.0D) {
-            return 0.0D;
-        }
-        return Mth.clamp((current - min) / span, 0.0D, 1.0D);
-    }
-
-    private static int intFromProgress(double progress, int min, int max) {
-        if (max <= min) {
-            return min;
-        }
-        return min + (int) Math.round((max - min) * progress);
-    }
-
-    private static long longFromProgress(double progress, long min, long max) {
-        if (max <= min) {
-            return min;
-        }
-        return min + Math.round((max - min) * progress);
-    }
-
-    private static double doubleFromProgress(double progress, double min, double max) {
-        if (max <= min) {
-            return min;
-        }
-        return min + (max - min) * progress;
-    }
-
-    private static String formatDouble(double value) {
-        String formatted = String.format(Locale.ROOT, "%.3f", value);
-        while (formatted.contains(".") && (formatted.endsWith("0") || formatted.endsWith("."))) {
-            formatted = formatted.substring(0, formatted.length() - 1);
-        }
-        return formatted;
-    }
-
-    private static void drawColorSwatch(PoseStack guiGraphics, int x, int y, int size, int color, EntryKind kind) {
-        GuiComponent.fill(guiGraphics, x - 1, y - 1, x + size + 1, y + size + 1, 0xFF202020);
-        if (kind == EntryKind.COLOR_ARGB && ColorValueHelper.alpha(color) < 255) {
-            int cell = Math.max(2, size / 4);
-            for (int row = 0; row < size; row += cell) {
-                for (int column = 0; column < size; column += cell) {
-                    boolean dark = ((row / cell) + (column / cell)) % 2 == 0;
-                    GuiComponent.fill(guiGraphics, 
-                            x + column,
-                            y + row,
-                            x + Math.min(size, column + cell),
-                            y + Math.min(size, row + cell),
-                            dark ? 0xFF707070 : 0xFFC0C0C0
-                    );
-                }
-            }
-        } else {
-            GuiComponent.fill(guiGraphics, x, y, x + size, y + size, 0xFFFFFFFF);
-        }
-        GuiComponent.fill(guiGraphics, x, y, x + size, y + size, ColorValueHelper.toRenderColor(kind, color));
-    }
-
-    private static ResourceLocation parseIdentifier(String value) {
-        if (isBlank(value)) {
-            return null;
-        }
-
-        try {
-            return ResourceLocation.tryParse(value.trim());
-        } catch (Exception ignored) {
-            return null;
-        }
-    }
-
-    private static boolean supportsRegistryIcon(ResourceKey<? extends Registry<?>> registryKey) {
-        return registryKey == Registry.ITEM_REGISTRY || registryKey == Registry.BLOCK_REGISTRY;
-    }
-
-    private static ItemStack registryIconStack(ResourceKey<? extends Registry<?>> registryKey, String value) {
-        if (!supportsRegistryIcon(registryKey)) {
-            return ItemStack.EMPTY;
-        }
-
-        ResourceLocation identifier = parseIdentifier(value);
-        if (identifier == null) {
-            return ItemStack.EMPTY;
-        }
-
-        if (registryKey == Registry.ITEM_REGISTRY) {
-            Item item = Registry.ITEM.get(identifier);
-            if (item != null && item != Items.AIR) {
-                return new ItemStack(item);
-            }
-            return ItemStack.EMPTY;
-        }
-
-        Block block = Registry.BLOCK.get(identifier);
-        if (block == null) {
-            return ItemStack.EMPTY;
-        }
-
-        Item item = block.asItem();
-        if (item == null || item == Items.AIR) {
-            return ItemStack.EMPTY;
-        }
-        return new ItemStack(item);
-    }
-
-    private static void renderRegistryIcon(PoseStack guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
-        ItemStack stack = registryIconStack(registryKey, value);
-        if (!stack.isEmpty()) {
-            Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(stack, x, y);
-        }
-    }
-
-    private static String normalizeHexInput(String value) {
-        if (value == null) {
-            return "";
-        }
-        String normalized = value.trim();
-        if (normalized.startsWith("#")) {
-            normalized = normalized.substring(1);
-        } else if (normalized.regionMatches(true, 0, "0x", 0, 2)) {
-            normalized = normalized.substring(2);
-        }
-        return normalized.toUpperCase(Locale.ROOT);
-    }
-
-    private static boolean isHexPrefix(String value) {
-        for (int i = 0; i < value.length(); i++) {
-            if (Character.digit(value.charAt(i), 16) < 0) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private static Component translate(String key, Object... args) {
-        return new TranslatableComponent(key, args);
-    }
-
-    private static Component text(String value) {
-        return new TextComponent(value == null ? "" : value);
-    }
-
-    private static Component translatedLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
-        String key = "konfig.config." + handle.modId() + "." + handle.name() + "." + value.path();
-        Component translated = translate(key);
-        return key.equals(translated.getString()) ? text(fallbackLabel(handle, value)) : translated;
-    }
-
-    private static Component contextLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
-        List<String> parts = new ArrayList<String>();
-        parts.add(prettySegment(handle.name()));
-        String[] pathParts = value.path().split("\\.");
-        for (int i = 0; i < pathParts.length - 1; i++) {
-            parts.add(prettySegment(pathParts[i]));
-        }
-        return text(String.join(" / ", parts));
-    }
-
-    private static String fallbackLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
-        List<String> parts = new ArrayList<String>();
-        parts.add(prettySegment(handle.name()));
-        String[] pathParts = value.path().split("\\.");
-        for (String pathPart : pathParts) {
-            parts.add(prettySegment(pathPart));
-        }
-        return String.join(" > ", parts);
-    }
-
-    private static String prettySegment(String raw) {
-        if (raw == null || raw.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder builder = new StringBuilder(raw.length());
-        boolean capitalizeNext = true;
-        for (int i = 0; i < raw.length(); i++) {
-            char character = raw.charAt(i);
-            if (character == '_' || character == '-' || character == '.') {
-                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
-                    builder.append(' ');
-                }
-                capitalizeNext = true;
-                continue;
-            }
-
-            if (capitalizeNext) {
-                builder.append(Character.toUpperCase(character));
-                capitalizeNext = false;
-            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
-                builder.append(' ').append(character);
-            } else {
-                builder.append(Character.toLowerCase(character));
-            }
-        }
-        if (builder.length() > 0) {
-            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
-        }
-        return builder.toString().trim();
-    }
-
-    private static List<Component> tooltipLines(String tooltip) {
-        List<Component> lines = new ArrayList<Component>();
-        String normalized = tooltip.replace('\r', '\n');
-        for (String line : normalized.split("\\n")) {
-            lines.add(text(line));
-        }
-        return lines;
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
 
     private RegistryTextInputRow findFocusedRegistryRow() {
         if (this.list == null) {
@@ -782,80 +623,19 @@ public final class KonfigConfigScreen extends Screen {
         return immutable;
     }
 
-    @SuppressWarnings("unchecked")
-    private static Registry<?> builtInRegistry(ResourceKey<? extends Registry<?>> registryKey) {
-        if (registryKey == null || !Registry.REGISTRY.containsKey(registryKey.location())) {
-            return null;
-        }
-        return (Registry<?>) Registry.REGISTRY.get(registryKey.location());
-    }
-
-    private static List<String> filterRegistrySuggestions(List<String> allSuggestions, String query) {
-        if (allSuggestions.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        List<String> exact = new ArrayList<String>();
-        List<String> prefix = new ArrayList<String>();
-        List<String> contains = new ArrayList<String>();
-
-        for (String candidate : allSuggestions) {
-            String lowerCandidate = candidate.toLowerCase(Locale.ROOT);
-            String pathCandidate = registryPath(lowerCandidate);
-            if (normalized.isEmpty()) {
-                prefix.add(candidate);
-                continue;
-            }
-            if (lowerCandidate.equals(normalized) || pathCandidate.equals(normalized)) {
-                exact.add(candidate);
-            } else if (lowerCandidate.startsWith(normalized) || pathCandidate.startsWith(normalized)) {
-                prefix.add(candidate);
-            } else if (lowerCandidate.contains(normalized) || pathCandidate.contains(normalized)) {
-                contains.add(candidate);
-            }
-        }
-
-        List<String> result = new ArrayList<String>(SUGGESTION_LIMIT);
-        appendSuggestions(result, exact);
-        appendSuggestions(result, prefix);
-        appendSuggestions(result, contains);
-        return result;
-    }
-
-    private static void appendSuggestions(List<String> target, List<String> source) {
-        for (String value : source) {
-            if (target.size() >= SUGGESTION_LIMIT) {
-                return;
-            }
-            target.add(value);
-        }
-    }
-
-    private static String registryPath(String registryId) {
-        int separator = registryId.indexOf(':');
-        return separator >= 0 ? registryId.substring(separator + 1) : registryId;
-    }
-
-    private static String suggestionSuffix(String currentValue, String suggestion) {
-        if (isBlank(suggestion)) {
-            return "";
-        }
-        String current = currentValue == null ? "" : currentValue;
-        if (current.isEmpty()) {
-            return suggestion;
-        }
-        if (suggestion.regionMatches(true, 0, current, 0, current.length())) {
-            return suggestion.substring(current.length());
-        }
-        return "";
-    }
 
     private final class EntryList extends ContainerObjectSelectionList<ConfigRow> {
         private EntryList(net.minecraft.client.Minecraft minecraft, int width, int height, int y) {
+//? if >=1.20.3 {
+            super(minecraft, width, height, y, ROW_HEIGHT);
+//?} else {
             super(minecraft, width, height, y, y + height, ROW_HEIGHT);
+//?}
+//? if <=1.16.3 {
+            this.setRenderHeader(false, 0);
+//?} elif <=1.20.4 {
             this.setRenderBackground(false);
-            this.setRenderTopAndBottom(false);
+//?}
         }
 
         private void addKonfigEntry(ConfigRow row) {
@@ -867,15 +647,41 @@ public final class KonfigConfigScreen extends Screen {
             return KonfigConfigScreen.this.width - 28;
         }
 
+//? if <=1.20.6 {
         @Override
         protected int getScrollbarPosition() {
+//? if >=1.20.3 {
+            return this.getRight() - 6;
+//?} else {
             return this.x1 - 6;
+//?}
         }
+//?}
 
+//? if >=26.1 {
+        @Override
+        public void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+            fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+            super.extractWidgetRenderState(guiGraphics, mouseX, mouseY, partialTick);
+        }
+//?} elif >=1.20.3 {
+        @Override
+        public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+            super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
+        }
+//?} elif >=1.20 {
+        @Override
+        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+            super.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
+//?} else {
         @Override
         protected void renderBackground(PoseStack guiGraphics) {
-            GuiComponent.fill(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+            fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
         }
+//?}
     }
 
     private abstract class ConfigRow extends ContainerObjectSelectionList.Entry<ConfigRow> {
@@ -890,31 +696,97 @@ public final class KonfigConfigScreen extends Screen {
         protected void tick() {
         }
 
+        protected final RowLayout rowLayout(int x, int y, int width, int height) {
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+            return new RowLayout(x, y, width, height, controlWidth, x + width - controlWidth, y + (height - CONTROL_HEIGHT) / 2);
+        }
+
+//? if >=26.1 {
+        protected final void renderStandardRow(GuiGraphicsExtractor guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
+            if (hovered) {
+                fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
+            }
+
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+            layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
+            renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
+        }
+
+        protected final void renderColorRow(GuiGraphicsExtractor guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
+            drawColorSwatch(guiGraphics, previewX, previewY, ColorRow.PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+        }
+//?} elif >=1.20 {
+        protected final void renderStandardRow(GuiGraphics guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
+            if (hovered) {
+                fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
+            }
+
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+            layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
+            renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
+        }
+
+        protected final void renderColorRow(GuiGraphics guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
+            drawColorSwatch(guiGraphics, previewX, previewY, ColorRow.PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+        }
+//?} else {
+        protected final void renderStandardRow(PoseStack guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
+            if (hovered) {
+                fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
+            }
+
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+            layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
+            renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
+        }
+
+        protected final void renderColorRow(PoseStack guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
+            drawColorSwatch(guiGraphics, previewX, previewY, ColorRow.PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+        }
+//?}
+
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        }
+//?} elif >=1.20 {
+        @Override
+        public void render(GuiGraphics guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            this.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
+        }
+
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(x, y, width, height);
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        }
+//?} else {
         @Override
         public void render(PoseStack guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             this.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
         }
 
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            if (hovered) {
-                GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
-            }
-
-            if (!isBlank(this.entry.tooltip)) {
-                if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
-                }
-            }
-
-            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
-            int controlX = x + width - controlWidth;
-            int controlY = y + (height - CONTROL_HEIGHT) / 2;
-            layoutControl(this.control(), controlX, controlY, controlWidth);
-
-            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
-            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
-            this.control().render(guiGraphics, mouseX, mouseY, partialTick);
+            RowLayout layout = this.rowLayout(x, y, width, height);
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
         }
+//?}
 
         @Override
         public List<? extends GuiEventListener> children() {
@@ -927,8 +799,13 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         protected final void layoutControl(AbstractWidget control, int x, int y, int width) {
+//? if >=1.20 {
+            control.setX(x);
+            control.setY(y);
+//?} else {
             control.x = x;
             control.y = y;
+//?}
             control.setWidth(width);
         }
 
@@ -952,7 +829,7 @@ public final class KonfigConfigScreen extends Screen {
 
         private UnsupportedRow(EntryRef entry) {
             super(entry);
-            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, translate("konfig.screen.unsupported"), ignored -> {
+            this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, translate("konfig.screen.unsupported"), ignored -> {
             });
             this.button.active = false;
         }
@@ -968,7 +845,7 @@ public final class KonfigConfigScreen extends Screen {
 
         private BooleanRow(EntryRef entry) {
             super(entry);
-            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, booleanText(entry.value), button -> {
+            this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, booleanText(entry.value), button -> {
                 Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
                 KonfigConfigScreen.this.drafts.put(entry.value, Boolean.valueOf(!KonfigConfigScreen.this.readBoolean(entry.value)));
                 this.commitOrRevert(previousDraft);
@@ -992,7 +869,7 @@ public final class KonfigConfigScreen extends Screen {
 
         private EnumRow(EntryRef entry) {
             super(entry);
-            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, enumText(entry, KonfigConfigScreen.this.currentEnum(entry.value)), button -> {
+            this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, enumText(entry, KonfigConfigScreen.this.currentEnum(entry.value)), button -> {
                 Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
                 KonfigConfigScreen.this.drafts.put(entry.value, KonfigConfigScreen.this.cycleEnum(entry.value));
                 this.commitOrRevert(previousDraft);
@@ -1019,7 +896,7 @@ public final class KonfigConfigScreen extends Screen {
 
         private ColorRow(EntryRef entry) {
             super(entry);
-            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, colorText(entry.value), ignored -> {
+            this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, colorText(entry.value), ignored -> {
                 KonfigConfigScreen.this.minecraft.setScreen(new ColorEditorScreen(entry));
             });
         }
@@ -1034,28 +911,58 @@ public final class KonfigConfigScreen extends Screen {
             this.button.setMessage(colorText(this.entry.value));
         }
 
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
+            int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
+            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY);
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
+            int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
+            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY);
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(x, y, width, height);
+            int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
+            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY);
+        }
+//?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            if (hovered) {
-                GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
-            }
+            RowLayout layout = this.rowLayout(x, y, width, height);
+            int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
+            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY);
+        }
+//?}
+    }
 
-            if (!isBlank(this.entry.tooltip)) {
-                if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
-                }
-            }
+    private static final class RowLayout {
+        private final int x;
+        private final int y;
+        private final int width;
+        private final int height;
+        private final int controlWidth;
+        private final int controlX;
+        private final int controlY;
 
-            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
-            int previewX = x + width - controlWidth - PREVIEW_GAP - PREVIEW_SIZE;
-            int previewY = y + (height - PREVIEW_SIZE) / 2;
-            int buttonWidth = controlWidth;
-            layoutControl(this.control(), x + width - buttonWidth, y + (height - CONTROL_HEIGHT) / 2, buttonWidth);
-
-            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
-            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, 0xFFFFFFFF);
-            drawColorSwatch(guiGraphics, previewX, previewY, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
-            this.control().render(guiGraphics, mouseX, mouseY, partialTick);
+        private RowLayout(int x, int y, int width, int height, int controlWidth, int controlX, int controlY) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.controlWidth = controlWidth;
+            this.controlX = controlX;
+            this.controlY = controlY;
         }
     }
 
@@ -1067,7 +974,7 @@ public final class KonfigConfigScreen extends Screen {
 
         private StringListRow(EntryRef entry) {
             super(entry);
-            this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, stringListText(entry.value), ignored -> {
+            this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, stringListText(entry.value), ignored -> {
                 KonfigConfigScreen.this.minecraft.setScreen(new StringListEditorScreen(entry));
             });
         }
@@ -1082,6 +989,63 @@ public final class KonfigConfigScreen extends Screen {
             this.button.setMessage(stringListText(this.entry.value));
         }
 
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.extractContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
+            if (!this.entry.value.hasBoundRegistry() || !supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                return;
+            }
+
+            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
+            if (values.isEmpty()) {
+                return;
+            }
+
+            int previewX = this.button.getX() - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = this.button.getY() + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
+            renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), values.get(0), previewX, previewY);
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.renderContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
+            if (!this.entry.value.hasBoundRegistry() || !supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                return;
+            }
+
+            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
+            if (values.isEmpty()) {
+                return;
+            }
+
+            int previewX = this.button.getX() - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = this.button.getY() + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
+            renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), values.get(0), previewX, previewY);
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
+            if (!this.entry.value.hasBoundRegistry() || !supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                return;
+            }
+
+            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
+            if (values.isEmpty()) {
+                return;
+            }
+
+//? if >=1.20 {
+            int previewX = this.button.getX() - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = this.button.getY() + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
+//?} else {
+            int previewX = this.button.x - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = this.button.y + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
+//?}
+            renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), values.get(0), previewX, previewY);
+        }
+//?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
@@ -1094,15 +1058,21 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
+//? if >=1.20 {
+            int previewX = this.button.getX() - PREVIEW_GAP - PREVIEW_SIZE;
+            int previewY = this.button.getY() + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
+//?} else {
             int previewX = this.button.x - PREVIEW_GAP - PREVIEW_SIZE;
             int previewY = this.button.y + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
+//?}
             renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), values.get(0), previewX, previewY);
         }
+//?}
     }
 
     private abstract class BaseSliderWidget extends AbstractSliderButton {
         private BaseSliderWidget(double initialProgress) {
-            super(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, TextComponent.EMPTY, initialProgress);
+            super(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, text(""), initialProgress);
         }
 
         protected final void syncToProgress(double progress) {
@@ -1161,6 +1131,24 @@ public final class KonfigConfigScreen extends Screen {
                 IntegerSliderRow.this.updateDraftFromSlider(this.value);
             }
 
+//? if >=1.21.9 {
+            @Override
+            public void onRelease(MouseButtonEvent event) {
+                Object previousValue = IntegerSliderRow.this.entry.value.get();
+                super.onRelease(event);
+                IntegerSliderRow.this.commitOrRevert(previousValue);
+            }
+
+            @Override
+            public boolean keyPressed(KeyEvent event) {
+                int previousValue = IntegerSliderRow.this.currentValue();
+                boolean handled = super.keyPressed(event);
+                if (handled && previousValue != IntegerSliderRow.this.currentValue()) {
+                    IntegerSliderRow.this.commitOrRevert(Integer.valueOf(previousValue));
+                }
+                return handled;
+            }
+//?} else {
             @Override
             public void onRelease(double mouseX, double mouseY) {
                 Object previousValue = IntegerSliderRow.this.entry.value.get();
@@ -1177,6 +1165,7 @@ public final class KonfigConfigScreen extends Screen {
                 }
                 return handled;
             }
+//?}
         }
     }
 
@@ -1230,6 +1219,24 @@ public final class KonfigConfigScreen extends Screen {
                 LongSliderRow.this.updateDraftFromSlider(this.value);
             }
 
+//? if >=1.21.9 {
+            @Override
+            public void onRelease(MouseButtonEvent event) {
+                Object previousValue = LongSliderRow.this.entry.value.get();
+                super.onRelease(event);
+                LongSliderRow.this.commitOrRevert(previousValue);
+            }
+
+            @Override
+            public boolean keyPressed(KeyEvent event) {
+                long previousValue = LongSliderRow.this.currentValue();
+                boolean handled = super.keyPressed(event);
+                if (handled && previousValue != LongSliderRow.this.currentValue()) {
+                    LongSliderRow.this.commitOrRevert(Long.valueOf(previousValue));
+                }
+                return handled;
+            }
+//?} else {
             @Override
             public void onRelease(double mouseX, double mouseY) {
                 Object previousValue = LongSliderRow.this.entry.value.get();
@@ -1246,6 +1253,7 @@ public final class KonfigConfigScreen extends Screen {
                 }
                 return handled;
             }
+//?}
         }
     }
 
@@ -1299,6 +1307,24 @@ public final class KonfigConfigScreen extends Screen {
                 DoubleSliderRow.this.updateDraftFromSlider(this.value);
             }
 
+//? if >=1.21.9 {
+            @Override
+            public void onRelease(MouseButtonEvent event) {
+                Object previousValue = DoubleSliderRow.this.entry.value.get();
+                super.onRelease(event);
+                DoubleSliderRow.this.commitOrRevert(previousValue);
+            }
+
+            @Override
+            public boolean keyPressed(KeyEvent event) {
+                double previousValue = DoubleSliderRow.this.currentValue();
+                boolean handled = super.keyPressed(event);
+                if (handled && !sameValue(Double.valueOf(previousValue), Double.valueOf(DoubleSliderRow.this.currentValue()))) {
+                    DoubleSliderRow.this.commitOrRevert(Double.valueOf(previousValue));
+                }
+                return handled;
+            }
+//?} else {
             @Override
             public void onRelease(double mouseX, double mouseY) {
                 Object previousValue = DoubleSliderRow.this.entry.value.get();
@@ -1315,6 +1341,7 @@ public final class KonfigConfigScreen extends Screen {
                 }
                 return handled;
             }
+//?}
         }
     }
 
@@ -1376,38 +1403,33 @@ public final class KonfigConfigScreen extends Screen {
             this.refreshSuggestions();
         }
 
+//? if >=26.1 {
         @Override
-        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
             if (hovered) {
-                GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
-            }
-
-            if (!isBlank(this.entry.tooltip)) {
-                if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
-                }
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
 
             int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
-            int controlX = x + width - controlWidth;
-            int controlY = y + (height - CONTROL_HEIGHT) / 2;
-            layoutControl(this.control(), controlX, controlY, controlWidth);
-            this.lastInputX = controlX;
-            this.lastInputY = controlY;
-            this.lastInputWidth = controlWidth;
+            int labelRight = x + width - controlWidth - 8;
+            int inputX = labelRight + 8;
+            int inputWidth = controlWidth;
+            int inputY = y + (height - CONTROL_HEIGHT) / 2;
+            this.input.setX(inputX);
+            this.input.setY(inputY);
+            this.input.setWidth(inputWidth);
+            this.lastInputX = inputX;
+            this.lastInputY = inputY;
+            this.lastInputWidth = inputWidth;
 
-            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
-            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, 0xFFFFFFFF);
-            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
-                renderRegistryIcon(
-                        guiGraphics,
-                        this.entry.value.boundRegistryKey(),
-                        KonfigConfigScreen.this.currentStringValue(this.entry.value),
-                        controlX - ICON_GAP - ICON_SIZE,
-                        y + (height - ICON_SIZE) / 2
-                );
-            }
-            this.input.render(guiGraphics, mouseX, mouseY, partialTick);
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, labelRight, y + height);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
+            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
 
             if (this.input.isFocused()) {
                 KonfigConfigScreen.this.setActiveRegistryRow(this);
@@ -1417,6 +1439,125 @@ public final class KonfigConfigScreen extends Screen {
                 KonfigConfigScreen.this.renderedRegistryRow = this;
             }
         }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
+            }
+
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
+
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+            int controlX = x + width - controlWidth;
+            int controlY = y + (height - CONTROL_HEIGHT) / 2;
+            layoutControl(this.control(), controlX, controlY, controlWidth);
+            this.lastInputX = controlX;
+            this.lastInputY = controlY;
+            this.lastInputWidth = controlWidth;
+
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
+            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                renderRegistryIcon(
+                        guiGraphics,
+                        this.entry.value.boundRegistryKey(),
+                        KonfigConfigScreen.this.currentStringValue(this.entry.value),
+                        controlX - ICON_GAP - ICON_SIZE,
+                        y + (height - ICON_SIZE) / 2
+                );
+            }
+            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+
+            if (this.input.isFocused()) {
+                KonfigConfigScreen.this.setActiveRegistryRow(this);
+                this.refreshSuggestions();
+            }
+            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                KonfigConfigScreen.this.renderedRegistryRow = this;
+            }
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
+            }
+
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+            int controlX = x + width - controlWidth;
+            int controlY = y + (height - CONTROL_HEIGHT) / 2;
+            layoutControl(this.control(), controlX, controlY, controlWidth);
+            this.lastInputX = controlX;
+            this.lastInputY = controlY;
+            this.lastInputWidth = controlWidth;
+
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
+            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                renderRegistryIcon(
+                        guiGraphics,
+                        this.entry.value.boundRegistryKey(),
+                        KonfigConfigScreen.this.currentStringValue(this.entry.value),
+                        controlX - ICON_GAP - ICON_SIZE,
+                        y + (height - ICON_SIZE) / 2
+                );
+            }
+            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+
+            if (this.input.isFocused()) {
+                KonfigConfigScreen.this.setActiveRegistryRow(this);
+                this.refreshSuggestions();
+            }
+            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                KonfigConfigScreen.this.renderedRegistryRow = this;
+            }
+        }
+//?} else {
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
+            }
+
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+            int controlX = x + width - controlWidth;
+            int controlY = y + (height - CONTROL_HEIGHT) / 2;
+            layoutControl(this.control(), controlX, controlY, controlWidth);
+            this.lastInputX = controlX;
+            this.lastInputY = controlY;
+            this.lastInputWidth = controlWidth;
+
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
+            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                renderRegistryIcon(
+                        guiGraphics,
+                        this.entry.value.boundRegistryKey(),
+                        KonfigConfigScreen.this.currentStringValue(this.entry.value),
+                        controlX - ICON_GAP - ICON_SIZE,
+                        y + (height - ICON_SIZE) / 2
+                );
+            }
+            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+
+            if (this.input.isFocused()) {
+                KonfigConfigScreen.this.setActiveRegistryRow(this);
+                this.refreshSuggestions();
+            }
+            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                KonfigConfigScreen.this.renderedRegistryRow = this;
+            }
+        }
+//?}
 
         public boolean isFocused() {
             return this.input.isFocused();
@@ -1487,37 +1628,86 @@ public final class KonfigConfigScreen extends Screen {
             }
         }
 
+//? if >=26.1 {
+        private void renderSuggestions(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+//?} elif >=1.20 {
+        private void renderSuggestions(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+//?} else {
         private void renderSuggestions(PoseStack guiGraphics, int mouseX, int mouseY) {
+//?}
             if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
                 return;
             }
 
             this.layoutSuggestionBox();
-            GuiComponent.fill(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            GuiComponent.fill(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
+            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
 
             for (int index = 0; index < this.visibleSuggestions.size(); index++) {
                 int rowY = this.lastDropdownY + 2 + (index * SUGGESTION_ROW_HEIGHT);
                 int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                 boolean hovered = index == this.hoveredSuggestionIndex(mouseX, mouseY);
                 if (hovered || index == this.selectedSuggestionIndex) {
-                    GuiComponent.fill(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, hovered ? 0x80406080 : 0x50303030);
+                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, hovered ? 0x80406080 : 0x50303030);
                 }
                 int textX = this.lastDropdownX + 4;
                 if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
                     renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), this.visibleSuggestions.get(index), this.lastDropdownX + 2, rowY - 1);
                     textX += 18;
                 }
-                KonfigConfigScreen.this.font.draw(
-                        guiGraphics,
-                        text(this.visibleSuggestions.get(index)),
-                        (float) textX,
-                        (float) (rowY + 3),
-                        0xFFFFFFFF
-                );
+                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.visibleSuggestions.get(index)), textX, rowY + 3, 0xFFFFFFFF);
             }
         }
 
+//? if >=1.21.9 {
+        private boolean handleSuggestionClick(MouseButtonEvent event) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                return false;
+            }
+
+            int hovered = this.hoveredSuggestionIndex((int) event.x(), (int) event.y());
+            if (hovered < 0) {
+                return false;
+            }
+
+            this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+            return true;
+        }
+
+        private boolean handleSuggestionKey(KeyEvent event) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this) {
+                return false;
+            }
+
+            int keyCode = event.key();
+            if (keyCode == InputConstants.KEY_ESCAPE) {
+                this.dismissSuggestions();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
+                this.dismissSuggestions();
+                return true;
+            }
+            if (this.visibleSuggestions.isEmpty()) {
+                return false;
+            }
+            if (keyCode == InputConstants.KEY_DOWN) {
+                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                this.updateInlineSuggestion();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_UP) {
+                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                this.updateInlineSuggestion();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_TAB) {
+                this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                return true;
+            }
+            return false;
+        }
+//?} else {
         private boolean handleSuggestionClick(double mouseX, double mouseY) {
             if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
                 return false;
@@ -1564,6 +1754,7 @@ public final class KonfigConfigScreen extends Screen {
             }
             return false;
         }
+//?}
 
         private void acceptSuggestion(String suggestion) {
             this.suppressResponder = true;
@@ -1572,7 +1763,11 @@ public final class KonfigConfigScreen extends Screen {
             KonfigConfigScreen.this.drafts.put(this.entry.value, suggestion);
             KonfigConfigScreen.this.persistEntry(this.entry);
             this.dismissSuggestions();
+//? if >=1.20 {
+            this.input.setFocused(true);
+//?} else {
             this.input.setFocus(true);
+//?}
         }
 
         private void updateInlineSuggestion() {
@@ -1698,15 +1893,37 @@ public final class KonfigConfigScreen extends Screen {
             this.statusColor = KonfigConfigScreen.this.statusColor;
         }
 
-        protected final void renderEditorChrome(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
-            GuiComponent.fill(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
-            super.render(guiGraphics, mouseX, mouseY, partialTick);
-            drawCenteredString(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
-            this.font.draw(guiGraphics, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+//? if >=26.1 {
+        protected final void renderEditorChrome(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+            fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+            super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
+            drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
+            drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
             if (!this.statusMessage.isEmpty()) {
-                drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+                drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
             }
         }
+//?} elif >=1.20 {
+        protected final void renderEditorChrome(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+            super.render(guiGraphics, mouseX, mouseY, partialTick);
+            drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
+            drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+            if (!this.statusMessage.isEmpty()) {
+                drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+            }
+        }
+//?} else {
+        protected final void renderEditorChrome(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+            fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+            super.render(guiGraphics, mouseX, mouseY, partialTick);
+            drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
+            drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+            if (!this.statusMessage.isEmpty()) {
+                drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+            }
+        }
+//?}
     }
 
     private enum ColorChannel {
@@ -1760,22 +1977,38 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             int footerY = this.height - 26;
-            this.addRenderableWidget(new Button(this.width / 2 - 122, footerY, 80, 20, translate("konfig.screen.reset"), ignored -> {
+            this.addRenderableWidget(button(this.width / 2 - 122, footerY, 80, 20, translate("konfig.screen.reset"), ignored -> {
                 if (this.resetToSessionStart()) {
                     this.syncWidgetsFromDraft();
                 }
             }));
-            this.addRenderableWidget(new Button(this.width / 2 + 42, footerY, 80, 20, translate("konfig.screen.done"), ignored -> this.onClose()));
+            this.addRenderableWidget(button(this.width / 2 + 42, footerY, 80, 20, translate("konfig.screen.done"), ignored -> this.onClose()));
 
             this.syncWidgetsFromDraft();
         }
 
+//? if >=26.1 {
+        @Override
+        public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+            this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
+            int previewX = this.width / 2 - PREVIEW_SIZE / 2;
+            drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+        }
+//?} elif >=1.20 {
+        @Override
+        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
+            int previewX = this.width / 2 - PREVIEW_SIZE / 2;
+            drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+        }
+//?} else {
         @Override
         public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             int previewX = this.width / 2 - PREVIEW_SIZE / 2;
             drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
         }
+//?}
 
         @Override
         public void tick() {
@@ -1894,8 +2127,13 @@ public final class KonfigConfigScreen extends Screen {
             private ChannelSlider(ColorChannel channel, int x, int y) {
                 super(ColorEditorScreen.this.currentChannel(channel) / 255.0D);
                 this.channel = channel;
+//? if >=1.20 {
+                this.setX(x);
+                this.setY(y);
+//?} else {
                 this.x = x;
                 this.y = y;
+//?}
                 this.setWidth(SLIDER_WIDTH);
                 this.updateMessage();
             }
@@ -1914,6 +2152,29 @@ public final class KonfigConfigScreen extends Screen {
                 KonfigConfigScreen.this.drafts.put(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, intFromProgress(this.value, 0, 255))));
             }
 
+//? if >=1.21.9 {
+            @Override
+            public void onRelease(MouseButtonEvent event) {
+                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                super.onRelease(event);
+                if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
+                    ColorEditorScreen.this.syncWidgetsFromDraft();
+                }
+            }
+
+            @Override
+            public boolean keyPressed(KeyEvent event) {
+                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                int before = ColorEditorScreen.this.currentChannel(this.channel);
+                boolean handled = super.keyPressed(event);
+                if (handled && before != ColorEditorScreen.this.currentChannel(this.channel)) {
+                    if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
+                        ColorEditorScreen.this.syncWidgetsFromDraft();
+                    }
+                }
+                return handled;
+            }
+//?} else {
             @Override
             public void onRelease(double mouseX, double mouseY) {
                 Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
@@ -1935,6 +2196,7 @@ public final class KonfigConfigScreen extends Screen {
                 }
                 return handled;
             }
+//?}
         }
     }
 
@@ -1954,20 +2216,80 @@ public final class KonfigConfigScreen extends Screen {
             this.rebuildEditorWidgets();
         }
 
+//? if >=26.1 {
         @Override
-        public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+        public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             this.renderedRegistryRow = null;
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
-            this.font.draw(guiGraphics, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
+            drawText(guiGraphics, this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
             if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
-                drawCenteredString(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
+                drawCenteredText(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
             }
             if (this.renderedRegistryRow != null) {
                 this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
             }
         }
+//?} elif >=1.20 {
+        @Override
+        public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+            this.renderedRegistryRow = null;
+            this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
+            String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
+            drawText(guiGraphics, this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
+            if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
+                drawCenteredText(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
+            }
+            if (this.renderedRegistryRow != null) {
+                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+            }
+        }
+//?} else {
+        @Override
+        public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+            this.renderedRegistryRow = null;
+            this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
+            String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
+            drawText(guiGraphics, this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
+            if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
+                drawCenteredText(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
+            }
+            if (this.renderedRegistryRow != null) {
+                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+            }
+        }
+//?}
 
+//? if >=1.21.9 {
+        @Override
+        public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+            if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionClick(event)) {
+                return true;
+            }
+
+            boolean handled = super.mouseClicked(event, doubleClick);
+            ListEntryRow focusedRow = this.findFocusedRegistryRow();
+            if (focusedRow != null) {
+                this.setActiveRegistryRow(focusedRow);
+                focusedRow.activateSuggestions();
+            } else if (this.activeRegistryRow != null && !this.activeRegistryRow.isPointInsideInput(event.x(), event.y())) {
+                this.activeRegistryRow.closeSuggestions();
+            }
+            return handled;
+        }
+
+        @Override
+        public boolean keyPressed(KeyEvent event) {
+            if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionKey(event)) {
+                return true;
+            }
+            boolean handled = super.keyPressed(event);
+            if (this.activeRegistryRow != null && this.activeRegistryRow.isFocused() && this.activeRegistryRow.hasRegistryBinding()) {
+                this.activeRegistryRow.refreshSuggestions();
+            }
+            return handled;
+        }
+//?} else {
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionClick(mouseX, mouseY)) {
@@ -1996,6 +2318,7 @@ public final class KonfigConfigScreen extends Screen {
             }
             return handled;
         }
+//?}
 
         @Override
         public void tick() {
@@ -2021,13 +2344,13 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             int footerY = this.height - 26;
-            this.addRenderableWidget(new Button(this.width / 2 - 122, footerY, 80, 20, translate("konfig.screen.list.add"), ignored -> this.addValue()));
-            this.addRenderableWidget(new Button(this.width / 2 - 40, footerY, 80, 20, translate("konfig.screen.reset"), ignored -> {
+            this.addRenderableWidget(button(this.width / 2 - 122, footerY, 80, 20, translate("konfig.screen.list.add"), ignored -> this.addValue()));
+            this.addRenderableWidget(button(this.width / 2 - 40, footerY, 80, 20, translate("konfig.screen.reset"), ignored -> {
                 if (this.resetToSessionStart()) {
                     this.rebuildEditorWidgets();
                 }
             }));
-            this.addRenderableWidget(new Button(this.width / 2 + 42, footerY, 80, 20, translate("konfig.screen.done"), ignored -> this.onClose()));
+            this.addRenderableWidget(button(this.width / 2 + 42, footerY, 80, 20, translate("konfig.screen.done"), ignored -> this.onClose()));
         }
 
         private void addValue() {
@@ -2064,9 +2387,16 @@ public final class KonfigConfigScreen extends Screen {
 
         private final class ListEntryList extends ContainerObjectSelectionList<ListEntryRow> {
             private ListEntryList(net.minecraft.client.Minecraft minecraft, int width, int height, int y) {
+//? if >=1.20.3 {
+                super(minecraft, width, height, y, ITEM_ROW_HEIGHT);
+//?} else {
                 super(minecraft, width, height, y, y + height, ITEM_ROW_HEIGHT);
+//?}
+//? if <=1.16.3 {
+                this.setRenderHeader(false, 0);
+//?} elif <=1.20.4 {
                 this.setRenderBackground(false);
-                this.setRenderTopAndBottom(false);
+//?}
             }
 
             private void addListEntry(ListEntryRow row) {
@@ -2078,15 +2408,41 @@ public final class KonfigConfigScreen extends Screen {
                 return StringListEditorScreen.this.width - 28;
             }
 
+//? if <=1.20.6 {
             @Override
             protected int getScrollbarPosition() {
+//? if >=1.20.3 {
+                return this.getRight() - 6;
+//?} else {
                 return this.x1 - 6;
+//?}
             }
+//?}
 
+//? if >=26.1 {
+            @Override
+            public void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+                fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+                super.extractWidgetRenderState(guiGraphics, mouseX, mouseY, partialTick);
+            }
+//?} elif >=1.20.3 {
+            @Override
+            public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+                fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+                super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
+            }
+//?} elif >=1.20 {
+            @Override
+            public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+                fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+                super.render(guiGraphics, mouseX, mouseY, partialTick);
+            }
+//?} else {
             @Override
             protected void renderBackground(PoseStack guiGraphics) {
-                GuiComponent.fill(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+                fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
             }
+//?}
         }
 
         private final class ListEntryRow extends ContainerObjectSelectionList.Entry<ListEntryRow> {
@@ -2118,9 +2474,9 @@ public final class KonfigConfigScreen extends Screen {
                 this.input.setValue(value);
                 this.input.setResponder(this::onValueChanged);
 
-                this.moveUpButton = new Button(0, 0, 20, 20, text("^"), ignored -> this.move(-1));
-                this.moveDownButton = new Button(0, 0, 20, 20, text("v"), ignored -> this.move(1));
-                this.removeButton = new Button(0, 0, 20, 20, text("-"), ignored -> this.remove());
+                this.moveUpButton = button(0, 0, 20, 20, text("^"), ignored -> this.move(-1));
+                this.moveDownButton = button(0, 0, 20, 20, text("v"), ignored -> this.move(1));
+                this.removeButton = button(0, 0, 20, 20, text("-"), ignored -> this.remove());
             }
 
             private void tick() {
@@ -2204,10 +2560,186 @@ public final class KonfigConfigScreen extends Screen {
                 }
             }
 
+//? if >=26.1 {
+            @Override
+            public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+                int x = this.getContentX();
+                int y = this.getContentY();
+                int width = this.getContentWidth();
+                if (hovered) {
+                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
+                }
+
+                int buttonY = y + 4;
+                int removeX = x + width - 20;
+                int downX = removeX - 24;
+                int upX = downX - 24;
+                int iconOffset = 0;
+                if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
+                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
+                    iconOffset = ICON_SIZE + ICON_GAP;
+                }
+                int inputX = x + iconOffset;
+                int inputWidth = Math.max(60, upX - inputX - 8);
+
+                this.input.setX(inputX);
+                this.input.setY(buttonY);
+                this.input.setWidth(inputWidth);
+                this.lastInputX = inputX;
+                this.lastInputY = buttonY;
+                this.lastInputWidth = inputWidth;
+
+                this.moveUpButton.setX(upX);
+                this.moveUpButton.setY(buttonY);
+                this.moveUpButton.active = this.index > 0;
+
+                this.moveDownButton.setX(downX);
+                this.moveDownButton.setY(buttonY);
+                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
+
+                this.removeButton.setX(removeX);
+                this.removeButton.setY(buttonY);
+
+                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
+
+                if (this.hasRegistryBinding() && this.input.isFocused()) {
+                    StringListEditorScreen.this.setActiveRegistryRow(this);
+                    this.refreshSuggestions();
+                }
+                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                    StringListEditorScreen.this.renderedRegistryRow = this;
+                }
+            }
+//?} elif >=1.21.9 {
+            @Override
+            public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+                int x = this.getContentX();
+                int y = this.getContentY();
+                int width = this.getContentWidth();
+                if (hovered) {
+                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
+                }
+
+                int buttonY = y + 4;
+                int removeX = x + width - 20;
+                int downX = removeX - 24;
+                int upX = downX - 24;
+                int iconOffset = 0;
+                if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
+                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
+                    iconOffset = ICON_SIZE + ICON_GAP;
+                }
+                int inputX = x + iconOffset;
+                int inputWidth = Math.max(60, upX - inputX - 8);
+
+                this.input.setX(inputX);
+                this.input.setY(buttonY);
+                this.input.setWidth(inputWidth);
+                this.lastInputX = inputX;
+                this.lastInputY = buttonY;
+                this.lastInputWidth = inputWidth;
+
+                this.moveUpButton.setX(upX);
+                this.moveUpButton.setY(buttonY);
+                this.moveUpButton.active = this.index > 0;
+
+                this.moveDownButton.setX(downX);
+                this.moveDownButton.setY(buttonY);
+                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
+
+                this.removeButton.setX(removeX);
+                this.removeButton.setY(buttonY);
+
+                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
+
+                if (this.hasRegistryBinding() && this.input.isFocused()) {
+                    StringListEditorScreen.this.setActiveRegistryRow(this);
+                    this.refreshSuggestions();
+                }
+                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                    StringListEditorScreen.this.renderedRegistryRow = this;
+                }
+            }
+//?} elif >=1.20 {
+            @Override
+            public void render(GuiGraphics guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+                if (hovered) {
+                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
+                }
+
+                int buttonY = y + 4;
+                int removeX = x + width - 20;
+                int downX = removeX - 24;
+                int upX = downX - 24;
+                int iconOffset = 0;
+                if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
+                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
+                    iconOffset = ICON_SIZE + ICON_GAP;
+                }
+                int inputX = x + iconOffset;
+                int inputWidth = Math.max(60, upX - inputX - 8);
+
+                this.input.setX(inputX);
+//? if >=1.20 {
+                this.input.setY(buttonY);
+//?} else {
+                this.input.y = buttonY;
+//?}
+                this.input.setWidth(inputWidth);
+                this.lastInputX = inputX;
+                this.lastInputY = buttonY;
+                this.lastInputWidth = inputWidth;
+
+//? if >=1.20 {
+                this.moveUpButton.setX(upX);
+                this.moveUpButton.setY(buttonY);
+//?} else {
+                this.moveUpButton.x = upX;
+                this.moveUpButton.y = buttonY;
+//?}
+                this.moveUpButton.active = this.index > 0;
+
+//? if >=1.20 {
+                this.moveDownButton.setX(downX);
+                this.moveDownButton.setY(buttonY);
+//?} else {
+                this.moveDownButton.x = downX;
+                this.moveDownButton.y = buttonY;
+//?}
+                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
+
+//? if >=1.20 {
+                this.removeButton.setX(removeX);
+                this.removeButton.setY(buttonY);
+//?} else {
+                this.removeButton.x = removeX;
+                this.removeButton.y = buttonY;
+//?}
+
+                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
+
+                if (this.hasRegistryBinding() && this.input.isFocused()) {
+                    StringListEditorScreen.this.setActiveRegistryRow(this);
+                    this.refreshSuggestions();
+                }
+                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                    StringListEditorScreen.this.renderedRegistryRow = this;
+                }
+            }
+//?} else {
             @Override
             public void render(PoseStack guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
                 if (hovered) {
-                    GuiComponent.fill(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
+                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
                 }
 
                 int buttonY = y + 4;
@@ -2240,10 +2772,10 @@ public final class KonfigConfigScreen extends Screen {
                 this.removeButton.x = removeX;
                 this.removeButton.y = buttonY;
 
-                this.input.render(guiGraphics, mouseX, mouseY, partialTick);
-                this.moveUpButton.render(guiGraphics, mouseX, mouseY, partialTick);
-                this.moveDownButton.render(guiGraphics, mouseX, mouseY, partialTick);
-                this.removeButton.render(guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
+                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
 
                 if (this.hasRegistryBinding() && this.input.isFocused()) {
                     StringListEditorScreen.this.setActiveRegistryRow(this);
@@ -2253,6 +2785,7 @@ public final class KonfigConfigScreen extends Screen {
                     StringListEditorScreen.this.renderedRegistryRow = this;
                 }
             }
+//?}
 
             private void refreshSuggestions() {
                 if (!this.hasRegistryBinding()) {
@@ -2311,31 +2844,85 @@ public final class KonfigConfigScreen extends Screen {
                 }
             }
 
+//? if >=26.1 {
+            private void renderSuggestions(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+//?} elif >=1.20 {
+            private void renderSuggestions(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+//?} else {
             private void renderSuggestions(PoseStack guiGraphics, int mouseX, int mouseY) {
+//?}
                 if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
                     return;
                 }
 
                 this.layoutSuggestionBox();
-                GuiComponent.fill(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-                GuiComponent.fill(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
+                fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+                fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
 
                 for (int suggestionIndex = 0; suggestionIndex < this.visibleSuggestions.size(); suggestionIndex++) {
                     int rowY = this.lastDropdownY + 2 + (suggestionIndex * SUGGESTION_ROW_HEIGHT);
                     int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                     boolean suggestionHovered = suggestionIndex == this.hoveredSuggestionIndex(mouseX, mouseY);
                     if (suggestionHovered || suggestionIndex == this.selectedSuggestionIndex) {
-                        GuiComponent.fill(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
+                        fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
                     }
                     int textX = this.lastDropdownX + 4;
                     if (supportsRegistryIcon(this.registryKey())) {
                         renderRegistryIcon(guiGraphics, this.registryKey(), this.visibleSuggestions.get(suggestionIndex), this.lastDropdownX + 2, rowY - 1);
                         textX += 18;
                     }
-                    StringListEditorScreen.this.font.draw(guiGraphics, text(this.visibleSuggestions.get(suggestionIndex)), (float) textX, (float) (rowY + 3), 0xFFFFFFFF);
+                    drawText(guiGraphics, StringListEditorScreen.this.font, text(this.visibleSuggestions.get(suggestionIndex)), textX, rowY + 3, 0xFFFFFFFF);
                 }
             }
 
+//? if >=1.21.9 {
+            private boolean handleSuggestionClick(MouseButtonEvent event) {
+                if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                    return false;
+                }
+
+                int hovered = this.hoveredSuggestionIndex((int) event.x(), (int) event.y());
+                if (hovered < 0) {
+                    return false;
+                }
+
+                this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+                return true;
+            }
+
+            private boolean handleSuggestionKey(KeyEvent event) {
+                if (StringListEditorScreen.this.activeRegistryRow != this) {
+                    return false;
+                }
+                int keyCode = event.key();
+                if (keyCode == InputConstants.KEY_ESCAPE) {
+                    this.dismissSuggestions();
+                    return true;
+                }
+                if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
+                    this.dismissSuggestions();
+                    return true;
+                }
+                if (this.visibleSuggestions.isEmpty()) {
+                    return false;
+                }
+                if (keyCode == InputConstants.KEY_DOWN) {
+                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                    this.updateInlineSuggestion();
+                    return true;
+                }
+                if (keyCode == InputConstants.KEY_UP) {
+                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                    this.updateInlineSuggestion();
+                    return true;
+                }
+                if (keyCode == InputConstants.KEY_TAB) {
+                    this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                    return true;
+                }
+                return false;
+            }
+//?} else {
             private boolean handleSuggestionClick(double mouseX, double mouseY) {
                 if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
                     return false;
@@ -2381,6 +2968,7 @@ public final class KonfigConfigScreen extends Screen {
                 }
                 return false;
             }
+//?}
 
             private void acceptSuggestion(String suggestion) {
                 this.suppressResponder = true;
@@ -2388,7 +2976,11 @@ public final class KonfigConfigScreen extends Screen {
                 this.suppressResponder = false;
                 if (this.persistListValue(suggestion)) {
                     this.dismissSuggestions();
+//? if >=1.20 {
+                    this.input.setFocused(true);
+//?} else {
                     this.input.setFocus(true);
+//?}
                 }
             }
 
@@ -2433,28 +3025,5 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
-    private static final class EntryRef {
-        private final ConfigHandleImpl handle;
-        private final ConfigValueImpl<?> value;
-        private final Component label;
-        private final Component contextLabel;
-        private final String tooltip;
-        private final boolean editable;
-
-        private EntryRef(ConfigHandleImpl handle, ConfigValueImpl<?> value, boolean editable) {
-            this.handle = handle;
-            this.value = value;
-            this.label = translatedLabel(handle, value);
-            this.contextLabel = contextLabel(handle, value);
-            this.tooltip = handle.tooltip(value.path());
-            this.editable = editable;
-        }
-
-        private Component displayLabel() {
-            if (this.editable) {
-                return this.label;
-            }
-            return TextComponent.EMPTY.copy().append(this.label).append(translate("konfig.screen.read_only"));
-        }
-    }
 }
+//?}

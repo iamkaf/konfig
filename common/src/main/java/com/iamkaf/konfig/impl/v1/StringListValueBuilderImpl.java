@@ -2,8 +2,10 @@ package com.iamkaf.konfig.impl.v1;
 
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.StringListValueBuilder;
+//? if >=1.17 {
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
+//?}
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -62,8 +64,13 @@ final class StringListValueBuilderImpl extends ValueBuilderImpl<List<String>> im
     }
 
     @Override
+//? if <=1.16.5 {
+    public StringListValueBuilder registry(String registryId) {
+        super.bindRegistry(registryId);
+//?} else {
     public StringListValueBuilder registry(ResourceKey<? extends Registry<?>> registryKey) {
         super.bindRegistry(registryKey);
+//?}
         return this;
     }
 

@@ -1,6 +1,6 @@
 package com.iamkaf.konfig.impl.v1;
 
-enum EntryKind {
+public enum EntryKind {
     BOOLEAN,
     INTEGER,
     LONG,

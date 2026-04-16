@@ -1,9 +1,16 @@
 package com.iamkaf.konfig.impl.v1;
 
 import java.nio.file.Path;
+//? if <=1.16.5 {
+import java.nio.file.Paths;
+//?}
 
 public final class RuntimeEnvironment {
+//? if <=1.16.5 {
+    private static volatile Path configDirectory = Paths.get("config");
+//?} else {
     private static volatile Path configDirectory = Path.of("config");
+//?}
     private static volatile boolean client;
     private static volatile boolean initialized;
 

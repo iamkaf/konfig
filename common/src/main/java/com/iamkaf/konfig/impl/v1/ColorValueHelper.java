@@ -2,23 +2,23 @@ package com.iamkaf.konfig.impl.v1;
 
 import java.util.Locale;
 
-final class ColorValueHelper {
+public final class ColorValueHelper {
     private ColorValueHelper() {
     }
 
-    static int requireRgb(int value, String path) {
+    public static int requireRgb(int value, String path) {
         if ((value & 0xFF000000) != 0) {
             throw new IllegalArgumentException("RGB color out of range for '" + path + "'.");
         }
         return value;
     }
 
-    static int parseRgb(String raw, String path) {
+    public static int parseRgb(String raw, String path) {
         String hex = normalizeHex(raw, 6, path);
         return Integer.parseInt(hex, 16);
     }
 
-    static int parseArgb(String raw, String path) {
+    public static int parseArgb(String raw, String path) {
         String hex = normalizeHex(raw, 8, path);
         int red = Integer.parseInt(hex.substring(0, 2), 16);
         int green = Integer.parseInt(hex.substring(2, 4), 16);
@@ -27,11 +27,11 @@ final class ColorValueHelper {
         return argb(alpha, red, green, blue);
     }
 
-    static String formatRgb(int rgb) {
+    public static String formatRgb(int rgb) {
         return '#' + String.format(Locale.ROOT, "%06X", Integer.valueOf(rgb & 0xFFFFFF));
     }
 
-    static String formatArgb(int argb) {
+    public static String formatArgb(int argb) {
         return String.format(
                 Locale.ROOT,
                 "#%02X%02X%02X%02X",
@@ -42,43 +42,43 @@ final class ColorValueHelper {
         );
     }
 
-    static int red(int color) {
+    public static int red(int color) {
         return (color >>> 16) & 0xFF;
     }
 
-    static int green(int color) {
+    public static int green(int color) {
         return (color >>> 8) & 0xFF;
     }
 
-    static int blue(int color) {
+    public static int blue(int color) {
         return color & 0xFF;
     }
 
-    static int alpha(int color) {
+    public static int alpha(int color) {
         return (color >>> 24) & 0xFF;
     }
 
-    static int rgb(int red, int green, int blue) {
+    public static int rgb(int red, int green, int blue) {
         return ((clampByte(red) & 0xFF) << 16)
                 | ((clampByte(green) & 0xFF) << 8)
                 | (clampByte(blue) & 0xFF);
     }
 
-    static int argb(int alpha, int red, int green, int blue) {
+    public static int argb(int alpha, int red, int green, int blue) {
         return ((clampByte(alpha) & 0xFF) << 24)
                 | ((clampByte(red) & 0xFF) << 16)
                 | ((clampByte(green) & 0xFF) << 8)
                 | (clampByte(blue) & 0xFF);
     }
 
-    static int toRenderColor(EntryKind kind, int value) {
+    public static int toRenderColor(EntryKind kind, int value) {
         if (kind == EntryKind.COLOR_RGB) {
             return 0xFF000000 | (value & 0xFFFFFF);
         }
         return value;
     }
 
-    static int expectedDigits(EntryKind kind) {
+    public static int expectedDigits(EntryKind kind) {
         return kind == EntryKind.COLOR_ARGB ? 8 : 6;
     }
 

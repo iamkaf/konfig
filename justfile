@@ -64,7 +64,7 @@ run first="" second="" *rest:
         export PATH="$JAVA_HOME/bin:$PATH"; \
       fi; \
     fi; \
-    ./gradlew "$@" --console=plain; \
+    ./gradlew --configure-on-demand "$@" --console=plain; \
   }; \
   if [ -d "versions/$first" ]; then \
     version="$first"; \
@@ -184,7 +184,7 @@ build node:
     exit 1; \
   fi
   @version="{{node}}"; loader="${version##*-}"; version="${version%-*}"; \
-  ./gradlew ":$loader:$version:build" --console=plain
+  ./gradlew --configure-on-demand ":$loader:$version:build" --console=plain
 
 run-client node:
   @if ! just list-nodes | grep -Fxq "{{node}}"; then \
@@ -193,9 +193,9 @@ run-client node:
   fi
   @version="{{node}}"; loader="${version##*-}"; version="${version%-*}"; \
   if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
-    ./gradlew ":forge:1.16.5:runLegacyClient" --console=plain; \
+    ./gradlew --configure-on-demand ":forge:1.16.5:runLegacyClient" --console=plain; \
   else \
-    ./gradlew ":$loader:$version:runClient" --console=plain; \
+    ./gradlew --configure-on-demand ":$loader:$version:runClient" --console=plain; \
   fi
 
 build-all:
@@ -215,7 +215,7 @@ boot-check node timeout="60":
   fi; \
   log="/tmp/konfig-$node.run.log"; \
   set +e; \
-  timeout "{{timeout}}"s ./gradlew "$gradle_task" --console=plain > "$log" 2>&1; \
+  timeout "{{timeout}}"s ./gradlew --configure-on-demand "$gradle_task" --console=plain > "$log" 2>&1; \
   status=$?; \
   set -e; \
   if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then \
@@ -229,4 +229,58 @@ boot-check-all timeout="60":
   @for node in $(just list-nodes); do \
     echo "==> $node"; \
     just boot-check "$node" "{{timeout}}"; \
+  done
+
+teakit-boot-check node timeout="60":
+  @if ! just list-nodes | grep -Fxq "{{node}}"; then \
+    echo "Unknown node: {{node}}"; \
+    exit 1; \
+  fi
+  @node="{{node}}"; \
+  version="${node%-*}"; \
+  loader="${node##*-}"; \
+  catalog="/home/kaf/code/mods/version-catalog/mc-$version/gradle/libs.versions.toml"; \
+  if [ ! -f "$catalog" ] || ! rg -q '^teakit = ' "$catalog"; then \
+    echo "TeaKit is not configured in the shared catalog for $version"; \
+    exit 1; \
+  fi; \
+  gradle_task=":$loader:$version:runClient"; \
+  latest_log="$loader/versions/$version/run/logs/latest.log"; \
+  if [ "$loader" = "fabric" ]; then \
+    latest_log="$loader/versions/$version/runs/client/logs/latest.log"; \
+  fi; \
+  if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
+    gradle_task=":forge:1.16.5:runLegacyClient"; \
+  fi; \
+  rm -f "$latest_log"; \
+  ./gradlew --configure-on-demand "$gradle_task" --console=plain \
+    -Dkonfig.withTeaKit=true \
+    -Dteakit.autoExitTitle=true \
+    -Dteakit.autoExitTitleDelayMs=2500; \
+  grep -q 'Konfig initialized' "$latest_log"; \
+  grep -q 'Initializing TeaKit on' "$latest_log"; \
+  grep -q 'TeaKit scheduling clean shutdown from title screen' "$latest_log"; \
+  echo "TeaKit boot OK: $node"
+
+teakit-boot-check-all timeout="60":
+  @for node in $(just list-nodes); do \
+    version="${node%-*}"; \
+    catalog="/home/kaf/code/mods/version-catalog/mc-$version/gradle/libs.versions.toml"; \
+    if [ -f "$catalog" ] && rg -q '^teakit = ' "$catalog"; then \
+      echo "==> $node"; \
+      just teakit-boot-check "$node" "{{timeout}}"; \
+    fi; \
+  done
+
+scenario-check node timeout="240":
+  @./scripts/config-menu-scenario-node.sh "{{node}}" "{{timeout}}"
+
+scenario-check-all timeout="240":
+  @for node in $(just list-nodes); do \
+    version="${node%-*}"; \
+    catalog="/home/kaf/code/mods/version-catalog/mc-$version/gradle/libs.versions.toml"; \
+    if [ -f "$catalog" ] && rg -q '^teakit = ' "$catalog"; then \
+      echo "==> $node"; \
+      just scenario-check "$node" "{{timeout}}"; \
+    fi; \
   done

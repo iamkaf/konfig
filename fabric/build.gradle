@@ -5,18 +5,68 @@ plugins {
 
 def nightConfigVersion = requiredProp(project, 'nightconfig_version')
 def minecraftVersion = requiredProp(project, 'project.minecraft')
+def javaVersion = requiredProp(project, 'project.java').toInteger()
 def isModernLine = !minecraftVersion.startsWith('1.')
 def libs = catalogFor(project, minecraftVersion)
+def modMenu = libs.findLibrary('modmenu')
+def teaKit = libs.findLibrary('teakit-fabric')
+def modMenuVersion = versionOrNull(libs, 'modmenu')
+def teaKitVersion = versionOrNull(libs, 'teakit')
+def hasModMenu = modMenu.present && modMenuVersion != null && modMenuVersion != 'null'
+def hasTeaKit = teaKit.present && teaKitVersion != null && teaKitVersion != 'null'
+def useTeaKit = providers.systemProperty('konfig.withTeaKit')
+    .orElse(providers.gradleProperty('konfig.withTeaKit'))
+    .map { it.toBoolean() }
+    .orElse(false)
+    .get()
+def useLegacyPre1165ModMenu = ['1.14.4', '1.15.2', '1.16', '1.16.1', '1.16.2', '1.16.3', '1.16.4'].contains(minecraftVersion)
+def useLegacy1165ModMenu = ['1.16.5', '1.17', '1.17.1'].contains(minecraftVersion)
+def useLegacyPre116SharedScreen = ['1.14.4', '1.15', '1.15.1', '1.15.2'].contains(minecraftVersion)
+def useLegacy116SharedScreen = minecraftVersion == '1.16' || minecraftVersion.startsWith('1.16.')
+def useLegacyTeaKitJvm = useTeaKit && !isModernLine && javaVersion < 16
+
+tasks.named('stageMergedJavaSources').configure {
+    if (useLegacyPre1165ModMenu) {
+        from rootProject.file('fabric/src/legacy-pre1165/java')
+    }
+    if (useLegacy1165ModMenu) {
+        from rootProject.file('fabric/src/legacy-1.16.5/java')
+    }
+    if (useLegacyPre116SharedScreen) {
+        from rootProject.file('fabric/src/legacy-pre116/java')
+    }
+    if (!(useLegacyPre116SharedScreen || useLegacy116SharedScreen)) {
+        exclude 'com/iamkaf/konfig/fabric/KonfigConfigScreen.java'
+    }
+    if (!hasModMenu) {
+        exclude 'com/iamkaf/konfig/fabric/KonfigModMenuApi.java'
+    }
+}
+
+if (useLegacyTeaKitJvm) {
+    def java17Launcher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(17)
+    }
+
+    tasks.configureEach { task ->
+        if (task.name == 'runClient' && task.hasProperty('javaLauncher')) {
+            task.javaLauncher.set(java17Launcher)
+        }
+    }
+}
 
 dependencies {
     if (isModernLine) {
-        implementation library(libs, 'fabric-api')
         implementation(include("com.electronwill.night-config:core:${nightConfigVersion}"))
         implementation(include("com.electronwill.night-config:toml:${nightConfigVersion}"))
-        compileOnly library(libs, 'modmenu')
-        runtimeOnly(libs.findLibrary('modmenu').get()) { transitive = false }
+        if (hasModMenu) {
+            compileOnly modMenu.get()
+            runtimeOnly(modMenu.get()) { transitive = false }
+        }
+        if (useTeaKit && hasTeaKit) {
+            runtimeOnly teaKit.get()
+        }
     } else {
-        modImplementation library(libs, 'fabric-api')
         if (minecraftVersion == '1.18.2') {
             modImplementation('net.fabricmc:fabric-loader:0.14.9') {
                 version { strictly '0.14.9' }
@@ -24,7 +74,12 @@ dependencies {
         }
         implementation(include("com.electronwill.night-config:core:${nightConfigVersion}"))
         implementation(include("com.electronwill.night-config:toml:${nightConfigVersion}"))
-        modCompileOnly library(libs, 'modmenu')
-        modLocalRuntime(libs.findLibrary('modmenu').get()) { transitive = false }
+        if (hasModMenu) {
+            modCompileOnly modMenu.get()
+            modLocalRuntime(modMenu.get()) { transitive = false }
+        }
+        if (useTeaKit && hasTeaKit) {
+            modLocalRuntime teaKit.get()
+        }
     }
 }

@@ -3,15 +3,17 @@ package com.iamkaf.konfig.impl.v1;
 import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
+//? if >=1.17 {
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
+//?}
 
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
-final class ConfigValueImpl<T> implements ConfigValue<T> {
+public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final String path;
     private final T defaultValue;
     private final EntryKind kind;
@@ -26,7 +28,11 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
+//? if <=1.16.5 {
+    private final String boundRegistryId;
+//?} else {
     private final ResourceKey<? extends Registry<?>> boundRegistryKey;
+//?}
 
     private volatile T localValue;
     private volatile T syncedValue;
@@ -46,7 +52,11 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
             RestartRequirement restartRequirement,
             Number rangeMin,
             Number rangeMax,
+//? if <=1.16.5 {
+            String boundRegistryId
+//?} else {
             ResourceKey<? extends Registry<?>> boundRegistryKey
+//?}
     ) {
         this.path = path;
         this.canonicalizer = canonicalizer == null ? UnaryOperator.identity() : canonicalizer;
@@ -62,7 +72,11 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
+//? if <=1.16.5 {
+        this.boundRegistryId = boundRegistryId;
+//?} else {
         this.boundRegistryKey = boundRegistryKey;
+//?}
         this.localValue = this.defaultValue;
     }
 
@@ -116,45 +130,55 @@ final class ConfigValueImpl<T> implements ConfigValue<T> {
         return this.encoder.apply(this.localValue);
     }
 
-    boolean sync() {
+    public boolean sync() {
         return this.sync;
     }
 
-    boolean clientOnly() {
+    public boolean clientOnly() {
         return this.clientOnly;
     }
 
-    boolean serverOnly() {
+    public boolean serverOnly() {
         return this.serverOnly;
     }
 
-    RestartRequirement restartRequirement() {
+    public RestartRequirement restartRequirement() {
         return this.restartRequirement;
     }
 
-    boolean hasNumericRange() {
+    public boolean hasNumericRange() {
         return this.rangeMin != null && this.rangeMax != null;
     }
 
-    Number rangeMin() {
+    public Number rangeMin() {
         return this.rangeMin;
     }
 
-    Number rangeMax() {
+    public Number rangeMax() {
         return this.rangeMax;
     }
 
-    EntryKind kind() {
+    public EntryKind kind() {
         return this.kind;
     }
 
-    boolean hasBoundRegistry() {
+    public boolean hasBoundRegistry() {
+//? if <=1.16.5 {
+        return this.boundRegistryId != null && !this.boundRegistryId.isEmpty();
+//?} else {
         return this.boundRegistryKey != null;
+//?}
     }
 
+//? if <=1.16.5 {
+    public String boundRegistryId() {
+        return this.boundRegistryId;
+    }
+//?} else {
     ResourceKey<? extends Registry<?>> boundRegistryKey() {
         return this.boundRegistryKey;
     }
+//?}
 
     private T validateOrFallback(T value) {
         if (value == null) {

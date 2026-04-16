@@ -1,0 +1,8 @@
+{
+  "pack": {
+    "pack_format": 81,
+    "min_format": 81,
+    "max_format": 81,
+    "description": "${mod_name} resources"
+  }
+}

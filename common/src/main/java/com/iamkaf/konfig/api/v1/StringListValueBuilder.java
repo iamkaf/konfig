@@ -1,7 +1,9 @@
 package com.iamkaf.konfig.api.v1;
 
+//? if >=1.17 {
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
+//?}
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -25,5 +27,9 @@ public interface StringListValueBuilder extends ValueBuilder<List<String>> {
     @Override
     StringListValueBuilder validate(Predicate<List<String>> validator, String errorMessage);
 
+//? if <=1.16.5 {
+    StringListValueBuilder registry(String registryId);
+//?} else {
     StringListValueBuilder registry(ResourceKey<? extends Registry<?>> registryKey);
+//?}
 }

@@ -1,0 +1,33 @@
+{
+  "name": "konfig-title-config-fabric-legacy",
+  "steps": [
+    {
+      "action": "wait_ms",
+      "durationMs": 1500
+    },
+    {
+      "action": "activate_widget",
+      "label": "Mods",
+      "contains": true,
+      "waitAfterMs": 800
+    },
+    {
+      "action": "activate_widget",
+      "label": "Configure...",
+      "waitAfterMs": 800
+    },
+    {
+      "action": "wait_for_screen",
+      "screenClass": "com.iamkaf.konfig.fabric.KonfigConfigScreen",
+      "timeoutMs": 10000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
+      "label": "Enable Debug Logging",
+      "timeoutMs": 10000,
+      "pollMs": 100
+    }
+  ],
+  "cleanup": []
+}

@@ -1,3 +1,20 @@
 plugins {
     id 'com.iamkaf.multiloader.neoforge'
 }
+
+def minecraftVersion = requiredProp(project, 'project.minecraft')
+def libs = catalogFor(project, minecraftVersion)
+def teaKit = libs.findLibrary('teakit-neoforge')
+def teaKitVersion = versionOrNull(libs, 'teakit')
+def hasTeaKit = teaKit.present && teaKitVersion != null && teaKitVersion != 'null'
+def useTeaKit = providers.systemProperty('konfig.withTeaKit')
+    .orElse(providers.gradleProperty('konfig.withTeaKit'))
+    .map { it.toBoolean() }
+    .orElse(false)
+    .get()
+
+dependencies {
+    if (useTeaKit && hasTeaKit) {
+        runtimeOnly teaKit.get()
+    }
+}

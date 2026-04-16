@@ -7,11 +7,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-final class StringListValueHelper {
+public final class StringListValueHelper {
     private StringListValueHelper() {
     }
 
-    static List<String> immutableCopy(List<String> values, String path) {
+    public static List<String> immutableCopy(List<String> values, String path) {
         if (values == null) {
             throw new IllegalArgumentException("List value cannot be null for '" + path + "'.");
         }
@@ -26,11 +26,11 @@ final class StringListValueHelper {
         return Collections.unmodifiableList(copy);
     }
 
-    static List<String> mutableCopy(List<String> values) {
+    public static List<String> mutableCopy(List<String> values) {
         return values == null ? new ArrayList<String>() : new ArrayList<String>(values);
     }
 
-    static List<String> decode(JsonElement element, String path) {
+    public static List<String> decode(JsonElement element, String path) {
         if (element == null || !element.isJsonArray()) {
             throw new IllegalArgumentException("Expected string list for '" + path + "'.");
         }
@@ -47,7 +47,7 @@ final class StringListValueHelper {
         return immutableCopy(values, path);
     }
 
-    static JsonArray encode(List<String> values, String path) {
+    public static JsonArray encode(List<String> values, String path) {
         List<String> copy = immutableCopy(values, path);
         JsonArray array = new JsonArray();
         for (String value : copy) {

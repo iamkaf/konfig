@@ -6,7 +6,9 @@ import com.iamkaf.konfig.api.v1.ConfigScope;
 import com.iamkaf.konfig.api.v1.SyncMode;
 import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.KonfigManager;
+//? if >=1.17 {
 import net.minecraft.server.level.ServerPlayer;
+//?}
 
 public final class KonfigSync {
     private static SyncSender sender;
@@ -18,7 +20,11 @@ public final class KonfigSync {
         KonfigSync.sender = sender;
     }
 
+//? if <=1.16.5 {
+    public static void onPlayerJoin(Object player) {
+//?} else {
     public static void onPlayerJoin(ServerPlayer player) {
+//?}
         if (sender == null) {
             return;
         }
@@ -42,7 +48,11 @@ public final class KonfigSync {
                 Constants.LOG.info(
                         "[Konfig/Debug] Syncing '{}' to player '{}' ({} bytes).",
                         handle.id(),
+//? if <=1.16.5 {
+                        String.valueOf(player),
+//?} else {
                         player.getName().getString(),
+//?}
                         payload.length()
                 );
             }
@@ -51,7 +61,11 @@ public final class KonfigSync {
         if (debug) {
             Constants.LOG.info(
                     "[Konfig/Debug] Player join sync complete for '{}': sent={} totalBytes={}",
+//? if <=1.16.5 {
+                    String.valueOf(player),
+//?} else {
                     player.getName().getString(),
+//?}
                     sentCount,
                     totalBytes
             );
@@ -78,6 +92,10 @@ public final class KonfigSync {
 
     @FunctionalInterface
     public interface SyncSender {
+//? if <=1.16.5 {
+        void send(Object player, SyncSnapshot snapshot);
+//?} else {
         void send(ServerPlayer player, SyncSnapshot snapshot);
+//?}
     }
 }
