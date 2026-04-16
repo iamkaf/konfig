@@ -26,22 +26,17 @@ final class KonfigScreenSupport {
             if (modIdFilter != null && !modIdFilter.equals(handle.modId())) {
                 continue;
             }
-            for (ConfigValue<?> value : handle.values()) {
-                if (!(value instanceof ConfigValueImpl)) {
-                    continue;
-                }
-
-                ConfigValueImpl<?> impl = (ConfigValueImpl<?>) value;
+            for (ConfigValueImpl<?> impl : handle.screenValues()) {
                 if (!isVisibleOnThisSide(impl)) {
                     continue;
                 }
 
-                boolean editable = impl.kind() != EntryKind.CUSTOM;
+                boolean editable = !impl.isDecoration() && impl.kind() != EntryKind.CUSTOM;
                 result.add(new EntryRef(handle, impl, editable));
             }
         }
 
-        Collections.sort(result, Comparator.comparing(entry -> entry.handle.id() + ":" + entry.value.path()));
+        Collections.sort(result, Comparator.comparing(entry -> entry.handle.id()));
         return result;
     }
 

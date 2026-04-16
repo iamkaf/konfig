@@ -118,6 +118,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.net.URI;
+import java.awt.Desktop;
 
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
@@ -126,6 +128,7 @@ public final class KonfigConfigScreen extends Screen {
     private static final int CONTROL_HEIGHT = 20;
     private static final int CONTROL_MIN_WIDTH = 132;
     private static final int CONTROL_MAX_WIDTH = 200;
+    private static final int URL_BUTTON_WIDTH = 60;
     private static final int SUGGESTION_LIMIT = 7;
     private static final int SUGGESTION_ROW_HEIGHT = 14;
 
@@ -226,6 +229,27 @@ public final class KonfigConfigScreen extends Screen {
 
     private void closeScreen() {
         this.minecraft.setScreen(this.parent);
+    }
+
+    private void openInlineUrl(EntryRef entry) {
+        String target = entry.value.inlineUrl();
+        if (isBlank(target)) {
+            this.statusMessage = "Missing decoration URL";
+            this.statusColor = 0xFFFF8080;
+            return;
+        }
+
+        try {
+            if (!Desktop.isDesktopSupported()) {
+                throw new IllegalStateException("Desktop browsing is unavailable");
+            }
+            Desktop.getDesktop().browse(URI.create(target));
+            this.statusMessage = "Opened " + target;
+            this.statusColor = 0xFF80FF80;
+        } catch (Exception exception) {
+            this.statusMessage = "Failed to open " + target;
+            this.statusColor = 0xFFFF8080;
+        }
     }
 
 //? if >=1.21.9 {
@@ -389,6 +413,15 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private ConfigRow createRow(EntryRef entry) {
+        if (entry.value.kind() == EntryKind.BANNER) {
+            return new BannerRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.INLINE_TEXT) {
+            return new InlineTextRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.URL) {
+            return new UrlRow(entry);
+        }
         if (!entry.editable) {
             return new UnsupportedRow(entry);
         }
@@ -838,6 +871,168 @@ public final class KonfigConfigScreen extends Screen {
         protected AbstractWidget control() {
             return this.button;
         }
+    }
+
+    private abstract class DecorationRow extends ConfigRow {
+        private final Button spacer;
+
+        private DecorationRow(EntryRef entry) {
+            super(entry);
+            this.spacer = button(0, 0, 0, 0, text(""), ignored -> {});
+            this.spacer.visible = false;
+            this.spacer.active = false;
+        }
+
+        @Override
+        protected final AbstractWidget control() {
+            return this.spacer;
+        }
+
+        @Override
+        public List<? extends GuiEventListener> children() {
+            return Collections.emptyList();
+        }
+
+        @Override
+        public List<? extends NarratableEntry> narratables() {
+            return Collections.emptyList();
+        }
+    }
+
+    private final class BannerRow extends DecorationRow {
+        private BannerRow(EntryRef entry) {
+            super(entry);
+        }
+
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
+            fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
+            drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
+            fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
+            drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+            fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
+            drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+//?} else {
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+            fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
+            drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+//?}
+    }
+
+    private final class InlineTextRow extends DecorationRow {
+        private InlineTextRow(EntryRef entry) {
+            super(entry);
+        }
+
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 8, y + 10, 0xFFCFCFCF);
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 8, y + 10, 0xFFCFCFCF);
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 8, y + 10, 0xFFCFCFCF);
+        }
+//?} else {
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 8, y + 10, 0xFFCFCFCF);
+        }
+//?}
+    }
+
+    private final class UrlRow extends ConfigRow {
+        private final Button button;
+
+        private UrlRow(EntryRef entry) {
+            super(entry);
+            this.button = button(0, 0, URL_BUTTON_WIDTH, CONTROL_HEIGHT, text("Open"), ignored -> KonfigConfigScreen.this.openInlineUrl(this.entry));
+        }
+
+        @Override
+        protected AbstractWidget control() {
+            return this.button;
+        }
+
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), 0xFF80C8FF);
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), 0xFF80C8FF);
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(x, y, width, height);
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, 0xFF80C8FF);
+        }
+//?} else {
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            RowLayout layout = this.rowLayout(x, y, width, height);
+            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, 0xFF80C8FF);
+        }
+//?}
     }
 
     private final class BooleanRow extends ConfigRow {

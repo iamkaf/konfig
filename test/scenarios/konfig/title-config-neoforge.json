@@ -38,6 +38,27 @@
     },
     {
       "action": "wait_for_list_entry",
+      "label": "Konfig Debug Settings",
+      "contains": true,
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
+      "label": "These entries exist to test Konfig's own screen",
+      "contains": true,
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
+      "label": "Konfig Documentation",
+      "contains": true,
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
       "label": "Enable Debug Logging",
       "contains": false,
       "timeoutMs": 5000,

@@ -28,6 +28,9 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
+    private final boolean persistent;
+    private final String inlineLabel;
+    private final String inlineUrl;
 //? if <=1.16.5 {
     private final String boundRegistryId;
 //?} else {
@@ -52,6 +55,9 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             RestartRequirement restartRequirement,
             Number rangeMin,
             Number rangeMax,
+            boolean persistent,
+            String inlineLabel,
+            String inlineUrl,
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -72,12 +78,89 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
+        this.persistent = persistent;
+        this.inlineLabel = inlineLabel;
+        this.inlineUrl = inlineUrl;
 //? if <=1.16.5 {
         this.boundRegistryId = boundRegistryId;
 //?} else {
         this.boundRegistryKey = boundRegistryKey;
 //?}
         this.localValue = this.defaultValue;
+    }
+
+    ConfigValueImpl(
+            String path,
+            T defaultValue,
+            EntryKind kind,
+            Function<JsonElement, T> decoder,
+            Function<T, JsonElement> encoder,
+            Predicate<T> validator,
+            String validationMessage,
+            UnaryOperator<T> canonicalizer,
+            boolean sync,
+            boolean clientOnly,
+            boolean serverOnly,
+            RestartRequirement restartRequirement,
+            Number rangeMin,
+            Number rangeMax,
+//? if <=1.16.5 {
+            String boundRegistryId
+//?} else {
+            ResourceKey<? extends Registry<?>> boundRegistryKey
+//?}
+    ) {
+        this(
+                path,
+                defaultValue,
+                kind,
+                decoder,
+                encoder,
+                validator,
+                validationMessage,
+                canonicalizer,
+                sync,
+                clientOnly,
+                serverOnly,
+                restartRequirement,
+                rangeMin,
+                rangeMax,
+                true,
+                null,
+                null,
+//? if <=1.16.5 {
+                boundRegistryId
+//?} else {
+                boundRegistryKey
+//?}
+        );
+    }
+
+    static ConfigValueImpl<String> inlineDecoration(String path, EntryKind kind, String label, String url) {
+        return new ConfigValueImpl<String>(
+                path,
+                label,
+                kind,
+                JsonElement::getAsString,
+                com.google.gson.JsonPrimitive::new,
+                value -> true,
+                "Invalid decoration value",
+                UnaryOperator.identity(),
+                false,
+                false,
+                false,
+                RestartRequirement.NONE,
+                null,
+                null,
+                false,
+                label,
+                url,
+//? if <=1.16.5 {
+                null
+//?} else {
+                null
+//?}
+        );
     }
 
     @Override
@@ -160,6 +243,22 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
 
     public EntryKind kind() {
         return this.kind;
+    }
+
+    public boolean persistent() {
+        return this.persistent;
+    }
+
+    public boolean isDecoration() {
+        return this.kind == EntryKind.BANNER || this.kind == EntryKind.INLINE_TEXT || this.kind == EntryKind.URL;
+    }
+
+    public String inlineLabel() {
+        return this.inlineLabel;
+    }
+
+    public String inlineUrl() {
+        return this.inlineUrl;
     }
 
     public boolean hasBoundRegistry() {

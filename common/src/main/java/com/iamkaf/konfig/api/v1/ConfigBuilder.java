@@ -21,6 +21,12 @@ public interface ConfigBuilder {
 
     ConfigBuilder categoryComment(String comment);
 
+    ConfigBuilder banner(String text);
+
+    ConfigBuilder inlineText(String text);
+
+    ConfigBuilder url(String label, String url);
+
     ValueBuilder<Boolean> bool(String key, boolean defaultValue);
 
     ValueBuilder<Integer> intRange(String key, int defaultValue, int min, int max);

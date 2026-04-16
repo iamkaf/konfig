@@ -42,6 +42,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.net.URI;
+import java.awt.Desktop;
 
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
@@ -50,6 +52,7 @@ public final class KonfigConfigScreen extends Screen {
     private static final int CONTROL_HEIGHT = 20;
     private static final int CONTROL_MIN_WIDTH = 132;
     private static final int CONTROL_MAX_WIDTH = 200;
+    private static final int URL_BUTTON_WIDTH = 60;
     private static final int SUGGESTION_LIMIT = 7;
     private static final int SUGGESTION_ROW_HEIGHT = 14;
 
@@ -115,6 +118,27 @@ public final class KonfigConfigScreen extends Screen {
 
     private void closeScreen() {
         this.minecraft.setScreen(this.parent);
+    }
+
+    private void openInlineUrl(EntryRef entry) {
+        String target = entry.value.inlineUrl();
+        if (isBlank(target)) {
+            this.statusMessage = "Missing decoration URL";
+            this.statusColor = 0xFFFF8080;
+            return;
+        }
+
+        try {
+            if (!Desktop.isDesktopSupported()) {
+                throw new IllegalStateException("Desktop browsing is unavailable");
+            }
+            Desktop.getDesktop().browse(URI.create(target));
+            this.statusMessage = "Opened " + target;
+            this.statusColor = 0xFF80FF80;
+        } catch (Exception exception) {
+            this.statusMessage = "Failed to open " + target;
+            this.statusColor = 0xFFFF8080;
+        }
     }
 
     @Override
@@ -189,6 +213,15 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private ConfigRow createRow(EntryRef entry) {
+        if (entry.value.kind() == EntryKind.BANNER) {
+            return new BannerRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.INLINE_TEXT) {
+            return new InlineTextRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.URL) {
+            return new UrlRow(entry);
+        }
         if (!entry.editable) {
             return new UnsupportedRow(entry);
         }
@@ -285,22 +318,17 @@ public final class KonfigConfigScreen extends Screen {
             if (modIdFilter != null && !modIdFilter.equals(handle.modId())) {
                 continue;
             }
-            for (ConfigValue<?> value : handle.values()) {
-                if (!(value instanceof ConfigValueImpl)) {
-                    continue;
-                }
-
-                ConfigValueImpl<?> impl = (ConfigValueImpl<?>) value;
+            for (ConfigValueImpl<?> impl : handle.screenValues()) {
                 if (!isVisibleOnThisSide(impl)) {
                     continue;
                 }
 
-                boolean editable = impl.kind() != EntryKind.CUSTOM;
+                boolean editable = !impl.isDecoration() && impl.kind() != EntryKind.CUSTOM;
                 result.add(new EntryRef(handle, impl, editable));
             }
         }
 
-        Collections.sort(result, Comparator.comparing(entry -> entry.handle.id() + ":" + entry.value.path()));
+        Collections.sort(result, Comparator.comparing(entry -> entry.handle.id()));
         return result;
     }
 
@@ -970,6 +998,89 @@ public final class KonfigConfigScreen extends Screen {
         @Override
         protected AbstractWidget control() {
             return this.button;
+        }
+    }
+
+    private abstract class DecorationRow extends ConfigRow {
+        private final Button spacer;
+
+        private DecorationRow(EntryRef entry) {
+            super(entry);
+            this.spacer = new Button(0, 0, 0, 0, "", ignored -> {});
+            this.spacer.visible = false;
+            this.spacer.active = false;
+        }
+
+        @Override
+        protected final AbstractWidget control() {
+            return this.spacer;
+        }
+
+        @Override
+        public List<? extends GuiEventListener> children() {
+            return Collections.emptyList();
+        }
+    }
+
+    private final class BannerRow extends DecorationRow {
+        private BannerRow(EntryRef entry) {
+            super(entry);
+        }
+
+        @Override
+        protected void renderRow(int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+            }
+            GuiComponent.fill(x, y + 4, x + width, y + height - 4, 0x552B3550);
+            drawCenteredString(KonfigConfigScreen.this.font, this.entry.displayLabel().getString(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+    }
+
+    private final class InlineTextRow extends DecorationRow {
+        private InlineTextRow(EntryRef entry) {
+            super(entry);
+        }
+
+        @Override
+        protected void renderRow(int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                GuiComponent.fill(x, y, x + width, y + height, 0x16000000);
+            }
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+            }
+            KonfigConfigScreen.this.font.draw(this.entry.displayLabel().getString(), x + 8.0F, y + 10.0F, 0xFFCFCFCF);
+        }
+    }
+
+    private final class UrlRow extends ConfigRow {
+        private final Button button;
+
+        private UrlRow(EntryRef entry) {
+            super(entry);
+            this.button = new Button(0, 0, URL_BUTTON_WIDTH, CONTROL_HEIGHT, "Open", ignored -> KonfigConfigScreen.this.openInlineUrl(this.entry));
+        }
+
+        @Override
+        protected AbstractWidget control() {
+            return this.button;
+        }
+
+        @Override
+        protected void renderRow(int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                GuiComponent.fill(x, y, x + width, y + height, 0x22000000);
+            }
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+            }
+            int controlWidth = URL_BUTTON_WIDTH;
+            int controlX = x + width - controlWidth;
+            int controlY = y + (height - CONTROL_HEIGHT) / 2;
+            layoutControl(this.control(), controlX, controlY, controlWidth);
+            KonfigConfigScreen.this.font.draw(this.entry.displayLabel().getString(), x + 4.0F, y + 12.0F, 0xFF80C8FF);
+            this.control().render(mouseX, mouseY, partialTick);
         }
     }
 
@@ -2447,10 +2558,17 @@ public final class KonfigConfigScreen extends Screen {
         private EntryRef(ConfigHandleImpl handle, ConfigValueImpl<?> value, boolean editable) {
             this.handle = handle;
             this.value = value;
-            this.label = translatedLabel(handle, value);
-            this.contextLabel = contextLabel(handle, value);
-            this.tooltip = handle.tooltip(value.path());
-            this.editable = editable;
+            if (value.isDecoration()) {
+                this.label = text(value.inlineLabel());
+                this.contextLabel = text("");
+                this.tooltip = value.kind() == EntryKind.URL && !isBlank(value.inlineUrl()) ? value.inlineUrl() : handle.tooltip(value.path());
+                this.editable = false;
+            } else {
+                this.label = translatedLabel(handle, value);
+                this.contextLabel = contextLabel(handle, value);
+                this.tooltip = handle.tooltip(value.path());
+                this.editable = editable;
+            }
         }
 
         private Component displayLabel() {

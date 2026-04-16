@@ -26,6 +26,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     private final LinkedHashMap<String, String> entryComments = new LinkedHashMap<String, String>();
     private final LinkedHashMap<String, String> categoryComments = new LinkedHashMap<String, String>();
     private final LinkedHashMap<Integer, ConfigMigration> migrations = new LinkedHashMap<Integer, ConfigMigration>();
+    private int inlineDecorationIndex;
 
     public ConfigBuilderImpl(String modId, String name) {
         this.modId = requireSimpleSegment(modId, "modId");
@@ -108,6 +109,27 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         } else {
             this.categoryComments.put(path, normalized);
         }
+        return this;
+    }
+
+    @Override
+    public ConfigBuilder banner(String text) {
+        addDecoration(EntryKind.BANNER, text, null);
+        return this;
+    }
+
+    @Override
+    public ConfigBuilder inlineText(String text) {
+        addDecoration(EntryKind.INLINE_TEXT, text, null);
+        return this;
+    }
+
+    @Override
+    public ConfigBuilder url(String label, String url) {
+        if (isBlank(url)) {
+            throw new IllegalArgumentException("url cannot be blank");
+        }
+        addDecoration(EntryKind.URL, label, url.trim());
         return this;
     }
 
@@ -331,6 +353,19 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
             builder.append(stack[i]);
         }
         return builder.toString();
+    }
+
+    private void addDecoration(EntryKind kind, String label, String url) {
+        String normalizedLabel = label == null ? "" : label.trim();
+        if (isBlank(normalizedLabel)) {
+            throw new IllegalArgumentException("decoration text cannot be blank");
+        }
+
+        String prefix = currentCategoryPath();
+        String path = (isBlank(prefix) ? "" : prefix + ".") + "__inline_" + String.format(Locale.ROOT, "%04d", ++this.inlineDecorationIndex);
+        ConfigValueImpl<String> entry = ConfigValueImpl.inlineDecoration(path, kind, normalizedLabel, url);
+        this.entries.put(path, entry);
+        this.entryComments.remove(path);
     }
 
     private static String normalizeFileName(String fileName) {

@@ -17,10 +17,19 @@ final class EntryRef {
     EntryRef(ConfigHandleImpl handle, ConfigValueImpl<?> value, boolean editable) {
         this.handle = handle;
         this.value = value;
-        this.label = KonfigScreenSupport.translatedLabel(handle, value);
-        this.contextLabel = KonfigScreenSupport.contextLabel(handle, value);
-        this.tooltip = handle.tooltip(value.path());
-        this.editable = editable;
+        if (value.isDecoration()) {
+            this.label = KonfigScreenSupport.text(value.inlineLabel());
+            this.contextLabel = KonfigScreenSupport.text("");
+            this.tooltip = value.kind() == EntryKind.URL && !KonfigScreenSupport.isBlank(value.inlineUrl())
+                    ? value.inlineUrl()
+                    : handle.tooltip(value.path());
+            this.editable = false;
+        } else {
+            this.label = KonfigScreenSupport.translatedLabel(handle, value);
+            this.contextLabel = KonfigScreenSupport.contextLabel(handle, value);
+            this.tooltip = handle.tooltip(value.path());
+            this.editable = editable;
+        }
     }
 
     Component displayLabel() {

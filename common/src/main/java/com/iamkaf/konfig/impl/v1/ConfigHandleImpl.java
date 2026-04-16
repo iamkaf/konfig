@@ -25,6 +25,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
 
 public final class ConfigHandleImpl implements ConfigHandle {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -115,6 +116,9 @@ public final class ConfigHandleImpl implements ConfigHandle {
         }
 
         for (ConfigValueImpl<?> entry : this.entries.values()) {
+            if (!entry.persistent()) {
+                continue;
+            }
             if (!shouldLoadOnThisSide(entry)) {
                 continue;
             }
@@ -145,6 +149,9 @@ public final class ConfigHandleImpl implements ConfigHandle {
         CommentedConfig root = TomlFormat.newConfig();
         ConfigMigrationSupport.writeSchemaVersion(root, this.schemaVersion);
         for (ConfigValueImpl<?> entry : this.entries.values()) {
+            if (!entry.persistent()) {
+                continue;
+            }
             if (!shouldLoadOnThisSide(entry)) {
                 continue;
             }
@@ -180,7 +187,13 @@ public final class ConfigHandleImpl implements ConfigHandle {
     }
 
     public Collection<ConfigValue<?>> values() {
-        return Collections.unmodifiableCollection((Collection) this.entries.values());
+        return Collections.unmodifiableList(this.entries.values().stream()
+                .filter(ConfigValueImpl::persistent)
+                .collect(Collectors.toList()));
+    }
+
+    public Collection<ConfigValueImpl<?>> screenValues() {
+        return Collections.unmodifiableCollection(this.entries.values());
     }
 
     public String id() {
@@ -205,6 +218,9 @@ public final class ConfigHandleImpl implements ConfigHandle {
     public String snapshotJson() {
         JsonObject root = new JsonObject();
         for (ConfigValueImpl<?> entry : this.entries.values()) {
+            if (!entry.persistent()) {
+                continue;
+            }
             if (entry.sync() && !entry.clientOnly()) {
                 PathJson.put(root, entry.path(), entry.encodeCurrent());
             }
@@ -222,6 +238,9 @@ public final class ConfigHandleImpl implements ConfigHandle {
         }
 
         for (ConfigValueImpl<?> entry : this.entries.values()) {
+            if (!entry.persistent()) {
+                continue;
+            }
             if (!entry.sync() || entry.clientOnly()) {
                 continue;
             }

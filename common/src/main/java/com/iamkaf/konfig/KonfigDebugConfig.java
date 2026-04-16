@@ -36,6 +36,10 @@ public final class KonfigDebugConfig {
                 .fileName("konfig.toml")
                 .comment("Konfig internal debug settings.");
 
+        builder.banner("Konfig Debug Settings");
+        builder.inlineText("These entries exist to test Konfig's own screen and diagnostics.");
+        builder.url("Konfig Documentation", "https://github.com/iamkaf/konfig");
+
         builder.push("debug");
         builder.categoryComment("Verbose diagnostics for config lifecycle and screen creation.");
         debugEnabled = builder.bool("enabled", false)
