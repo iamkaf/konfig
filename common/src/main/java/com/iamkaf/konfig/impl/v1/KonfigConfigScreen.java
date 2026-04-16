@@ -799,7 +799,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         protected final void layoutControl(AbstractWidget control, int x, int y, int width) {
-//? if >=1.20 {
+//? if >=1.19.3 {
             control.setX(x);
             control.setY(y);
 //?} else {
@@ -1036,7 +1036,7 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
-//? if >=1.20 {
+//? if >=1.19.3 {
             int previewX = this.button.getX() - PREVIEW_GAP - PREVIEW_SIZE;
             int previewY = this.button.getY() + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
 //?} else {
@@ -1058,7 +1058,7 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
-//? if >=1.20 {
+//? if >=1.19.3 {
             int previewX = this.button.getX() - PREVIEW_GAP - PREVIEW_SIZE;
             int previewY = this.button.getY() + (CONTROL_HEIGHT - PREVIEW_SIZE) / 2;
 //?} else {
@@ -1763,7 +1763,7 @@ public final class KonfigConfigScreen extends Screen {
             KonfigConfigScreen.this.drafts.put(this.entry.value, suggestion);
             KonfigConfigScreen.this.persistEntry(this.entry);
             this.dismissSuggestions();
-//? if >=1.20 {
+//? if >=1.19.4 {
             this.input.setFocused(true);
 //?} else {
             this.input.setFocus(true);
@@ -2127,7 +2127,7 @@ public final class KonfigConfigScreen extends Screen {
             private ChannelSlider(ColorChannel channel, int x, int y) {
                 super(ColorEditorScreen.this.currentChannel(channel) / 255.0D);
                 this.channel = channel;
-//? if >=1.20 {
+//? if >=1.19.3 {
                 this.setX(x);
                 this.setY(y);
 //?} else {
@@ -2755,22 +2755,41 @@ public final class KonfigConfigScreen extends Screen {
                 int inputWidth = Math.max(60, upX - inputX - 8);
 
                 this.input.setX(inputX);
+//? if >=1.19.3 {
+                this.input.setY(buttonY);
+//?} else {
                 this.input.y = buttonY;
+//?}
                 this.input.setWidth(inputWidth);
                 this.lastInputX = inputX;
                 this.lastInputY = buttonY;
                 this.lastInputWidth = inputWidth;
 
+//? if >=1.19.3 {
+                this.moveUpButton.setX(upX);
+                this.moveUpButton.setY(buttonY);
+//?} else {
                 this.moveUpButton.x = upX;
                 this.moveUpButton.y = buttonY;
+//?}
                 this.moveUpButton.active = this.index > 0;
 
+//? if >=1.19.3 {
+                this.moveDownButton.setX(downX);
+                this.moveDownButton.setY(buttonY);
+//?} else {
                 this.moveDownButton.x = downX;
                 this.moveDownButton.y = buttonY;
+//?}
                 this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
 
+//? if >=1.19.3 {
+                this.removeButton.setX(removeX);
+                this.removeButton.setY(buttonY);
+//?} else {
                 this.removeButton.x = removeX;
                 this.removeButton.y = buttonY;
+//?}
 
                 renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
                 renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
@@ -2976,7 +2995,7 @@ public final class KonfigConfigScreen extends Screen {
                 this.suppressResponder = false;
                 if (this.persistListValue(suggestion)) {
                     this.dismissSuggestions();
-//? if >=1.20 {
+//? if >=1.19.4 {
                     this.input.setFocused(true);
 //?} else {
                     this.input.setFocus(true);

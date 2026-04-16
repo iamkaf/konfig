@@ -30,8 +30,14 @@ case "$loader" in
       1.14.4|1.15|1.15.1|1.15.2|1.16|1.16.1|1.16.2|1.16.3|1.16.4|1.16.5)
         scenario_file="test/scenarios/konfig/title-config-fabric-legacy.json"
         ;;
-      1.17|1.17.1|1.18|1.18.1|1.18.2)
+      1.17|1.17.1|1.18|1.18.1|1.18.2|1.19|1.19.1|1.19.2)
         scenario_file="test/scenarios/konfig/title-config-fabric-117.json"
+        ;;
+      1.19.3|1.19.4)
+        scenario_file="test/scenarios/konfig/title-config-fabric-11934.json"
+        ;;
+      1.20|1.20.1|1.20.2|1.20.3|1.20.4)
+        scenario_file="test/scenarios/konfig/title-config-fabric-11934.json"
         ;;
     esac
     instance_path="fabric/versions/$version/runs/client/teakit/instance.json"

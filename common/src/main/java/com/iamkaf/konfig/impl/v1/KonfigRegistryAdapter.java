@@ -9,6 +9,11 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+//?} elif >=1.19.3 {
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
 //?} else {
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -91,7 +96,7 @@ final class KonfigRegistryAdapter {
 //?}
 
     static boolean supportsRegistryIcon(ResourceKey<? extends Registry<?>> registryKey) {
-//? if >=1.20 {
+//? if >=1.19.3 {
         return registryKey == Registries.ITEM || registryKey == Registries.BLOCK;
 //?} else {
         return registryKey == Registry.ITEM_REGISTRY || registryKey == Registry.BLOCK_REGISTRY;
@@ -112,7 +117,7 @@ final class KonfigRegistryAdapter {
             return ItemStack.EMPTY;
         }
 
-//? if >=1.20 {
+//? if >=1.19.3 {
         if (registryKey == Registries.ITEM) {
 //? if >=1.21.2 {
             Item item = BuiltInRegistries.ITEM.getValue(identifier);
@@ -129,7 +134,7 @@ final class KonfigRegistryAdapter {
             return ItemStack.EMPTY;
         }
 
-//? if >=1.20 {
+//? if >=1.19.3 {
 //? if >=1.21.2 {
         Block block = BuiltInRegistries.BLOCK.getValue(identifier);
 //?} else {
@@ -167,14 +172,18 @@ final class KonfigRegistryAdapter {
     static void renderRegistryIcon(PoseStack guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
         ItemStack stack = registryIconStack(registryKey, value);
         if (!stack.isEmpty()) {
+//? if >=1.19.4 {
+            Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(guiGraphics, stack, x, y);
+//?} else {
             Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(stack, x, y);
+//?}
         }
     }
 //?}
 
     @SuppressWarnings("unchecked")
     static Registry<?> builtInRegistry(ResourceKey<? extends Registry<?>> registryKey) {
-//? if >=1.20 {
+//? if >=1.19.3 {
 //? if >=1.21.11 {
         if (registryKey == null || !BuiltInRegistries.REGISTRY.containsKey(registryKey.identifier())) {
             return null;

@@ -71,7 +71,7 @@ final class KonfigUiAdapter {
     }
 
     static Button button(int x, int y, int width, int height, Component label, Button.OnPress onPress) {
-//? if >=1.20 {
+//? if >=1.19.3 {
         return Button.builder(label, onPress).bounds(x, y, width, height).build();
 //?} else {
         return new Button(x, y, width, height, label, onPress);

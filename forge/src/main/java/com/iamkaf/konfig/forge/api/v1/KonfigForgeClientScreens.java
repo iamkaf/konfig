@@ -6,7 +6,7 @@ import com.iamkaf.konfig.api.v1.KonfigClientScreens;
 //? if >=26.1 {
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.fml.loading.LoadingModList;
-//?} elif >=1.19 {
+//?} elif >=1.19.1 {
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.ModLoadingContext;
 //?} elif >=1.18 {
@@ -33,7 +33,7 @@ public final class KonfigForgeClientScreens {
                 .map(info -> info.getDisplayName())
                 .orElse(modId);
         MinecraftForge.registerConfigScreen(parent -> KonfigClientScreens.create(modId, displayName, parent));
-//?} elif >=1.19 {
+//?} elif >=1.19.1 {
         ModLoadingContext.get().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> KonfigClientScreens.create(modId, parent))
