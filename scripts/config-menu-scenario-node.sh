@@ -36,8 +36,14 @@ case "$loader" in
       1.19.3|1.19.4)
         scenario_file="test/scenarios/konfig/title-config-fabric-11934.json"
         ;;
-      1.20|1.20.1|1.20.2|1.20.3|1.20.4)
+      1.20|1.20.1|1.20.2)
         scenario_file="test/scenarios/konfig/title-config-fabric-11934.json"
+        ;;
+      1.20.3|1.20.4)
+        scenario_file="test/scenarios/konfig/title-config-fabric-12034.json"
+        ;;
+      1.21.2)
+        scenario_file="test/scenarios/konfig/title-config-fabric-12034.json"
         ;;
     esac
     instance_path="fabric/versions/$version/runs/client/teakit/instance.json"
@@ -68,8 +74,8 @@ fi
 log="/tmp/konfig-$node.config-menu.run.log"
 result="/tmp/konfig-$node.config-menu.result.json"
 health="/tmp/konfig-$node.config-menu.health.json"
-menu="/tmp/konfig-$node.config-menu.menu.json"
-rm -f "$instance_path" "$log" "$result" "$health" "$menu"
+probe="/tmp/konfig-$node.config-menu.probe.json"
+rm -f "$instance_path" "$log" "$result" "$health" "$probe"
 
 if [ "$loader" = "fabric" ]; then
   rm -rf \
@@ -82,7 +88,7 @@ if [ "$loader" = "fabric" ]; then
     -exec rm -rf {} + 2>/dev/null || true
 fi
 
-./gradlew --configure-on-demand "$gradle_task" --console=plain \
+./gradlew --configure-on-demand --refresh-dependencies "$gradle_task" --console=plain \
   -Dkonfig.withTeaKit=true \
   -Dteakit.autoExitTitle=false \
   -Dteakit.repoRoot="$PWD" \
@@ -136,11 +142,15 @@ if [ ! -f "$health" ]; then
   exit 1
 fi
 
-mods_ready=0
+screen_ready=0
 for _ in $(seq 1 "$timeout_seconds"); do
-  if curl -fsS -H "X-TeaKit-Token: $token" "$base_url/probe/menu" >"$menu" 2>/dev/null \
-    && jq -e '.widgets[]? | select((.label // "") | contains("Mods"))' "$menu" >/dev/null 2>&1; then
-    mods_ready=1
+  if curl -fsS -H "X-TeaKit-Token: $token" "$base_url/probe/menu" >"$probe" 2>/dev/null \
+    && jq -e '
+      if .open == false then true
+      else (.title // "") != "Loading Minecraft"
+      end
+    ' "$probe" >/dev/null 2>&1; then
+    screen_ready=1
     break
   fi
   if ! kill -0 "$gradle_pid" >/dev/null 2>&1; then
@@ -151,14 +161,18 @@ for _ in $(seq 1 "$timeout_seconds"); do
   sleep 1
 done
 
-if [ "$mods_ready" -ne 1 ]; then
-  cat "$menu" >&2 || true
+if [ "$screen_ready" -ne 1 ]; then
+  cat "$probe" >&2 || true
   tail -n 160 "$log" >&2
   exit 1
 fi
 
+# Give the title screen a moment to settle before firing UI automation.
+sleep 2
+
 http_code="$(
   curl -sS -o "$result" -w '%{http_code}' \
+    --max-time "$((timeout_seconds + 30))" \
     -H "X-TeaKit-Token: $token" \
     -H 'Content-Type: application/json' \
     --data-binary @"$scenario_file" \
@@ -181,6 +195,19 @@ curl -fsS -H "X-TeaKit-Token: $token" \
   -H 'Content-Type: application/json' \
   --data '{"delayMs":500}' \
   "$base_url/action/client/quit" >/dev/null
+
+for i in $(seq 1 15); do
+  if ! kill -0 "$gradle_pid" >/dev/null 2>&1; then
+    break
+  fi
+  if [ "$i" -eq 5 ]; then
+    curl -fsS -H "X-TeaKit-Token: $token" \
+      -H 'Content-Type: application/json' \
+      --data '{"delayMs":500}' \
+      "$base_url/action/client/quit" >/dev/null 2>&1 || true
+  fi
+  sleep 1
+done
 
 wait "$gradle_pid"
 grep -q 'Initializing TeaKit on' "$log"
