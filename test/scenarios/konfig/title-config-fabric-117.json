@@ -1,0 +1,71 @@
+{
+  "name": "konfig-title-config-fabric-117",
+  "steps": [
+    {
+      "action": "wait_ms",
+      "durationMs": 1500
+    },
+    {
+      "action": "activate_widget",
+      "label": "Mods",
+      "contains": true,
+      "waitAfterMs": 800
+    },
+    {
+      "action": "wait_for_screen",
+      "title": "Mods",
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "click_list_entry",
+      "label": "Konfig",
+      "contains": false,
+      "nth": 0,
+      "listRole": "mod_list",
+      "waitAfterMs": 300
+    },
+    {
+      "action": "activate_widget",
+      "label": "Configure...",
+      "contains": false,
+      "nth": 0,
+      "waitAfterMs": 800
+    },
+    {
+      "action": "wait_for_screen",
+      "screenClass": "com.iamkaf.konfig.impl.v1.KonfigConfigScreen",
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
+      "label": "Konfig Debug Settings",
+      "contains": true,
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
+      "label": "These entries exist to test Konfig's own screen",
+      "contains": true,
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
+      "label": "Konfig Documentation",
+      "contains": true,
+      "timeoutMs": 5000,
+      "pollMs": 100
+    },
+    {
+      "action": "wait_for_list_entry",
+      "label": "Enable Debug Logging",
+      "contains": false,
+      "timeoutMs": 5000,
+      "pollMs": 100
+    }
+  ],
+  "cleanup": []
+}

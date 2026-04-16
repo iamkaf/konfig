@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.3.0
+
+### Added
+
+- Support for every Konfig Minecraft line from `1.14.4` through `26.1.2`.
+- TeaKit-backed config-menu scenario coverage across the full supported loader matrix.
+- Inline config-screen decorations for banners, descriptive text, and clickable URLs.
+
+### Changed
+
+- NeoForge support now starts at `1.21.1`.
+
 ## 0.2.0
 
 ### Changed
