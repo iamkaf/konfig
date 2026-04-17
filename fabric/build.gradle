@@ -67,11 +67,6 @@ dependencies {
             runtimeOnly teaKit.get()
         }
     } else {
-        if (minecraftVersion == '1.18.2') {
-            modImplementation('net.fabricmc:fabric-loader:0.14.9') {
-                version { strictly '0.14.9' }
-            }
-        }
         implementation(include("com.electronwill.night-config:core:${nightConfigVersion}"))
         implementation(include("com.electronwill.night-config:toml:${nightConfigVersion}"))
         if (hasModMenu) {

@@ -16,17 +16,6 @@ def useTeaKit = providers.systemProperty('konfig.withTeaKit')
     .map { it.toBoolean() }
     .orElse(false)
     .get()
-def teaKitRunClientPropertyNames = [
-    'teakit.autoWorld',
-    'teakit.worldId',
-    'teakit.worldName',
-    'teakit.port',
-    'teakit.strictPort',
-    'teakit.repoRoot',
-    'teakit.scenarioRoot',
-    'teakit.autoExitTitle',
-    'teakit.autoExitTitleDelayMs',
-]
 
 dependencies {
     implementation('net.sf.jopt-simple:jopt-simple:5.0.4') { version { strictly '5.0.4' } }
@@ -290,20 +279,6 @@ if (useLegacy1165ForgeSources) {
 
         systemProperty 'java.library.path', legacyForgeNativesDirPath.get()
         systemProperty 'org.lwjgl.librarypath', legacyForgeNativesDirPath.get()
-    }
-}
-
-tasks.configureEach { task ->
-    if (task.name in ['runClient', 'runLegacyClient']) {
-        teaKitRunClientPropertyNames.each { propertyName ->
-            def value = System.getProperty(propertyName)
-            if (value != null) {
-                try {
-                    task.systemProperty propertyName, value
-                } catch (MissingMethodException ignored) {
-                }
-            }
-        }
     }
 }
 

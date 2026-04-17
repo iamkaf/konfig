@@ -1,17 +1,10 @@
 plugins {
     id 'com.iamkaf.multiloader.common'
-    id 'fabric-loom' version '1.15.5' apply false
 }
 
 def nightConfigVersion = requiredProp(project, 'nightconfig_version')
-def minecraftVersion = requiredProp(project, 'project.minecraft')
-def libs = catalogFor(project, minecraftVersion)
 
 dependencies {
-    compileOnly library(libs, 'mixin')
-    compileOnly library(libs, 'mixin-extras')
-    annotationProcessor library(libs, 'mixin-extras')
-    implementation library(libs, 'gson')
     implementation "com.electronwill.night-config:core:${nightConfigVersion}"
     implementation "com.electronwill.night-config:toml:${nightConfigVersion}"
 }
