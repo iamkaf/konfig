@@ -9,11 +9,8 @@ def javaVersion = requiredProp(project, 'project.java').toInteger()
 def isModernLine = !minecraftVersion.startsWith('1.')
 def libs = catalogFor(project, minecraftVersion)
 def modMenu = libs.findLibrary('modmenu')
-def teaKit = libs.findLibrary('teakit-fabric')
 def modMenuVersion = versionOrNull(libs, 'modmenu')
-def teaKitVersion = versionOrNull(libs, 'teakit')
 def hasModMenu = modMenu.present && modMenuVersion != null && modMenuVersion != 'null'
-def hasTeaKit = teaKit.present && teaKitVersion != null && teaKitVersion != 'null'
 def useTeaKit = providers.systemProperty('konfig.withTeaKit')
     .orElse(providers.gradleProperty('konfig.withTeaKit'))
     .map { it.toBoolean() }
@@ -63,18 +60,12 @@ dependencies {
             compileOnly modMenu.get()
             runtimeOnly(modMenu.get()) { transitive = false }
         }
-        if (useTeaKit && hasTeaKit) {
-            runtimeOnly teaKit.get()
-        }
     } else {
         implementation(include("com.electronwill.night-config:core:${nightConfigVersion}"))
         implementation(include("com.electronwill.night-config:toml:${nightConfigVersion}"))
         if (hasModMenu) {
             modCompileOnly modMenu.get()
             modLocalRuntime(modMenu.get()) { transitive = false }
-        }
-        if (useTeaKit && hasTeaKit) {
-            modLocalRuntime teaKit.get()
         }
     }
 }
