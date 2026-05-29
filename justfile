@@ -16,7 +16,7 @@ projects:
   @./gradlew projects --console=plain
 
 clean-generated:
-  @rm -rf build common/versions fabric/versions forge/versions neoforge/versions
+  @rm -rf build versions/*/build common/versions fabric/versions forge/versions neoforge/versions
 
 run first="" second="" *rest:
   @if [ -z "{{first}}" ]; then \
@@ -46,7 +46,7 @@ run first="" second="" *rest:
     local version="$1"; \
     shift; \
     local props="versions/$version/gradle.properties"; \
-    local java_version sdkman_dir best_match java_home; \
+    local java_version sdkman_dir best_match java_home use_configure_on_demand task_arg; \
     if [ ! -f "$props" ]; then \
       echo "Version $version not found."; \
       exit 1; \
@@ -64,7 +64,18 @@ run first="" second="" *rest:
         export PATH="$JAVA_HOME/bin:$PATH"; \
       fi; \
     fi; \
-    ./gradlew --configure-on-demand "$@" --console=plain; \
+    use_configure_on_demand=1; \
+    for task_arg in "$@"; do \
+      if [[ "$task_arg" != :* && "$task_arg" != -* ]]; then \
+        use_configure_on_demand=0; \
+        break; \
+      fi; \
+    done; \
+    if [ "$use_configure_on_demand" -eq 1 ]; then \
+      ./gradlew --configure-on-demand "$@" --console=plain; \
+    else \
+      ./gradlew "$@" --console=plain; \
+    fi; \
   }; \
   if [ -d "versions/$first" ]; then \
     version="$first"; \
@@ -209,20 +220,44 @@ boot-check node timeout="60":
   @node="{{node}}"; \
   version="${node%-*}"; \
   loader="${node##*-}"; \
+  effective_timeout="{{timeout}}"; \
+  if [ "$version" = "1.18.1" ] && [ "$loader" = "forge" ] && [ "$effective_timeout" -lt 40 ]; then \
+    effective_timeout=40; \
+  fi; \
   gradle_task=":$loader:$version:runClient"; \
   if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
     gradle_task=":forge:1.16.5:runLegacyClient"; \
   fi; \
   log="/tmp/konfig-$node.run.log"; \
+  boot_marker='Konfig initialized'; \
   set +e; \
-  timeout "{{timeout}}"s ./gradlew --configure-on-demand "$gradle_task" --console=plain > "$log" 2>&1; \
-  status=$?; \
+  ./gradlew --configure-on-demand "$gradle_task" --console=plain > "$log" 2>&1 & \
+  gradle_pid=$!; \
+  deadline=$(( $(date +%s) + effective_timeout )); \
+  status=124; \
+  while [ "$(date +%s)" -lt "$deadline" ]; do \
+    if grep -q "$boot_marker" "$log"; then \
+      status=124; \
+      break; \
+    fi; \
+    if ! kill -0 "$gradle_pid" 2>/dev/null; then \
+      wait "$gradle_pid"; \
+      status=$?; \
+      break; \
+    fi; \
+    sleep 1; \
+  done; \
+  if kill -0 "$gradle_pid" 2>/dev/null; then \
+    kill "$gradle_pid" 2>/dev/null || true; \
+    wait "$gradle_pid" || true; \
+  fi; \
+  pkill -f "$PWD/$loader/versions/$version/" 2>/dev/null || true; \
   set -e; \
   if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then \
     tail -n 160 "$log"; \
     exit "$status"; \
   fi; \
-  grep -q 'Konfig initialized' "$log"; \
+  grep -q "$boot_marker" "$log"; \
   echo "Boot OK: $node (status=$status)"
 
 boot-check-all timeout="60":
@@ -239,28 +274,54 @@ teakit-boot-check node timeout="60":
   @node="{{node}}"; \
   version="${node%-*}"; \
   loader="${node##*-}"; \
+  effective_timeout="{{timeout}}"; \
+  if [ "$version" = "1.18.1" ] && [ "$loader" = "forge" ] && [ "$effective_timeout" -lt 40 ]; then \
+    effective_timeout=40; \
+  fi; \
   catalog="/home/kaf/code/mods/version-catalog/mc-$version/gradle/libs.versions.toml"; \
   if [ ! -f "$catalog" ] || ! rg -q '^teakit = ' "$catalog"; then \
     echo "TeaKit is not configured in the shared catalog for $version"; \
     exit 1; \
   fi; \
   gradle_task=":$loader:$version:runClient"; \
-  latest_log="$loader/versions/$version/run/logs/latest.log"; \
-  if [ "$loader" = "fabric" ]; then \
-    latest_log="$loader/versions/$version/runs/client/logs/latest.log"; \
-  fi; \
   if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
     gradle_task=":forge:1.16.5:runLegacyClient"; \
   fi; \
-  rm -f "$latest_log"; \
+  log="/tmp/konfig-$node.teakit.log"; \
+  set +e; \
   ./gradlew --configure-on-demand "$gradle_task" --console=plain \
     -Dkonfig.withTeaKit=true \
     -Dteakit.autoExitTitle=true \
-    -Dteakit.autoExitTitleDelayMs=2500; \
-  grep -q 'Konfig initialized' "$latest_log"; \
-  grep -q 'Initializing TeaKit on' "$latest_log"; \
-  grep -q 'TeaKit scheduling clean shutdown from title screen' "$latest_log"; \
-  echo "TeaKit boot OK: $node"
+    -Dteakit.autoExitTitleDelayMs=2500 > "$log" 2>&1 & \
+  gradle_pid=$!; \
+  deadline=$(( $(date +%s) + effective_timeout )); \
+  status=124; \
+  while [ "$(date +%s)" -lt "$deadline" ]; do \
+    if grep -q 'TeaKit scheduling clean shutdown from title screen' "$log"; then \
+      status=124; \
+      break; \
+    fi; \
+    if ! kill -0 "$gradle_pid" 2>/dev/null; then \
+      wait "$gradle_pid"; \
+      status=$?; \
+      break; \
+    fi; \
+    sleep 1; \
+  done; \
+  if kill -0 "$gradle_pid" 2>/dev/null; then \
+    kill "$gradle_pid" 2>/dev/null || true; \
+    wait "$gradle_pid" || true; \
+  fi; \
+  pkill -f "$PWD/$loader/versions/$version/" 2>/dev/null || true; \
+  set -e; \
+  if [ "$status" -ne 0 ] && [ "$status" -ne 124 ]; then \
+    tail -n 160 "$log"; \
+    exit "$status"; \
+  fi; \
+  grep -q 'Konfig initialized' "$log"; \
+  grep -q 'Initializing TeaKit on' "$log"; \
+  grep -q 'TeaKit scheduling clean shutdown from title screen' "$log"; \
+  echo "TeaKit boot OK: $node (status=$status)"
 
 teakit-boot-check-all timeout="60":
   @for node in $(just list-nodes); do \

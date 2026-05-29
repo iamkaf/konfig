@@ -12,7 +12,6 @@ See the full changelog at https://github.com/iamkaf/konfig
 ### Added
 
 - Support for every Konfig Minecraft line from `1.14.4` through `26.1.2`.
-- TeaKit-backed config-menu scenario coverage across the full supported loader matrix.
 - Inline config-screen decorations for banners, descriptive text, and clickable URLs.
 
 ### Changed

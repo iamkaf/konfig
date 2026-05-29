@@ -1,6 +1,5 @@
 plugins {
     id 'com.iamkaf.multiloader.fabric'
-    id 'fabric-loom' version '1.15.5' apply false
 }
 
 def nightConfigVersion = requiredProp(project, 'nightconfig_version')
