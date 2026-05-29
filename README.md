@@ -12,6 +12,7 @@ It is built for shared common code, synchronized config values, and generated co
 - Built-in sync modes: `NONE`, `LOGIN`, and `LOGIN_AND_RELOAD`
 - Schema versioning and step-by-step migrations
 - Generated config screens for registered handles
+- Optional per-mod config screen titles
 - Inline screen decorations:
   - banners
   - inline strings
@@ -182,6 +183,8 @@ import net.neoforged.fml.ModContainer;
 
 KonfigNeoForgeClientScreens.register(container, "examplemod");
 ```
+
+Consumers can pass a display title when creating a screen directly through `KonfigClientScreens.create(modId, title, parent)`.
 
 ## Repository Layout
 

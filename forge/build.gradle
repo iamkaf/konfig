@@ -19,6 +19,9 @@ def useTeaKit = providers.systemProperty('konfig.withTeaKit')
 
 dependencies {
     implementation('net.sf.jopt-simple:jopt-simple:5.0.4') { version { strictly '5.0.4' } }
+    if (useTeaKit && hasTeaKit && !useLegacy1165ForgeSources && !useLegacy1171To1182ForgeRunHack) {
+        runtimeOnly teaKit.get()
+    }
 }
 
 if (useLegacy1165ForgeSources && useTeaKit && hasTeaKit) {
@@ -52,6 +55,12 @@ if (useLegacy1165ForgeSources) {
     def assetsDirPath = providers.provider { assetsDir.get().absolutePath }
     def legacyForgeNativesDir = layout.buildDirectory.dir('legacy-forge-natives')
     def legacyForgeNativesDirPath = providers.provider { legacyForgeNativesDir.get().asFile.absolutePath }
+    def legacyForgeModsDir = layout.projectDirectory.dir('run/mods')
+    def legacyTeaKitForgeJar = providers.provider {
+        configurations.detachedConfiguration(
+            dependencies.create("com.iamkaf.teakit:teakit-forge:${teaKitVersion}")
+        ).resolve().find { it.name.startsWith('teakit-forge-') && it.name.endsWith('.jar') }
+    }
     def legacyForgeVersionJson = providers.provider {
         def file = new File(
             gradle.gradleUserHomeDir,
@@ -68,6 +77,17 @@ if (useLegacy1165ForgeSources) {
             "caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/${legacyForgeArtifactVersion.get()}_mapped_official_${minecraftVersion}"
         )
     }
+    def legacyForgeMavenizedDir = providers.provider {
+        rootProject.layout.projectDirectory.dir(
+            ".gradle/mavenizer/repo/net/minecraftforge/forge/${legacyForgeArtifactVersion.get()}"
+        ).asFile
+    }
+    def legacyForgeMavenizerCacheDir = providers.provider {
+        new File(
+            gradle.gradleUserHomeDir,
+            "caches/minecraftforge/forgegradle/mavenizer/caches/maven/forge/net/minecraftforge/forge/${legacyForgeArtifactVersion.get()}"
+        )
+    }
     def legacyForgeMappedPom = providers.provider {
         def file = new File(
             legacyForgeUserdevDir.get(),
@@ -82,33 +102,91 @@ if (useLegacy1165ForgeSources) {
         def matches = fileTree(legacyForgeUserdevDir.get()) {
             include '*-recomp.jar'
         }.files
-        if (matches.size() != 1) {
-            throw new GradleException("Expected exactly one legacy Forge recomp jar in ${legacyForgeUserdevDir.get()}")
+        if (matches.size() == 1) {
+            return matches.first()
         }
-        matches.first()
+
+        def mavenizedJar = new File(
+            legacyForgeMavenizedDir.get(),
+            "forge-${legacyForgeArtifactVersion.get()}.jar"
+        )
+        if (mavenizedJar.isFile()) {
+            return mavenizedJar
+        }
+
+        throw new GradleException(
+            "Expected exactly one legacy Forge recomp jar in ${legacyForgeUserdevDir.get()} " +
+                "or Mavenizer jar at ${mavenizedJar}"
+        )
     }
     def legacyForgeLauncherJar = providers.provider {
         def matches = fileTree(legacyForgeUserdevDir.get()) {
             include '*-launcher.jar'
         }.files
-        if (matches.size() != 1) {
-            throw new GradleException("Expected exactly one legacy Forge launcher jar in ${legacyForgeUserdevDir.get()}")
+        if (matches.size() == 1) {
+            return matches.first()
         }
-        matches.first()
+
+        def mavenizedLauncherJar = new File(
+            legacyForgeMavenizedDir.get(),
+            "forge-${legacyForgeArtifactVersion.get()}-launcher.jar"
+        )
+        if (mavenizedLauncherJar.isFile()) {
+            return mavenizedLauncherJar
+        }
+
+        throw new GradleException(
+            "Expected exactly one legacy Forge launcher jar in ${legacyForgeUserdevDir.get()} " +
+                "or Mavenizer launcher jar at ${mavenizedLauncherJar}"
+        )
+    }
+    def legacyForgeRawUserdevJar = providers.provider {
+        def userdevJar = new File(
+            legacyForgeMavenizerCacheDir.get(),
+            "forge-${legacyForgeArtifactVersion.get()}-userdev.jar"
+        )
+        if (userdevJar.isFile()) {
+            return userdevJar
+        }
+
+        throw new GradleException("Missing legacy Forge userdev jar at ${userdevJar}")
+    }
+    def legacyForgeUserdevInjectJar = tasks.register('legacyForgeUserdevInjectJar', Jar) {
+        archiveClassifier.set('legacy-forge-userdev-inject')
+        from({
+            zipTree(legacyForgeRawUserdevJar.get()).matching { include 'inject/**' }
+        }) {
+            eachFile { details ->
+                details.path = details.path.replaceFirst('^inject/', '')
+            }
+            includeEmptyDirs = false
+        }
     }
     def legacyClientExtraJar = providers.provider {
         def file = new File(gradle.gradleUserHomeDir, "caches/forge_gradle/minecraft_repo/versions/${minecraftVersion}/client-extra.jar")
-        if (!file.isFile()) {
-            throw new GradleException("Missing legacy Forge client-extra jar at ${file}")
+        if (file.isFile()) {
+            return file
         }
-        file
+        def mavenizedMatches = fileTree(rootProject.file('.gradle/mavenizer/repo/net/minecraft/client-extra')) {
+            include "${minecraftVersion}-*/client-extra-${minecraftVersion}-*.jar"
+        }.files
+        if (mavenizedMatches.size() == 1) {
+            return mavenizedMatches.first()
+        }
+        throw new GradleException("Missing legacy Forge client-extra jar at ${file}")
     }
     def legacyMappingsZip = providers.provider {
         def file = new File(gradle.gradleUserHomeDir, "caches/forge_gradle/mcp_repo/net/minecraft/mapping/${minecraftVersion}/mapping-${minecraftVersion}-mapping.zip")
-        if (!file.isFile()) {
-            throw new GradleException("Missing legacy Forge mappings zip at ${file}")
+        if (file.isFile()) {
+            return file
         }
-        file
+        def mavenizedMatches = fileTree(rootProject.file('.gradle/mavenizer/repo/net/minecraft/mappings_official')) {
+            include "${minecraftVersion}-*/mappings_official-${minecraftVersion}-*.zip"
+        }.files
+        if (mavenizedMatches.size() == 1) {
+            return mavenizedMatches.first()
+        }
+        throw new GradleException("Missing legacy Forge mappings zip at ${file}")
     }
     def explodedDir = layout.buildDirectory.dir('sourcesSets/main')
     def modClassesValue = providers.provider {
@@ -181,9 +259,9 @@ if (useLegacy1165ForgeSources) {
         [
             legacyForgeUserdevJar.get(),
             legacyForgeLauncherJar.get(),
+            legacyForgeUserdevInjectJar.get().archiveFile.get().asFile,
             legacyClientExtraJar.get(),
             legacyMappingsZip.get(),
-            *legacyForgeSupportClasspath.get().toList(),
             *filtered,
         ]
     }
@@ -199,7 +277,7 @@ if (useLegacy1165ForgeSources) {
         // ForgeGradle 6 does not reliably add the mapped userdev jar to compileClasspath under targeted configuration.
         compileOnly(files(legacyForgeUserdevJar))
         compileOnly(files(legacyForgeLauncherJar))
-        compileOnly(files(legacyForgeSupportClasspath))
+        runtimeOnly(files(legacyForgeUserdevInjectJar))
         runtimeOnly 'net.jodah:typetools:0.6.3'
     }
 
@@ -215,6 +293,59 @@ if (useLegacy1165ForgeSources) {
             details.path = details.name
         }
         includeEmptyDirs = false
+    }
+    def prepareLegacyForgeRunDir = tasks.register('prepareLegacyForgeRunDir') {
+        outputs.dir(layout.projectDirectory.dir('run'))
+        doLast {
+            layout.projectDirectory.dir('run').asFile.mkdirs()
+            project.delete(layout.projectDirectory.file('run/config/fml.toml').asFile)
+        }
+    }
+    def stageTeaKitLegacyForgeMod = tasks.register('stageTeaKitLegacyForgeMod') {
+        onlyIf { useTeaKit && hasTeaKit }
+        outputs.dir(legacyForgeModsDir)
+        doLast {
+            def source = legacyTeaKitForgeJar.get()
+            if (source == null || !source.isFile()) {
+                throw new GradleException("Missing TeaKit Forge jar for ${minecraftVersion}")
+            }
+
+            def modsDir = legacyForgeModsDir.asFile
+            modsDir.mkdirs()
+            project.delete(fileTree(modsDir) { include 'teakit-forge-*.jar' })
+
+            def jarFile = new java.util.jar.JarFile(source)
+            def manifest = jarFile.manifest ?: new java.util.jar.Manifest()
+            manifest.mainAttributes.remove(new java.util.jar.Attributes.Name('MixinConfigs'))
+
+            def target = new File(modsDir, source.name)
+            def tempFile = new File(modsDir, "${source.name}.temp")
+            def out = new java.util.jar.JarOutputStream(new FileOutputStream(tempFile), manifest)
+            try {
+                jarFile.entries().each { entry ->
+                    if (entry.name == 'META-INF/MANIFEST.MF') {
+                        return
+                    }
+                    def newEntry = new java.util.jar.JarEntry(entry.name)
+                    newEntry.time = entry.time
+                    out.putNextEntry(newEntry)
+                    if (!entry.isDirectory()) {
+                        out << jarFile.getInputStream(entry)
+                    }
+                    out.closeEntry()
+                }
+            } finally {
+                out.close()
+                jarFile.close()
+            }
+
+            java.nio.file.Files.move(
+                tempFile.toPath(),
+                target.toPath(),
+                java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+                java.nio.file.StandardCopyOption.ATOMIC_MOVE
+            )
+        }
     }
 
     if (project.extensions.findByName('minecraft') != null) {
@@ -249,6 +380,8 @@ if (useLegacy1165ForgeSources) {
         description = 'Runs the 1.16.5 Forge client with the legacy userdev launcher.'
         dependsOn(tasks.named('classes'))
         dependsOn(stageLegacyForgeNatives)
+        dependsOn(prepareLegacyForgeRunDir)
+        dependsOn(stageTeaKitLegacyForgeMod)
 
         javaLauncher.set(java17Launcher)
         workingDir = layout.projectDirectory.dir('run').asFile
@@ -291,14 +424,10 @@ if (useLegacy1171To1182ForgeRunHack) {
         : (['1.18', '1.18.1'].contains(minecraftVersion) ? '0.1.17' : '0.1.15')
     def legacySecureJarHandlerVersion = ['1.18', '1.18.1'].contains(minecraftVersion) ? '0.9.54' : '0.9.44'
     def legacyForgeMetadataZip = providers.provider {
-        def file = new File(
+        new File(
             rootProject.projectDir,
             ".gradle/mavenizer/repo/net/minecraftforge/forge/${forgeArtifactVersion}/forge-${forgeArtifactVersion}-metadata.zip"
         )
-        if (!file.isFile()) {
-            throw new GradleException("Missing legacy Forge metadata zip at ${file}")
-        }
-        file
     }
     def bootstrapLauncherJar = providers.provider {
         def jar = configurations.detachedConfiguration(dependencies.create('cpw.mods:bootstraplauncher:1.1.2'))
@@ -352,6 +481,16 @@ if (useLegacy1171To1182ForgeRunHack) {
     if (project.extensions.findByName('minecraft') != null && useTeaKit && hasTeaKit && !useLegacy118xForgeJarRunHack) {
         minecraft.runs.named('client').configure { run ->
             run.environment 'MOD_CLASSES', legacyTeaKitModClassesValue.get()
+        }
+    }
+    if (useTeaKit && hasTeaKit && !useLegacy118xForgeJarRunHack) {
+        tasks.named('runClient').configure { task ->
+            task.environment 'MOD_CLASSES', legacyTeaKitModClassesValue.get()
+            task.systemProperty 'fml.modFolders', legacyTeaKitModClassesValue.get()
+            task.doFirst {
+                environment 'MOD_CLASSES', legacyTeaKitModClassesValue.get()
+                systemProperty 'fml.modFolders', legacyTeaKitModClassesValue.get()
+            }
         }
     }
     def legacyTeaKitForgeJar = providers.provider {
@@ -410,8 +549,10 @@ if (useLegacy1171To1182ForgeRunHack) {
         }
     }
     def patchLegacySlimeMetadata = tasks.register('patchLegacySlimeMetadata') {
-        onlyIf { useLegacy1171To1181ForgeRunHack }
-        dependsOn 'slimeLauncherMetadataForForge'
+        onlyIf {
+            useLegacy1171To1181ForgeRunHack && legacyForgeMetadataZip.get().isFile()
+        }
+        dependsOn tasks.matching { it.name == 'slimeLauncherMetadataForForge' }
         doLast {
             def source = legacyForgeMetadataZip.get()
             def backup = new File(source.parentFile, "${source.name}.konfig-backup")
@@ -468,8 +609,22 @@ if (useLegacy1171To1182ForgeRunHack) {
             )
         }
     }
+    def patchLegacyModDevRunArgs = tasks.register('patchLegacyModDevRunArgs') {
+        onlyIf { minecraftVersion == '1.17.1' }
+        dependsOn 'prepareClientRun'
+        inputs.file(layout.buildDirectory.file('moddev/clientRunVmArgs.txt'))
+        outputs.file(layout.buildDirectory.file('moddev/clientRunVmArgs.txt'))
+        doLast {
+            def runArgsFile = layout.buildDirectory.file('moddev/clientRunVmArgs.txt').get().asFile
+            def patchedArgs = runArgsFile.text
+                .replace('{runtime_classpath}', filteredLegacyRuntimeClasspath.get())
+                .replace('{natives}', lwjglNativesDir.get().asFile.absolutePath)
+                .replace('securejarhandler-0.9.44.jar', 'securejarhandler-0.9.61.jar')
+            runArgsFile.text = patchedArgs
+        }
+    }
     def extractLwjglNatives = tasks.register('extractLwjglNatives', Sync) {
-        dependsOn 'slimeLauncherMetadataForForge'
+        dependsOn tasks.matching { it.name == 'slimeLauncherMetadataForForge' }
         into lwjglNativesDir
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
         from({
@@ -556,6 +711,7 @@ if (useLegacy1171To1182ForgeRunHack) {
         }
         if (task.name in ['runClient', 'runServer'] && task.hasProperty('javaLauncher')) {
             task.dependsOn(patchLegacyBootstrapLauncher)
+            task.dependsOn(patchLegacyModDevRunArgs)
             if (useLegacy1171To1181ForgeRunHack) {
                 task.dependsOn(patchLegacySecureJarHandler)
                 task.dependsOn(patchLegacySlimeMetadata)

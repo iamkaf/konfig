@@ -13,10 +13,11 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 - Support for every Konfig Minecraft line from `1.14.4` through `26.1.2`.
 - Inline config-screen decorations for banners, descriptive text, and clickable URLs.
+- Config-screen title helper support across supported versions.
 
 ### Changed
 
-- NeoForge support now starts at `1.21.1`.
+- NeoForge coverage now spans every supported line from `1.21.1` through `26.1.2`.
 
 ## 0.2.0
 

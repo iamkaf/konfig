@@ -62,6 +62,7 @@ public final class KonfigConfigScreen extends Screen {
 
     private final Screen parent;
     private final String modIdFilter;
+    private final String screenTitle;
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
     private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
@@ -74,13 +75,18 @@ public final class KonfigConfigScreen extends Screen {
     private int statusColor = 0xFFFF8080;
 
     public KonfigConfigScreen(Screen parent) {
-        this(parent, null);
+        this(parent, null, null);
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter) {
+        this(parent, modIdFilter, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
         super(translate("konfig.screen.title"));
         this.parent = parent;
         this.modIdFilter = modIdFilter;
+        this.screenTitle = screenTitle;
         this.entries = collectEntries(modIdFilter);
         if (KonfigDebugConfig.enabled()) {
             Constants.LOG.info(
@@ -163,7 +169,7 @@ public final class KonfigConfigScreen extends Screen {
         }
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
-        drawCenteredString(guiGraphics, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
+        drawCenteredString(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         this.font.draw(guiGraphics, text(entryCountText()), 12, 12, 0xFFC0C0C0);
 
         if (!this.statusMessage.isEmpty()) {
@@ -283,6 +289,13 @@ public final class KonfigConfigScreen extends Screen {
 
     private String entryCountText() {
         return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
+    }
+
+    private ITextComponent screenTitle() {
+        if (!isBlank(this.screenTitle)) {
+            return text(this.screenTitle);
+        }
+        return this.title;
     }
 
     private static List<EntryRef> collectEntries(String modIdFilter) {

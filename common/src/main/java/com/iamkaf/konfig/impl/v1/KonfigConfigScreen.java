@@ -6,14 +6,20 @@ import net.minecraft.network.chat.TextComponent;
 
 public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
+    private final String screenTitle;
 
     public KonfigConfigScreen(Screen parent) {
-        this(parent, null);
+        this(parent, null, null);
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter) {
-        super(new TextComponent("Konfig"));
+        this(parent, modIdFilter, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
+        super(new TextComponent(screenTitle == null || screenTitle.trim().isEmpty() ? "Konfig" : screenTitle));
         this.parent = parent;
+        this.screenTitle = screenTitle;
     }
 
     @Override
@@ -44,14 +50,20 @@ import net.minecraft.network.chat.TextComponent;
 
 public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
+    private final String screenTitle;
 
     public KonfigConfigScreen(Screen parent) {
-        this(parent, null);
+        this(parent, null, null);
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter) {
-        super(new TextComponent("Konfig"));
+        this(parent, modIdFilter, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
+        super(new TextComponent(screenTitle == null || screenTitle.trim().isEmpty() ? "Konfig" : screenTitle));
         this.parent = parent;
+        this.screenTitle = screenTitle;
     }
 
     @Override
@@ -134,9 +146,7 @@ public final class KonfigConfigScreen extends Screen {
 
     private final Screen parent;
     private final String modIdFilter;
-//? if >=26.1 {
     private final String screenTitle;
-//?}
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
     private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
@@ -149,39 +159,13 @@ public final class KonfigConfigScreen extends Screen {
     private int statusColor = 0xFFFF8080;
 
     public KonfigConfigScreen(Screen parent) {
-//? if >=26.1 {
         this(parent, null, null);
-//?} else {
-        this(parent, null);
-//?}
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter) {
-        super(translate("konfig.screen.title"));
-        this.parent = parent;
-        this.modIdFilter = modIdFilter;
-//? if >=26.1 {
-        this.screenTitle = null;
-//?}
-        this.entries = collectEntries(modIdFilter);
-        if (KonfigDebugConfig.enabled()) {
-            Constants.LOG.info(
-                    "[Konfig/Debug] creating screen parent={} modFilter={} entries={}",
-                    parent == null ? "null" : parent.getClass().getName(),
-                    modIdFilter == null ? "<all>" : modIdFilter,
-                    this.entries.size()
-            );
-        }
-        for (EntryRef entry : this.entries) {
-            Object value = entry.value.get();
-            this.drafts.put(entry.value, copyDraftValue(entry.value, value));
-            if (entry.editable) {
-                this.sessionStartValues.put(entry.value, snapshotValue(entry.value, value));
-            }
-        }
+        this(parent, modIdFilter, null);
     }
 
-//? if >=26.1 {
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
         super(translate("konfig.screen.title"));
         this.parent = parent;
@@ -204,7 +188,6 @@ public final class KonfigConfigScreen extends Screen {
             }
         }
     }
-//?}
 
     @Override
     protected void init() {
@@ -354,7 +337,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 //?} elif >=1.20 {
     private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
+        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
         this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
@@ -366,7 +349,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 //?} else {
     private void renderMainScreenChrome(PoseStack guiGraphics, int mouseX, int mouseY) {
-        drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
+        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
         this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
@@ -511,14 +494,16 @@ public final class KonfigConfigScreen extends Screen {
         return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
     }
 
-//? if >=26.1 {
     private Component screenTitle() {
-        if (this.screenTitle != null && !this.screenTitle.isBlank()) {
+        if (!isBlank(this.screenTitle)) {
             return text(this.screenTitle);
         }
         return this.title;
     }
-//?}
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
+    }
 
     private boolean readBoolean(ConfigValueImpl<?> value) {
         Object current = this.drafts.get(value);

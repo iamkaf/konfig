@@ -15,6 +15,10 @@ public final class KonfigClientScreens {
     public static Screen create(String modId, Screen parent) {
         return new KonfigConfigScreen(parent, modId);
     }
+
+    public static Screen create(String modId, String title, Screen parent) {
+        return new KonfigConfigScreen(parent, modId, title);
+    }
 }
 //?} else {
 package com.iamkaf.konfig.fabric.api.v1;
@@ -33,10 +37,8 @@ public final class KonfigClientScreens {
         return com.iamkaf.konfig.api.v1.KonfigClientScreens.create(modId, parent);
     }
 
-//? if >=26.1 {
     public static Screen create(String modId, String title, Screen parent) {
         return com.iamkaf.konfig.api.v1.KonfigClientScreens.create(modId, title, parent);
     }
-//?}
 }
 //?}

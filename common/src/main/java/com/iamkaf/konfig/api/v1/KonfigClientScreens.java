@@ -15,9 +15,7 @@ public final class KonfigClientScreens {
         return new KonfigConfigScreen(parent, modId);
     }
 
-//? if >=26.1 {
     public static Screen create(String modId, String title, Screen parent) {
         return new KonfigConfigScreen(parent, modId, title);
     }
-//?}
 }

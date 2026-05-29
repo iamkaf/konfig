@@ -58,6 +58,7 @@ public final class KonfigConfigScreen extends Screen {
 
     private final Screen parent;
     private final String modIdFilter;
+    private final String screenTitle;
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
     private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
@@ -70,13 +71,18 @@ public final class KonfigConfigScreen extends Screen {
     private int statusColor = 0xFFFF8080;
 
     public KonfigConfigScreen(Screen parent) {
-        this(parent, null);
+        this(parent, null, null);
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter) {
+        this(parent, modIdFilter, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
         super(translate("konfig.screen.title"));
         this.parent = parent;
         this.modIdFilter = modIdFilter;
+        this.screenTitle = screenTitle;
         this.entries = collectEntries(modIdFilter);
         if (KonfigDebugConfig.enabled()) {
             Constants.LOG.info(
@@ -180,7 +186,7 @@ public final class KonfigConfigScreen extends Screen {
         }
         super.render(mouseX, mouseY, partialTick);
 
-        drawCenteredString(this.font, this.title.getString(), this.width / 2, 8, 0xFFFFFFFF);
+        drawCenteredString(this.font, screenTitle().getString(), this.width / 2, 8, 0xFFFFFFFF);
         this.font.draw(entryCountText(), 12.0F, 12.0F, 0xFFC0C0C0);
 
         if (!this.statusMessage.isEmpty()) {
@@ -309,6 +315,13 @@ public final class KonfigConfigScreen extends Screen {
 
     private String entryCountText() {
         return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
+    }
+
+    private Component screenTitle() {
+        if (!isBlank(this.screenTitle)) {
+            return text(this.screenTitle);
+        }
+        return this.title;
     }
 
     private static List<EntryRef> collectEntries(String modIdFilter) {

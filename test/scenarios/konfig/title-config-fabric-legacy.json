@@ -3,7 +3,7 @@
   "steps": [
     {
       "action": "wait_ms",
-      "durationMs": 1500
+      "durationMs": 3500
     },
     {
       "action": "activate_widget",

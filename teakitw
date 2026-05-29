@@ -1,0 +1,142 @@
+#!/usr/bin/env sh
+set -eu
+
+SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+TEAKIT_RUNNER_PINNED_VERSION="0.1.0-SNAPSHOT"
+TEAKIT_MAVEN_RELEASES="${TEAKIT_MAVEN_RELEASES:-https://z.kaf.sh/releases}"
+TEAKIT_MAVEN_SNAPSHOTS="${TEAKIT_MAVEN_SNAPSHOTS:-https://z.kaf.sh/snapshots}"
+TEAKIT_GROUP_PATH="com/iamkaf/teakit"
+TEAKIT_ARTIFACT="teakit-runner"
+if [ "${TEAKIT_CACHE_DIR:-}" ]; then
+  TEAKIT_CACHE_ROOT="$TEAKIT_CACHE_DIR"
+elif [ "${XDG_CACHE_HOME:-}" ]; then
+  TEAKIT_CACHE_ROOT="$XDG_CACHE_HOME/teakit"
+elif [ "${HOME:-}" ]; then
+  TEAKIT_CACHE_ROOT="$HOME/.cache/teakit"
+else
+  TEAKIT_CACHE_ROOT="$SELF_DIR/.teakit/wrapper/cache"
+fi
+TMP_JAR=""
+TMP_METADATA=""
+
+cleanup() {
+  [ -z "$TMP_JAR" ] || rm -f "$TMP_JAR"
+  [ -z "$TMP_METADATA" ] || rm -f "$TMP_METADATA"
+}
+trap cleanup EXIT HUP INT TERM
+
+if [ "${TEAKIT_RUNNER_JAR:-}" ]; then
+  exec java -jar "$TEAKIT_RUNNER_JAR" "$@"
+fi
+
+if ! command -v java >/dev/null 2>&1; then
+  echo "teakitw: java is required to run TeaKit" >&2
+  exit 1
+fi
+
+download() {
+  url="$1"
+  out="$2"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsL --retry 2 -o "$out" "$url"
+  elif command -v wget >/dev/null 2>&1; then
+    wget -q -O "$out" "$url"
+  else
+    echo "teakitw: curl or wget is required to download TeaKit runner" >&2
+    return 1
+  fi
+}
+
+metadata_version() {
+  awk '
+    /<release>/ { value=$0; sub(/.*<release>/, "", value); sub(/<\/release>.*/, "", value); print value; found=1; exit }
+    /<latest>/ { latest=$0; sub(/.*<latest>/, "", latest); sub(/<\/latest>.*/, "", latest) }
+    /<version>/ { version=$0; sub(/.*<version>/, "", version); sub(/<\/version>.*/, "", version) }
+    END {
+      if (!found) {
+        if (latest != "") print latest
+        else if (version != "") print version
+      }
+    }
+  ' "$1"
+}
+
+snapshot_value() {
+  awk '
+    /<snapshotVersion>/ { in_sv=1; ext=""; classifier=""; value="" }
+    in_sv && /<extension>/ { ext=$0; sub(/.*<extension>/, "", ext); sub(/<\/extension>.*/, "", ext) }
+    in_sv && /<classifier>/ { classifier=$0; sub(/.*<classifier>/, "", classifier); sub(/<\/classifier>.*/, "", classifier) }
+    in_sv && /<value>/ { value=$0; sub(/.*<value>/, "", value); sub(/<\/value>.*/, "", value) }
+    /<\/snapshotVersion>/ {
+      if (in_sv && ext == "jar" && classifier == "" && value != "") {
+        print value
+        exit
+      }
+      in_sv=0
+    }
+  ' "$1"
+}
+
+latest_runner_version() {
+  tmp_dir="$SELF_DIR/.teakit/wrapper/tmp"
+  mkdir -p "$tmp_dir"
+  TMP_METADATA=$(mktemp "$tmp_dir/maven-metadata.XXXXXX")
+  RELEASE_METADATA_URL="$TEAKIT_MAVEN_RELEASES/$TEAKIT_GROUP_PATH/$TEAKIT_ARTIFACT/maven-metadata.xml"
+  SNAPSHOT_METADATA_URL="$TEAKIT_MAVEN_SNAPSHOTS/$TEAKIT_GROUP_PATH/$TEAKIT_ARTIFACT/maven-metadata.xml"
+  if download "$RELEASE_METADATA_URL" "$TMP_METADATA" || download "$SNAPSHOT_METADATA_URL" "$TMP_METADATA"; then
+    metadata_version "$TMP_METADATA"
+  fi
+}
+
+if [ "${TEAKIT_RUNNER_VERSION:-}" ]; then
+  TEAKIT_RUNNER_RESOLVED_VERSION="$TEAKIT_RUNNER_VERSION"
+elif [ "${1:-}" = "upgrade" ]; then
+  TEAKIT_RUNNER_RESOLVED_VERSION=$(latest_runner_version)
+  if [ -z "$TEAKIT_RUNNER_RESOLVED_VERSION" ]; then
+    echo "teakitw: could not resolve latest TeaKit runner from Kaf Maven" >&2
+    echo "teakitw: set TEAKIT_RUNNER_VERSION=<version> to upgrade to an explicit version" >&2
+    exit 1
+  fi
+else
+  TEAKIT_RUNNER_RESOLVED_VERSION="$TEAKIT_RUNNER_PINNED_VERSION"
+fi
+
+DIST_DIR="$TEAKIT_CACHE_ROOT/wrapper/dists/$TEAKIT_ARTIFACT/$TEAKIT_RUNNER_RESOLVED_VERSION"
+JAR_PATH="$DIST_DIR/$TEAKIT_ARTIFACT.jar"
+
+if [ ! -f "$JAR_PATH" ]; then
+  mkdir -p "$DIST_DIR"
+  case "$TEAKIT_RUNNER_RESOLVED_VERSION" in
+    *-SNAPSHOT)
+      BASE_URL="$TEAKIT_MAVEN_SNAPSHOTS"
+      METADATA_URL="$BASE_URL/$TEAKIT_GROUP_PATH/$TEAKIT_ARTIFACT/$TEAKIT_RUNNER_RESOLVED_VERSION/maven-metadata.xml"
+      TMP_METADATA=$(mktemp "$DIST_DIR/maven-metadata.XXXXXX")
+      if ! download "$METADATA_URL" "$TMP_METADATA"; then
+        echo "teakitw: failed to read TeaKit runner metadata from Kaf Maven: $METADATA_URL" >&2
+        exit 1
+      fi
+      RESOLVED_VERSION=$(snapshot_value "$TMP_METADATA")
+      if [ -z "$RESOLVED_VERSION" ]; then
+        echo "teakitw: Kaf Maven metadata did not contain a runnable TeaKit runner jar for $TEAKIT_RUNNER_RESOLVED_VERSION" >&2
+        exit 1
+      fi
+      ;;
+    *)
+      BASE_URL="$TEAKIT_MAVEN_RELEASES"
+      RESOLVED_VERSION="$TEAKIT_RUNNER_RESOLVED_VERSION"
+      ;;
+  esac
+
+  JAR_URL="$BASE_URL/$TEAKIT_GROUP_PATH/$TEAKIT_ARTIFACT/$TEAKIT_RUNNER_RESOLVED_VERSION/$TEAKIT_ARTIFACT-$RESOLVED_VERSION.jar"
+  TMP_JAR=$(mktemp "$DIST_DIR/$TEAKIT_ARTIFACT.XXXXXX.jar")
+  echo "teakitw: downloading TeaKit runner $TEAKIT_RUNNER_RESOLVED_VERSION from Kaf Maven" >&2
+  if ! download "$JAR_URL" "$TMP_JAR"; then
+    echo "teakitw: failed to download TeaKit runner from Kaf Maven: $JAR_URL" >&2
+    echo "teakitw: set TEAKIT_RUNNER_JAR=/path/to/teakit-runner.jar for a local development runner" >&2
+    exit 1
+  fi
+  mv "$TMP_JAR" "$JAR_PATH"
+  TMP_JAR=""
+fi
+
+exec java -jar "$JAR_PATH" "$@"
