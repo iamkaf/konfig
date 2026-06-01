@@ -2,9 +2,6 @@ package com.iamkaf.konfig.impl.v1;
 
 //? if >=1.17 {
 import net.minecraft.network.chat.Component;
-//? if <=1.18.2 {
-import net.minecraft.network.chat.TextComponent;
-//?}
 
 final class EntryRef {
     final ConfigHandleImpl handle;
@@ -33,14 +30,7 @@ final class EntryRef {
     }
 
     Component displayLabel() {
-        if (this.editable) {
-            return this.label;
-        }
-//? if >=1.19 {
-        return Component.empty().copy().append(this.label).append(KonfigScreenSupport.translate("konfig.screen.read_only"));
-//?} else {
-        return TextComponent.EMPTY.copy().append(this.label).append(KonfigScreenSupport.translate("konfig.screen.read_only"));
-//?}
+        return this.label;
     }
 }
 //?}

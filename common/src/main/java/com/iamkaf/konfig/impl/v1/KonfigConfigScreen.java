@@ -120,6 +120,11 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+//? if >=1.21.11 {
+import net.minecraft.util.Util;
+//?} else {
+import net.minecraft.Util;
+//?}
 import net.minecraft.util.Mth;
 
 import java.util.ArrayList;
@@ -131,7 +136,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.net.URI;
-import java.awt.Desktop;
 
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
@@ -223,13 +227,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         try {
-            if (!Desktop.isDesktopSupported()) {
-                throw new IllegalStateException("Desktop browsing is unavailable");
-            }
-            Desktop.getDesktop().browse(URI.create(target));
+            Util.getPlatform().openUri(URI.create(target));
             this.statusMessage = "Opened " + target;
             this.statusColor = 0xFF80FF80;
         } catch (Exception exception) {
+            Constants.LOG.warn("Failed to open inline URL {}", target, exception);
             this.statusMessage = "Failed to open " + target;
             this.statusColor = 0xFFFF8080;
         }

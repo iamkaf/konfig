@@ -25,6 +25,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
 import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.Util;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -43,7 +44,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.net.URI;
-import java.awt.Desktop;
 
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
@@ -135,13 +135,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         try {
-            if (!Desktop.isDesktopSupported()) {
-                throw new IllegalStateException("Desktop browsing is unavailable");
-            }
-            Desktop.getDesktop().browse(URI.create(target));
+            Util.getPlatform().openUri(URI.create(target));
             this.statusMessage = "Opened " + target;
             this.statusColor = 0xFF80FF80;
         } catch (Exception exception) {
+            Constants.LOG.warn("Failed to open inline URL {}", target, exception);
             this.statusMessage = "Failed to open " + target;
             this.statusColor = 0xFFFF8080;
         }
@@ -2585,10 +2583,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private Component displayLabel() {
-            if (this.editable) {
-                return this.label;
-            }
-            return new TextComponent("").append(this.label).append(translate("konfig.screen.read_only"));
+            return this.label;
         }
     }
 }

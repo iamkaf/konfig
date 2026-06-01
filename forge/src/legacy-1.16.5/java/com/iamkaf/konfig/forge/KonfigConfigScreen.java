@@ -2542,10 +2542,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private ITextComponent displayLabel() {
-            if (this.editable) {
-                return this.label;
-            }
-            return StringTextComponent.EMPTY.copy().append(this.label).append(translate("konfig.screen.read_only"));
+            return this.label;
         }
     }
 }
