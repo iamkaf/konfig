@@ -1,5 +1,11 @@
 package com.iamkaf.konfig.api.v1;
 
+//? if >=1.21.11 {
+import net.minecraft.resources.Identifier;
+//?} elif >=1.17 {
+import net.minecraft.resources.ResourceLocation;
+//?}
+
 import java.util.List;
 
 public interface ConfigBuilder {
@@ -21,7 +27,33 @@ public interface ConfigBuilder {
 
     ConfigBuilder categoryComment(String comment);
 
-    ConfigBuilder banner(String text);
+    ConfigBuilder header(String text);
+
+//? if >=1.21.11 {
+    ConfigBuilder image(Identifier textureId);
+
+    ConfigBuilder image(Identifier textureId, ImageOptions options);
+
+    ConfigBuilder image(Identifier textureId, String caption);
+
+    ConfigBuilder image(Identifier textureId, String caption, ImageOptions options);
+//?} elif >=1.17 {
+    ConfigBuilder image(ResourceLocation textureId);
+
+    ConfigBuilder image(ResourceLocation textureId, ImageOptions options);
+
+    ConfigBuilder image(ResourceLocation textureId, String caption);
+
+    ConfigBuilder image(ResourceLocation textureId, String caption, ImageOptions options);
+//?} else {
+    ConfigBuilder image(Object textureId);
+
+    ConfigBuilder image(Object textureId, ImageOptions options);
+
+    ConfigBuilder image(Object textureId, String caption);
+
+    ConfigBuilder image(Object textureId, String caption, ImageOptions options);
+//?}
 
     ConfigBuilder inlineText(String text);
 

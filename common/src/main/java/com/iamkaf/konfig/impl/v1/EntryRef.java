@@ -17,8 +17,8 @@ final class EntryRef {
         if (value.isDecoration()) {
             this.label = KonfigScreenSupport.text(value.inlineLabel());
             this.contextLabel = KonfigScreenSupport.text("");
-            this.tooltip = value.kind() == EntryKind.URL && !KonfigScreenSupport.isBlank(value.inlineUrl())
-                    ? value.inlineUrl()
+            this.tooltip = value.kind() == EntryKind.URL && !KonfigScreenSupport.isBlank(value.inlineTarget())
+                    ? value.inlineTarget()
                     : handle.tooltip(value.path());
             this.editable = false;
         } else {

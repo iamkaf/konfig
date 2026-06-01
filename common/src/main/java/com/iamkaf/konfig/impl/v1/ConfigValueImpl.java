@@ -2,6 +2,7 @@ package com.iamkaf.konfig.impl.v1;
 
 import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
+import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 //? if >=1.17 {
 import net.minecraft.core.Registry;
@@ -30,7 +31,8 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final Number rangeMax;
     private final boolean persistent;
     private final String inlineLabel;
-    private final String inlineUrl;
+    private final String inlineTarget;
+    private final ImageOptions imageOptions;
 //? if <=1.16.5 {
     private final String boundRegistryId;
 //?} else {
@@ -57,7 +59,8 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             Number rangeMax,
             boolean persistent,
             String inlineLabel,
-            String inlineUrl,
+            String inlineTarget,
+            ImageOptions imageOptions,
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -80,7 +83,8 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.rangeMax = rangeMax;
         this.persistent = persistent;
         this.inlineLabel = inlineLabel;
-        this.inlineUrl = inlineUrl;
+        this.inlineTarget = inlineTarget;
+        this.imageOptions = imageOptions == null ? ImageOptions.defaults() : imageOptions;
 //? if <=1.16.5 {
         this.boundRegistryId = boundRegistryId;
 //?} else {
@@ -128,6 +132,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 true,
                 null,
                 null,
+                null,
 //? if <=1.16.5 {
                 boundRegistryId
 //?} else {
@@ -136,7 +141,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         );
     }
 
-    static ConfigValueImpl<String> inlineDecoration(String path, EntryKind kind, String label, String url) {
+    static ConfigValueImpl<String> inlineDecoration(String path, EntryKind kind, String label, String target, ImageOptions imageOptions) {
         return new ConfigValueImpl<String>(
                 path,
                 label,
@@ -154,7 +159,8 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 null,
                 false,
                 label,
-                url,
+                target,
+                imageOptions,
 //? if <=1.16.5 {
                 null
 //?} else {
@@ -250,7 +256,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     }
 
     public boolean isDecoration() {
-        return this.kind == EntryKind.BANNER || this.kind == EntryKind.INLINE_TEXT || this.kind == EntryKind.URL;
+        return this.kind == EntryKind.HEADER || this.kind == EntryKind.IMAGE || this.kind == EntryKind.INLINE_TEXT || this.kind == EntryKind.URL;
     }
 
     public String inlineLabel() {
@@ -258,7 +264,15 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     }
 
     public String inlineUrl() {
-        return this.inlineUrl;
+        return this.inlineTarget;
+    }
+
+    public String inlineTarget() {
+        return this.inlineTarget;
+    }
+
+    public ImageOptions imageOptions() {
+        return this.imageOptions;
     }
 
     public boolean hasBoundRegistry() {

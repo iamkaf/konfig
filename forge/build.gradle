@@ -382,6 +382,7 @@ if (useLegacy1165ForgeSources) {
         dependsOn(stageLegacyForgeNatives)
         dependsOn(prepareLegacyForgeRunDir)
         dependsOn(stageTeaKitLegacyForgeMod)
+        dependsOn(legacyForgeUserdevInjectJar)
 
         javaLauncher.set(java17Launcher)
         workingDir = layout.projectDirectory.dir('run').asFile

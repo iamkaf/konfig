@@ -64,6 +64,13 @@
       "contains": false,
       "timeoutMs": 5000,
       "pollMs": 100
+    },
+    {
+      "action": "screenshot",
+      "name": "konfig-debug-settings",
+      "hideOverlay": true,
+      "hideDecoration": true,
+      "hideWindowDecoration": true
     }
   ],
   "cleanup": []

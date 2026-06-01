@@ -24,7 +24,11 @@ public final class Constants {
     private Constants() {
     }
 
-//? if >=1.21.11 {
+//? if <=1.16.5 {
+    public static String resource(String path) {
+        return MOD_ID + ":" + path;
+    }
+//?} elif >=1.21.11 {
     public static Identifier resource(String path) {
         return Identifier.fromNamespaceAndPath(MOD_ID, path);
     }

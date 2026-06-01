@@ -1,7 +1,8 @@
 package com.iamkaf.konfig.impl.v1;
 
 public enum EntryKind {
-    BANNER,
+    HEADER,
+    IMAGE,
     INLINE_TEXT,
     URL,
     BOOLEAN,

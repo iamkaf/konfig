@@ -12,7 +12,7 @@ See the full changelog at https://github.com/iamkaf/konfig
 ### Added
 
 - Support for every Konfig Minecraft line from `1.14.4` through `26.1.2`.
-- Inline config-screen decorations for banners, descriptive text, and clickable URLs.
+- Inline config-screen decorations for headers, images, descriptive text, and clickable URLs.
 - Config-screen title helper support across supported versions.
 
 ### Changed

@@ -14,7 +14,8 @@ It is built for shared common code, synchronized config values, and generated co
 - Generated config screens for registered handles
 - Optional per-mod config screen titles
 - Inline screen decorations:
-  - banners
+  - headers
+  - images
   - inline strings
   - clickable URLs
 - Editor support for:
@@ -126,12 +127,28 @@ Konfig can add non-persistent visual entries to generated config screens:
 ConfigBuilder builder = Konfig.builder("examplemod", "client")
         .scope(ConfigScope.CLIENT);
 
-builder.banner("Example Mod");
+builder.header("Example Mod");
+builder.image(Identifier.fromNamespaceAndPath("mymod", "gui/example"));
+builder.image(Identifier.fromNamespaceAndPath("mymod", "gui/example_captioned"), "Example Image");
+builder.image(Identifier.fromNamespaceAndPath("mymod", "gui/status"), ImageOptions.icon());
+builder.image(
+        Identifier.fromNamespaceAndPath("mymod", "gui/banner"),
+        "Example Banner",
+        ImageOptions.banner(180, 28)
+);
+builder.image(
+        Identifier.fromNamespaceAndPath("mymod", "gui/action"),
+        ImageOptions.builder()
+                .size(20, 20)
+                .align(ImageOptions.Align.RIGHT)
+                .captionPosition(ImageOptions.CaptionPosition.NONE)
+                .build()
+);
 builder.inlineText("These entries are UI-only decorations.");
 builder.url("Documentation", "https://example.invalid/docs");
 ```
 
-These entries are meant for section headers, explanatory text, and links. They do not create stored config values.
+These entries are meant for section headers, images, explanatory text, and links. Images can be sized, padded, left/center/right aligned, and rendered with a right-side caption, below-image caption, or no caption. They do not create stored config values.
 
 ## Migrations
 

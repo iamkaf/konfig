@@ -3,11 +3,28 @@ package com.iamkaf.konfig.impl.v1;
 
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
+//?} elif >=1.21.11 {
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
+//?} elif >=1.21.6 {
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.ResourceLocation;
+//?} elif >=1.21.2 {
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 //?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.resources.ResourceLocation;
 //?} else {
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.GuiComponent;
+import net.minecraft.resources.ResourceLocation;
 //?}
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -20,6 +37,34 @@ import java.util.List;
 
 final class KonfigUiAdapter {
     private KonfigUiAdapter() {
+    }
+
+//? if >=1.21.11 {
+    private static Identifier textureIdentifier(String target) {
+//?} else {
+    private static ResourceLocation textureIdentifier(String target) {
+//?}
+        String normalized = target == null ? "" : target.trim();
+        String namespace = "minecraft";
+        String path = normalized;
+        int separator = normalized.indexOf(':');
+        if (separator >= 0) {
+            namespace = normalized.substring(0, separator);
+            path = normalized.substring(separator + 1);
+        }
+        if (!path.startsWith("textures/")) {
+            path = "textures/" + path;
+        }
+        if (!path.endsWith(".png")) {
+            path = path + ".png";
+        }
+//? if >=1.21.11 {
+        return Identifier.fromNamespaceAndPath(namespace, path);
+//?} elif >=1.21 {
+        return ResourceLocation.fromNamespaceAndPath(namespace, path);
+//?} else {
+        return new ResourceLocation(namespace, path);
+//?}
     }
 
 //? if >=26.1 {
@@ -104,6 +149,10 @@ final class KonfigUiAdapter {
         widget.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
     }
 
+    static void drawImage(GuiGraphicsExtractor guiGraphics, String target, int x, int y, int width, int height) {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, textureIdentifier(target), x, y, 0.0F, 0.0F, width, height, width, height);
+    }
+
     static void showTooltip(Screen screen, Font font, GuiGraphicsExtractor guiGraphics, String tooltip, int mouseX, int mouseY, int left, int top, int right, int bottom) {
         if (!KonfigScreenSupport.isBlank(tooltip) && mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom) {
             guiGraphics.setComponentTooltipForNextFrame(font, tooltipLines(tooltip), mouseX, mouseY);
@@ -124,6 +173,18 @@ final class KonfigUiAdapter {
 
     static void renderWidget(AbstractWidget widget, GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         widget.render(guiGraphics, mouseX, mouseY, partialTick);
+    }
+
+    static void drawImage(GuiGraphics guiGraphics, String target, int x, int y, int width, int height) {
+//? if >=1.21.11 {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, textureIdentifier(target), x, y, 0.0F, 0.0F, width, height, width, height);
+//?} elif >=1.21.6 {
+        guiGraphics.blit(RenderPipelines.GUI_TEXTURED, textureIdentifier(target), x, y, 0.0F, 0.0F, width, height, width, height);
+//?} elif >=1.21.2 {
+        guiGraphics.blit(RenderType::guiTextured, textureIdentifier(target), x, y, 0.0F, 0.0F, width, height, width, height);
+//?} else {
+        guiGraphics.blit(textureIdentifier(target), x, y, 0, 0.0F, 0.0F, width, height, width, height);
+//?}
     }
 
     static void showTooltip(Screen screen, Font font, GuiGraphics guiGraphics, String tooltip, int mouseX, int mouseY, int left, int top, int right, int bottom) {
@@ -150,6 +211,11 @@ final class KonfigUiAdapter {
 
     static void renderWidget(AbstractWidget widget, PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         widget.render(guiGraphics, mouseX, mouseY, partialTick);
+    }
+
+    static void drawImage(PoseStack guiGraphics, String target, int x, int y, int width, int height) {
+        RenderSystem.setShaderTexture(0, textureIdentifier(target));
+        GuiComponent.blit(guiGraphics, x, y, 0, 0.0F, 0.0F, width, height, width, height);
     }
 
     static void showTooltip(Screen screen, Font font, PoseStack guiGraphics, String tooltip, int mouseX, int mouseY, int left, int top, int right, int bottom) {

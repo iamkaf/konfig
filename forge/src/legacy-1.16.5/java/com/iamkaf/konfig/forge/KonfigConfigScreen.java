@@ -3,6 +3,7 @@ package com.iamkaf.konfig.forge;
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigValue;
+import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.impl.v1.ColorValueHelper;
 import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.ConfigValueImpl;
@@ -27,6 +28,7 @@ import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.StringTextComponent;
 import net.minecraft.util.text.TranslationTextComponent;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.Util;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -41,6 +43,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.net.URI;
 import java.util.Set;
 
 public final class KonfigConfigScreen extends Screen {
@@ -57,6 +60,7 @@ public final class KonfigConfigScreen extends Screen {
     private static final int CONTROL_HEIGHT = 20;
     private static final int CONTROL_MIN_WIDTH = 132;
     private static final int CONTROL_MAX_WIDTH = 200;
+    private static final int URL_BUTTON_WIDTH = 60;
     private static final int SUGGESTION_LIMIT = 7;
     private static final int SUGGESTION_ROW_HEIGHT = 14;
 
@@ -128,6 +132,25 @@ public final class KonfigConfigScreen extends Screen {
 
     private void closeScreen() {
         this.minecraft.setScreen(this.parent);
+    }
+
+    private void openInlineUrl(EntryRef entry) {
+        String target = entry.value.inlineUrl();
+        if (isBlank(target)) {
+            this.statusMessage = "Missing decoration URL";
+            this.statusColor = 0xFFFF8080;
+            return;
+        }
+
+        try {
+            Util.getPlatform().openUri(URI.create(target));
+            this.statusMessage = "Opened " + target;
+            this.statusColor = 0xFF80FF80;
+        } catch (Exception exception) {
+            Constants.LOG.warn("Failed to open inline URL {}", target, exception);
+            this.statusMessage = "Failed to open " + target;
+            this.statusColor = 0xFFFF8080;
+        }
     }
 
     @Override
@@ -202,6 +225,18 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private ConfigRow createRow(EntryRef entry) {
+        if (entry.value.kind() == EntryKind.HEADER) {
+            return new HeaderRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.IMAGE) {
+            return new ImageRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.INLINE_TEXT) {
+            return new InlineTextRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.URL) {
+            return new UrlRow(entry);
+        }
         if (!entry.editable) {
             return new UnsupportedRow(entry);
         }
@@ -305,12 +340,7 @@ public final class KonfigConfigScreen extends Screen {
             if (modIdFilter != null && !modIdFilter.equals(handle.modId())) {
                 continue;
             }
-            for (ConfigValue<?> value : handle.values()) {
-                if (!(value instanceof ConfigValueImpl)) {
-                    continue;
-                }
-
-                ConfigValueImpl<?> impl = (ConfigValueImpl<?>) value;
+            for (ConfigValueImpl<?> impl : handle.screenValues()) {
                 if (!isVisibleOnThisSide(impl)) {
                     continue;
                 }
@@ -625,6 +655,27 @@ public final class KonfigConfigScreen extends Screen {
         } catch (Exception ignored) {
             return null;
         }
+    }
+
+    private static ResourceLocation textureIdentifier(String value) {
+        ResourceLocation identifier = parseIdentifier(value);
+        if (identifier == null) {
+            return parseIdentifier("minecraft:textures/missingno.png");
+        }
+
+        String path = identifier.getPath();
+        if (!path.startsWith("textures/")) {
+            path = "textures/" + path;
+        }
+        if (!path.endsWith(".png")) {
+            path = path + ".png";
+        }
+        return new ResourceLocation(identifier.getNamespace(), path);
+    }
+
+    private static void drawImage(MatrixStack guiGraphics, String target, int x, int y, int width, int height) {
+        Minecraft.getInstance().getTextureManager().bind(textureIdentifier(target));
+        AbstractGui.blit(guiGraphics, x, y, 0, 0.0F, 0.0F, width, height, width, height);
     }
 
     private static boolean supportsRegistryIcon(String registryId) {
@@ -1018,6 +1069,181 @@ public final class KonfigConfigScreen extends Screen {
         @Override
         protected Widget control() {
             return this.button;
+        }
+    }
+
+    private abstract class DecorationRow extends ConfigRow {
+        private final Button spacer;
+
+        private DecorationRow(EntryRef entry) {
+            super(entry);
+            this.spacer = new Button(0, 0, 0, 0, new StringTextComponent(""), ignored -> {});
+            this.spacer.visible = false;
+            this.spacer.active = false;
+        }
+
+        @Override
+        protected final Widget control() {
+            return this.spacer;
+        }
+
+        @Override
+        public List<? extends IGuiEventListener> children() {
+            return Collections.emptyList();
+        }
+    }
+
+    private final class HeaderRow extends DecorationRow {
+        private HeaderRow(EntryRef entry) {
+            super(entry);
+        }
+
+        @Override
+        protected void renderRow(MatrixStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(
+                        guiGraphics,
+                        KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
+                        mouseX,
+                        mouseY
+                );
+            }
+            AbstractGui.fill(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
+            drawCenteredString(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+    }
+
+    private final class ImageRow extends DecorationRow {
+        private ImageRow(EntryRef entry) {
+            super(entry);
+        }
+
+        private boolean hasCaption() {
+            return !isBlank(this.entry.value.inlineLabel()) && this.entry.value.imageOptions().captionPosition() != ImageOptions.CaptionPosition.NONE;
+        }
+
+        private int captionWidth() {
+            return this.hasCaption() ? KonfigConfigScreen.this.font.width(this.entry.displayLabel()) : 0;
+        }
+
+        private int[] imageSize(int rowWidth, int rowHeight) {
+            ImageOptions options = this.entry.value.imageOptions();
+            int captionReserve = this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.RIGHT ? this.captionWidth() + 8 : 0;
+            int maxWidth = Math.max(1, rowWidth - (options.padding() * 2) - captionReserve);
+            int maxHeight = Math.max(1, rowHeight - (options.padding() * 2) - (this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.BELOW ? 10 : 0));
+            double scale = Math.min(1.0D, Math.min((double) maxWidth / (double) options.width(), (double) maxHeight / (double) options.height()));
+            return new int[] { Math.max(1, (int) Math.round(options.width() * scale)), Math.max(1, (int) Math.round(options.height() * scale)) };
+        }
+
+        private int contentWidth(int imageWidth) {
+            ImageOptions options = this.entry.value.imageOptions();
+            return this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.RIGHT ? imageWidth + 8 + this.captionWidth() : imageWidth;
+        }
+
+        private int contentHeight(int imageHeight) {
+            ImageOptions options = this.entry.value.imageOptions();
+            return this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.BELOW ? imageHeight + 12 : imageHeight;
+        }
+
+        private int imageX(int x, int width, int contentWidth) {
+            ImageOptions options = this.entry.value.imageOptions();
+            if (options.align() == ImageOptions.Align.CENTER) {
+                return x + Math.max(options.padding(), (width - contentWidth) / 2);
+            }
+            if (options.align() == ImageOptions.Align.RIGHT) {
+                return x + Math.max(options.padding(), width - options.padding() - contentWidth);
+            }
+            return x + options.padding();
+        }
+
+        private int imageY(int y, int height, int contentHeight) {
+            return y + Math.max(0, (height - contentHeight) / 2);
+        }
+
+        @Override
+        protected void renderRow(MatrixStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                AbstractGui.fill(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(
+                        guiGraphics,
+                        KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
+                        mouseX,
+                        mouseY
+                );
+            }
+            int[] imageSize = imageSize(width, height);
+            int contentWidth = contentWidth(imageSize[0]);
+            int contentHeight = contentHeight(imageSize[1]);
+            int imageX = imageX(x, width, contentWidth);
+            int imageY = imageY(y, height, contentHeight);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            if (this.hasCaption()) {
+                ImageOptions options = this.entry.value.imageOptions();
+                if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
+                    KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), imageX + imageSize[0] + 8.0F, imageY + Math.max(0, (imageSize[1] - 8) / 2), 0xFFCFCFCF);
+                } else if (options.captionPosition() == ImageOptions.CaptionPosition.BELOW) {
+                    KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), imageX + Math.max(0, (imageSize[0] - this.captionWidth()) / 2), imageY + imageSize[1] + 2.0F, 0xFFCFCFCF);
+                }
+            }
+        }
+    }
+
+    private final class InlineTextRow extends DecorationRow {
+        private InlineTextRow(EntryRef entry) {
+            super(entry);
+        }
+
+        @Override
+        protected void renderRow(MatrixStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                AbstractGui.fill(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(
+                        guiGraphics,
+                        KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
+                        mouseX,
+                        mouseY
+                );
+            }
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 8.0F, y + 10.0F, 0xFFCFCFCF);
+        }
+    }
+
+    private final class UrlRow extends ConfigRow {
+        private final Button button;
+
+        private UrlRow(EntryRef entry) {
+            super(entry);
+            this.button = new Button(0, 0, URL_BUTTON_WIDTH, CONTROL_HEIGHT, text("Open"), ignored -> KonfigConfigScreen.this.openInlineUrl(this.entry));
+        }
+
+        @Override
+        protected Widget control() {
+            return this.button;
+        }
+
+        @Override
+        protected void renderRow(MatrixStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                AbstractGui.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
+            }
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(
+                        guiGraphics,
+                        KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
+                        mouseX,
+                        mouseY
+                );
+            }
+
+            int controlX = x + width - URL_BUTTON_WIDTH;
+            int controlY = y + (height - CONTROL_HEIGHT) / 2;
+            layoutControl(this.control(), controlX, controlY, URL_BUTTON_WIDTH);
+            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, 0xFF80C8FF);
+            this.control().render(guiGraphics, mouseX, mouseY, partialTick);
         }
     }
 
@@ -2535,10 +2761,17 @@ public final class KonfigConfigScreen extends Screen {
         private EntryRef(ConfigHandleImpl handle, ConfigValueImpl<?> value, boolean editable) {
             this.handle = handle;
             this.value = value;
-            this.label = translatedLabel(handle, value);
-            this.contextLabel = contextLabel(handle, value);
-            this.tooltip = handle.tooltip(value.path());
-            this.editable = editable;
+            if (value.isDecoration()) {
+                this.label = text(value.inlineLabel());
+                this.contextLabel = text("");
+                this.tooltip = value.kind() == EntryKind.URL && !isBlank(value.inlineTarget()) ? value.inlineTarget() : handle.tooltip(value.path());
+                this.editable = false;
+            } else {
+                this.label = translatedLabel(handle, value);
+                this.contextLabel = contextLabel(handle, value);
+                this.tooltip = handle.tooltip(value.path());
+                this.editable = editable;
+            }
         }
 
         private ITextComponent displayLabel() {

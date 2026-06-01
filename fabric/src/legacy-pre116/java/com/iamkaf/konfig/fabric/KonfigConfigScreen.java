@@ -3,6 +3,7 @@ package com.iamkaf.konfig.fabric;
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigValue;
+import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.impl.v1.ColorValueHelper;
 import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.ConfigValueImpl;
@@ -217,8 +218,11 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private ConfigRow createRow(EntryRef entry) {
-        if (entry.value.kind() == EntryKind.BANNER) {
-            return new BannerRow(entry);
+        if (entry.value.kind() == EntryKind.HEADER) {
+            return new HeaderRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.IMAGE) {
+            return new ImageRow(entry);
         }
         if (entry.value.kind() == EntryKind.INLINE_TEXT) {
             return new InlineTextRow(entry);
@@ -646,6 +650,28 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
+    private static ResourceLocation textureIdentifier(String value) {
+        ResourceLocation identifier = parseIdentifier(value);
+        if (identifier == null) {
+            return parseIdentifier("minecraft:textures/missingno.png");
+        }
+
+        String path = identifier.getPath();
+        if (!path.startsWith("textures/")) {
+            path = "textures/" + path;
+        }
+        if (!path.endsWith(".png")) {
+            path = path + ".png";
+        }
+        return new ResourceLocation(identifier.getNamespace(), path);
+    }
+
+    private static void drawImage(String target, int x, int y, int width, int height) {
+        ResourceLocation texture = textureIdentifier(target);
+        Minecraft.getInstance().getTextureManager().bind(texture);
+        GuiComponent.blit(x, y, 0, 0.0F, 0.0F, width, height, width, height);
+    }
+
     private static boolean supportsRegistryIcon(String registryId) {
         return "minecraft:item".equals(registryId) || "minecraft:block".equals(registryId);
     }
@@ -1033,8 +1059,8 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
-    private final class BannerRow extends DecorationRow {
-        private BannerRow(EntryRef entry) {
+    private final class HeaderRow extends DecorationRow {
+        private HeaderRow(EntryRef entry) {
             super(entry);
         }
 
@@ -1045,6 +1071,78 @@ public final class KonfigConfigScreen extends Screen {
             }
             GuiComponent.fill(x, y + 4, x + width, y + height - 4, 0x552B3550);
             drawCenteredString(KonfigConfigScreen.this.font, this.entry.displayLabel().getString(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+    }
+
+    private final class ImageRow extends DecorationRow {
+        private ImageRow(EntryRef entry) {
+            super(entry);
+        }
+
+        private boolean hasCaption() {
+            return !isBlank(this.entry.value.inlineLabel()) && this.entry.value.imageOptions().captionPosition() != ImageOptions.CaptionPosition.NONE;
+        }
+
+        private int captionWidth() {
+            return this.hasCaption() ? KonfigConfigScreen.this.font.width(this.entry.displayLabel().getString()) : 0;
+        }
+
+        private int[] imageSize(int rowWidth, int rowHeight) {
+            ImageOptions options = this.entry.value.imageOptions();
+            int captionReserve = this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.RIGHT ? this.captionWidth() + 8 : 0;
+            int maxWidth = Math.max(1, rowWidth - (options.padding() * 2) - captionReserve);
+            int maxHeight = Math.max(1, rowHeight - (options.padding() * 2) - (this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.BELOW ? 10 : 0));
+            double scale = Math.min(1.0D, Math.min((double) maxWidth / (double) options.width(), (double) maxHeight / (double) options.height()));
+            return new int[] { Math.max(1, (int) Math.round(options.width() * scale)), Math.max(1, (int) Math.round(options.height() * scale)) };
+        }
+
+        private int contentWidth(int imageWidth) {
+            ImageOptions options = this.entry.value.imageOptions();
+            return this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.RIGHT ? imageWidth + 8 + this.captionWidth() : imageWidth;
+        }
+
+        private int contentHeight(int imageHeight) {
+            ImageOptions options = this.entry.value.imageOptions();
+            return this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.BELOW ? imageHeight + 12 : imageHeight;
+        }
+
+        private int imageX(int x, int width, int contentWidth) {
+            ImageOptions options = this.entry.value.imageOptions();
+            if (options.align() == ImageOptions.Align.CENTER) {
+                return x + Math.max(options.padding(), (width - contentWidth) / 2);
+            }
+            if (options.align() == ImageOptions.Align.RIGHT) {
+                return x + Math.max(options.padding(), width - options.padding() - contentWidth);
+            }
+            return x + options.padding();
+        }
+
+        private int imageY(int y, int height, int contentHeight) {
+            return y + Math.max(0, (height - contentHeight) / 2);
+        }
+
+        @Override
+        protected void renderRow(int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                GuiComponent.fill(x, y, x + width, y + height, 0x16000000);
+            }
+            if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
+                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+            }
+            int[] imageSize = imageSize(width, height);
+            int contentWidth = contentWidth(imageSize[0]);
+            int contentHeight = contentHeight(imageSize[1]);
+            int imageX = imageX(x, width, contentWidth);
+            int imageY = imageY(y, height, contentHeight);
+            drawImage(this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            if (this.hasCaption()) {
+                ImageOptions options = this.entry.value.imageOptions();
+                if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
+                    KonfigConfigScreen.this.font.draw(this.entry.displayLabel().getString(), imageX + imageSize[0] + 8.0F, imageY + Math.max(0, (imageSize[1] - 8) / 2), 0xFFCFCFCF);
+                } else if (options.captionPosition() == ImageOptions.CaptionPosition.BELOW) {
+                    KonfigConfigScreen.this.font.draw(this.entry.displayLabel().getString(), imageX + Math.max(0, (imageSize[0] - this.captionWidth()) / 2), imageY + imageSize[1] + 2.0F, 0xFFCFCFCF);
+                }
+            }
         }
     }
 
@@ -2572,7 +2670,7 @@ public final class KonfigConfigScreen extends Screen {
             if (value.isDecoration()) {
                 this.label = text(value.inlineLabel());
                 this.contextLabel = text("");
-                this.tooltip = value.kind() == EntryKind.URL && !isBlank(value.inlineUrl()) ? value.inlineUrl() : handle.tooltip(value.path());
+                this.tooltip = value.kind() == EntryKind.URL && !isBlank(value.inlineTarget()) ? value.inlineTarget() : handle.tooltip(value.path());
                 this.editable = false;
             } else {
                 this.label = translatedLabel(handle, value);

@@ -95,6 +95,7 @@ import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.*;
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigValue;
+import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.mojang.blaze3d.platform.InputConstants;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -398,8 +399,11 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private ConfigRow createRow(EntryRef entry) {
-        if (entry.value.kind() == EntryKind.BANNER) {
-            return new BannerRow(entry);
+        if (entry.value.kind() == EntryKind.HEADER) {
+            return new HeaderRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.IMAGE) {
+            return new ImageRow(entry);
         }
         if (entry.value.kind() == EntryKind.INLINE_TEXT) {
             return new InlineTextRow(entry);
@@ -886,8 +890,8 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
-    private final class BannerRow extends DecorationRow {
-        private BannerRow(EntryRef entry) {
+    private final class HeaderRow extends DecorationRow {
+        private HeaderRow(EntryRef entry) {
             super(entry);
         }
 
@@ -926,6 +930,173 @@ public final class KonfigConfigScreen extends Screen {
             showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
             fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
             drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
+        }
+//?}
+    }
+
+    private final class ImageRow extends DecorationRow {
+        private ImageRow(EntryRef entry) {
+            super(entry);
+        }
+
+        private boolean hasCaption() {
+            return !KonfigScreenSupport.isBlank(this.entry.value.inlineLabel()) && this.entry.value.imageOptions().captionPosition() != ImageOptions.CaptionPosition.NONE;
+        }
+
+        private int captionWidth() {
+            return this.hasCaption() ? KonfigConfigScreen.this.font.width(this.entry.displayLabel()) : 0;
+        }
+
+        private int[] imageSize(int rowWidth, int rowHeight) {
+            ImageOptions options = this.entry.value.imageOptions();
+            int captionReserve = this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.RIGHT ? this.captionWidth() + 8 : 0;
+            int maxWidth = Math.max(1, rowWidth - (options.padding() * 2) - captionReserve);
+            int maxHeight = Math.max(1, rowHeight - (options.padding() * 2) - (this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.BELOW ? 10 : 0));
+            double scale = Math.min(1.0D, Math.min((double) maxWidth / (double) options.width(), (double) maxHeight / (double) options.height()));
+            return new int[] {
+                    Math.max(1, (int) Math.round(options.width() * scale)),
+                    Math.max(1, (int) Math.round(options.height() * scale))
+            };
+        }
+
+        private int contentWidth(int imageWidth) {
+            ImageOptions options = this.entry.value.imageOptions();
+            if (this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
+                return imageWidth + 8 + this.captionWidth();
+            }
+            return imageWidth;
+        }
+
+        private int contentHeight(int imageHeight) {
+            ImageOptions options = this.entry.value.imageOptions();
+            if (this.hasCaption() && options.captionPosition() == ImageOptions.CaptionPosition.BELOW) {
+                return imageHeight + 12;
+            }
+            return imageHeight;
+        }
+
+        private int imageX(int x, int width, int contentWidth) {
+            ImageOptions options = this.entry.value.imageOptions();
+            if (options.align() == ImageOptions.Align.CENTER) {
+                return x + Math.max(options.padding(), (width - contentWidth) / 2);
+            }
+            if (options.align() == ImageOptions.Align.RIGHT) {
+                return x + Math.max(options.padding(), width - options.padding() - contentWidth);
+            }
+            return x + options.padding();
+        }
+
+        private int imageY(int y, int height, int contentHeight) {
+            return y + Math.max(0, (height - contentHeight) / 2);
+        }
+
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
+            this.renderImageRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered);
+        }
+
+        private void renderImageRow(GuiGraphicsExtractor guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
+            int[] imageSize = imageSize(width, height);
+            int contentWidth = contentWidth(imageSize[0]);
+            int contentHeight = contentHeight(imageSize[1]);
+            int imageX = imageX(x, width, contentWidth);
+            int imageY = imageY(y, height, contentHeight);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            if (this.hasCaption()) {
+                ImageOptions options = this.entry.value.imageOptions();
+                if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + imageSize[0] + 8, imageY + Math.max(0, (imageSize[1] - 8) / 2), 0xFFCFCFCF);
+                } else if (options.captionPosition() == ImageOptions.CaptionPosition.BELOW) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + Math.max(0, (imageSize[0] - this.captionWidth()) / 2), imageY + imageSize[1] + 2, 0xFFCFCFCF);
+                }
+            }
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            int x = this.getContentX();
+            int y = this.getContentY();
+            int width = this.getContentWidth();
+            int height = this.getContentHeight();
+            this.renderImageRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered);
+        }
+
+        private void renderImageRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
+            int[] imageSize = imageSize(width, height);
+            int contentWidth = contentWidth(imageSize[0]);
+            int contentHeight = contentHeight(imageSize[1]);
+            int imageX = imageX(x, width, contentWidth);
+            int imageY = imageY(y, height, contentHeight);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            if (this.hasCaption()) {
+                ImageOptions options = this.entry.value.imageOptions();
+                if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + imageSize[0] + 8, imageY + Math.max(0, (imageSize[1] - 8) / 2), 0xFFCFCFCF);
+                } else if (options.captionPosition() == ImageOptions.CaptionPosition.BELOW) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + Math.max(0, (imageSize[0] - this.captionWidth()) / 2), imageY + imageSize[1] + 2, 0xFFCFCFCF);
+                }
+            }
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            this.renderImageRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered);
+        }
+
+        private void renderImageRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+            int[] imageSize = imageSize(width, height);
+            int contentWidth = contentWidth(imageSize[0]);
+            int contentHeight = contentHeight(imageSize[1]);
+            int imageX = imageX(x, width, contentWidth);
+            int imageY = imageY(y, height, contentHeight);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            if (this.hasCaption()) {
+                ImageOptions options = this.entry.value.imageOptions();
+                if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + imageSize[0] + 8, imageY + Math.max(0, (imageSize[1] - 8) / 2), 0xFFCFCFCF);
+                } else if (options.captionPosition() == ImageOptions.CaptionPosition.BELOW) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + Math.max(0, (imageSize[0] - this.captionWidth()) / 2), imageY + imageSize[1] + 2, 0xFFCFCFCF);
+                }
+            }
+        }
+//?} else {
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            if (hovered) {
+                fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
+            }
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+            int[] imageSize = imageSize(width, height);
+            int contentWidth = contentWidth(imageSize[0]);
+            int contentHeight = contentHeight(imageSize[1]);
+            int imageX = imageX(x, width, contentWidth);
+            int imageY = imageY(y, height, contentHeight);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            if (this.hasCaption()) {
+                ImageOptions options = this.entry.value.imageOptions();
+                if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + imageSize[0] + 8, imageY + Math.max(0, (imageSize[1] - 8) / 2), 0xFFCFCFCF);
+                } else if (options.captionPosition() == ImageOptions.CaptionPosition.BELOW) {
+                    drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), imageX + Math.max(0, (imageSize[0] - this.captionWidth()) / 2), imageY + imageSize[1] + 2, 0xFFCFCFCF);
+                }
+            }
         }
 //?}
     }

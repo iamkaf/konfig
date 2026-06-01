@@ -3,6 +3,11 @@ package com.iamkaf.konfig.impl.v1;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.iamkaf.konfig.api.v1.*;
+//? if >=1.21.11 {
+import net.minecraft.resources.Identifier;
+//?} elif >=1.17 {
+import net.minecraft.resources.ResourceLocation;
+//?}
 
 import java.nio.file.Path;
 import java.util.ArrayDeque;
@@ -113,8 +118,62 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     }
 
     @Override
-    public ConfigBuilder banner(String text) {
-        addDecoration(EntryKind.BANNER, text, null);
+    public ConfigBuilder header(String text) {
+        addDecoration(EntryKind.HEADER, text, null);
+        return this;
+    }
+
+//? if >=1.21.11 {
+    @Override
+    public ConfigBuilder image(Identifier textureId) {
+//?} elif >=1.17 {
+    @Override
+    public ConfigBuilder image(ResourceLocation textureId) {
+//?} else {
+    @Override
+    public ConfigBuilder image(Object textureId) {
+//?}
+        return image(textureId, "", ImageOptions.defaults());
+    }
+
+//? if >=1.21.11 {
+    @Override
+    public ConfigBuilder image(Identifier textureId, ImageOptions options) {
+//?} elif >=1.17 {
+    @Override
+    public ConfigBuilder image(ResourceLocation textureId, ImageOptions options) {
+//?} else {
+    @Override
+    public ConfigBuilder image(Object textureId, ImageOptions options) {
+//?}
+        return image(textureId, "", options);
+    }
+
+//? if >=1.21.11 {
+    @Override
+    public ConfigBuilder image(Identifier textureId, String caption) {
+//?} elif >=1.17 {
+    @Override
+    public ConfigBuilder image(ResourceLocation textureId, String caption) {
+//?} else {
+    @Override
+    public ConfigBuilder image(Object textureId, String caption) {
+//?}
+        return image(textureId, caption, ImageOptions.defaults());
+    }
+
+//? if >=1.21.11 {
+    @Override
+    public ConfigBuilder image(Identifier textureId, String caption, ImageOptions options) {
+//?} elif >=1.17 {
+    @Override
+    public ConfigBuilder image(ResourceLocation textureId, String caption, ImageOptions options) {
+//?} else {
+    @Override
+    public ConfigBuilder image(Object textureId, String caption, ImageOptions options) {
+//?}
+        Objects.requireNonNull(textureId, "textureId");
+        addDecoration(EntryKind.IMAGE, caption, textureId.toString(), options);
         return this;
     }
 
@@ -355,15 +414,19 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         return builder.toString();
     }
 
-    private void addDecoration(EntryKind kind, String label, String url) {
+    private void addDecoration(EntryKind kind, String label, String target) {
+        addDecoration(kind, label, target, null);
+    }
+
+    private void addDecoration(EntryKind kind, String label, String target, ImageOptions imageOptions) {
         String normalizedLabel = label == null ? "" : label.trim();
-        if (isBlank(normalizedLabel)) {
+        if (kind != EntryKind.IMAGE && isBlank(normalizedLabel)) {
             throw new IllegalArgumentException("decoration text cannot be blank");
         }
 
         String prefix = currentCategoryPath();
         String path = (isBlank(prefix) ? "" : prefix + ".") + "__inline_" + String.format(Locale.ROOT, "%04d", ++this.inlineDecorationIndex);
-        ConfigValueImpl<String> entry = ConfigValueImpl.inlineDecoration(path, kind, normalizedLabel, url);
+        ConfigValueImpl<String> entry = ConfigValueImpl.inlineDecoration(path, kind, normalizedLabel, target, imageOptions);
         this.entries.put(path, entry);
         this.entryComments.remove(path);
     }
