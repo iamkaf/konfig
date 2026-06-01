@@ -6,10 +6,17 @@ import net.minecraft.resources.ResourceKey;
 //?}
 
 import java.util.function.Predicate;
+import java.util.function.Consumer;
 
 public interface StringValueBuilder extends ValueBuilder<String> {
     @Override
     StringValueBuilder comment(String comment);
+
+    @Override
+    StringValueBuilder tooltip(String tooltip);
+
+    @Override
+    StringValueBuilder info(Consumer<InfoPanelBuilder> builder);
 
     @Override
     StringValueBuilder restart(RestartRequirement requirement);

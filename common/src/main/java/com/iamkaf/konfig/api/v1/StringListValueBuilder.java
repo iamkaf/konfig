@@ -7,10 +7,17 @@ import net.minecraft.resources.ResourceKey;
 
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.function.Consumer;
 
 public interface StringListValueBuilder extends ValueBuilder<List<String>> {
     @Override
     StringListValueBuilder comment(String comment);
+
+    @Override
+    StringListValueBuilder tooltip(String tooltip);
+
+    @Override
+    StringListValueBuilder info(Consumer<InfoPanelBuilder> builder);
 
     @Override
     StringListValueBuilder restart(RestartRequirement requirement);

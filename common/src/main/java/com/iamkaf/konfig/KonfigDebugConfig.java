@@ -3,6 +3,7 @@ package com.iamkaf.konfig;
 import com.iamkaf.konfig.api.v1.ConfigBuilder;
 import com.iamkaf.konfig.api.v1.ConfigScope;
 import com.iamkaf.konfig.api.v1.ConfigValue;
+import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.api.v1.SyncMode;
 import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
@@ -34,7 +35,12 @@ public final class KonfigDebugConfig {
                 .scope(ConfigScope.COMMON)
                 .syncMode(SyncMode.NONE)
                 .fileName("konfig.toml")
-                .comment("Konfig internal debug settings.");
+                .comment("Konfig internal debug settings.")
+                .info(info -> info
+                        .image(Constants.resource("gui/debug_image"), "Konfig", ImageOptions.banner(180, 84))
+                        .header("About Konfig")
+                        .inlineText("Konfig provides generated config screens and synchronized config values for Minecraft mods.")
+                        .url("Konfig Documentation", "https://github.com/iamkaf/konfig"));
 
         builder.header("Konfig Debug Settings");
         builder.image(Constants.resource("gui/debug_image"));
@@ -43,8 +49,18 @@ public final class KonfigDebugConfig {
 
         builder.push("debug");
         builder.categoryComment("Verbose diagnostics for config lifecycle and screen creation.");
+        builder.categoryInfo(info -> info
+                .image(Constants.resource("gui/debug_image"), "Konfig", ImageOptions.banner(180, 84))
+                .header("About Konfig Debug Settings")
+                .inlineText("These settings control Konfig's debug logging and diagnostics.")
+                .url("Konfig Documentation", "https://github.com/iamkaf/konfig"));
         debugEnabled = builder.bool("enabled", false)
                 .comment("Enable verbose Konfig internal logs")
+                .info(info -> info
+                        .header("Enable Debug Logging")
+                        .inlineText("When enabled, Konfig will write detailed diagnostic and debug information to the log files.")
+                        .inlineText("This can help diagnose issues but may produce a lot of log output.")
+                        .inlineText("Default: OFF"))
                 .build();
         builder.pop();
 

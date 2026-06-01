@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceKey;
 
 import java.util.List;
 import java.util.function.Predicate;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 final class StringListValueBuilderImpl extends ValueBuilderImpl<List<String>> implements StringListValueBuilder {
@@ -30,6 +31,18 @@ final class StringListValueBuilderImpl extends ValueBuilderImpl<List<String>> im
     @Override
     public StringListValueBuilder comment(String comment) {
         super.comment(comment);
+        return this;
+    }
+
+    @Override
+    public StringListValueBuilder tooltip(String tooltip) {
+        super.tooltip(tooltip);
+        return this;
+    }
+
+    @Override
+    public StringListValueBuilder info(Consumer<com.iamkaf.konfig.api.v1.InfoPanelBuilder> builder) {
+        super.info(builder);
         return this;
     }
 

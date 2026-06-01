@@ -1,9 +1,14 @@
 package com.iamkaf.konfig.api.v1;
 
 import java.util.function.Predicate;
+import java.util.function.Consumer;
 
 public interface ValueBuilder<T> {
     ValueBuilder<T> comment(String comment);
+
+    ValueBuilder<T> tooltip(String tooltip);
+
+    ValueBuilder<T> info(Consumer<InfoPanelBuilder> builder);
 
     ValueBuilder<T> restart(RestartRequirement requirement);
 

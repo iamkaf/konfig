@@ -38,6 +38,11 @@ public final class ConfigHandleImpl implements ConfigHandle {
     private final LinkedHashMap<String, ConfigValueImpl<?>> entries;
     private final LinkedHashMap<String, String> entryComments;
     private final LinkedHashMap<String, String> categoryComments;
+    private final LinkedHashMap<String, String> entryTooltips;
+    private final LinkedHashMap<String, String> categoryTooltips;
+    private final List<InfoPanelItem> globalInfo;
+    private final LinkedHashMap<String, List<InfoPanelItem>> categoryInfo;
+    private final LinkedHashMap<String, List<InfoPanelItem>> entryInfo;
     private final String fileComment;
     private final int schemaVersion;
     private final LinkedHashMap<Integer, ConfigMigration> migrations;
@@ -52,6 +57,11 @@ public final class ConfigHandleImpl implements ConfigHandle {
             LinkedHashMap<String, ConfigValueImpl<?>> entries,
             LinkedHashMap<String, String> entryComments,
             LinkedHashMap<String, String> categoryComments,
+            LinkedHashMap<String, String> entryTooltips,
+            LinkedHashMap<String, String> categoryTooltips,
+            List<InfoPanelItem> globalInfo,
+            LinkedHashMap<String, List<InfoPanelItem>> categoryInfo,
+            LinkedHashMap<String, List<InfoPanelItem>> entryInfo,
             String fileComment,
             int schemaVersion,
             LinkedHashMap<Integer, ConfigMigration> migrations
@@ -64,6 +74,11 @@ public final class ConfigHandleImpl implements ConfigHandle {
         this.entries = entries;
         this.entryComments = entryComments;
         this.categoryComments = categoryComments;
+        this.entryTooltips = entryTooltips;
+        this.categoryTooltips = categoryTooltips;
+        this.globalInfo = globalInfo == null ? Collections.emptyList() : Collections.unmodifiableList(globalInfo);
+        this.categoryInfo = categoryInfo == null ? new LinkedHashMap<String, List<InfoPanelItem>>() : categoryInfo;
+        this.entryInfo = entryInfo == null ? new LinkedHashMap<String, List<InfoPanelItem>>() : entryInfo;
         this.fileComment = fileComment == null ? "" : fileComment;
         this.schemaVersion = schemaVersion;
         this.migrations = migrations;
@@ -196,6 +211,20 @@ public final class ConfigHandleImpl implements ConfigHandle {
         return Collections.unmodifiableCollection(this.entries.values());
     }
 
+    public List<InfoPanelItem> globalInfo() {
+        return this.globalInfo;
+    }
+
+    public List<InfoPanelItem> categoryInfo(String path) {
+        List<InfoPanelItem> info = this.categoryInfo.get(path);
+        return info == null ? Collections.emptyList() : info;
+    }
+
+    public List<InfoPanelItem> entryInfo(String path) {
+        List<InfoPanelItem> info = this.entryInfo.get(path);
+        return info == null ? Collections.emptyList() : info;
+    }
+
     public String id() {
         return this.modId + ":" + this.name;
     }
@@ -209,9 +238,9 @@ public final class ConfigHandleImpl implements ConfigHandle {
                 categoryPath.append('.');
             }
             categoryPath.append(parts[i]);
-            appendComment(builder, this.categoryComments.get(categoryPath.toString()));
+            appendComment(builder, this.categoryTooltips.get(categoryPath.toString()));
         }
-        appendComment(builder, this.entryComments.get(path));
+        appendComment(builder, this.entryTooltips.get(path));
         return builder.toString();
     }
 

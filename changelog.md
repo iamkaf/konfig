@@ -13,10 +13,13 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 - Support for every Konfig Minecraft line from `1.14.4` through `26.1.2`.
 - Inline config-screen decorations for headers, images, descriptive text, and clickable URLs.
+- Info-panel builder API for explicit hover details.
+- Explicit config-screen tooltip APIs for categories and values.
 - Config-screen title helper support across supported versions.
 
 ### Changed
 
+- Builder comment APIs now write TOML comments only; config-screen tooltips use explicit tooltip APIs.
 - NeoForge coverage now spans every supported line from `1.21.1` through `26.1.2`.
 
 ## 0.2.0

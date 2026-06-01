@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceKey;
 //?}
 
 import java.util.function.Predicate;
+import java.util.function.Consumer;
 
 final class StringValueBuilderImpl extends ValueBuilderImpl<String> implements StringValueBuilder {
     StringValueBuilderImpl(
@@ -30,6 +31,18 @@ final class StringValueBuilderImpl extends ValueBuilderImpl<String> implements S
     @Override
     public StringValueBuilder comment(String comment) {
         super.comment(comment);
+        return this;
+    }
+
+    @Override
+    public StringValueBuilder tooltip(String tooltip) {
+        super.tooltip(tooltip);
+        return this;
+    }
+
+    @Override
+    public StringValueBuilder info(Consumer<com.iamkaf.konfig.api.v1.InfoPanelBuilder> builder) {
+        super.info(builder);
         return this;
     }
 

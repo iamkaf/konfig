@@ -7,6 +7,7 @@ import net.minecraft.resources.ResourceLocation;
 //?}
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public interface ConfigBuilder {
     ConfigBuilder scope(ConfigScope scope);
@@ -26,6 +27,12 @@ public interface ConfigBuilder {
     ConfigBuilder comment(String comment);
 
     ConfigBuilder categoryComment(String comment);
+
+    ConfigBuilder categoryTooltip(String tooltip);
+
+    ConfigBuilder info(Consumer<InfoPanelBuilder> builder);
+
+    ConfigBuilder categoryInfo(Consumer<InfoPanelBuilder> builder);
 
     ConfigBuilder header(String text);
 

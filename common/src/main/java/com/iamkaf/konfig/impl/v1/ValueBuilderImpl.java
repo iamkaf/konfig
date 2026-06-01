@@ -11,6 +11,7 @@ import net.minecraft.resources.ResourceKey;
 
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 class ValueBuilderImpl<T> implements ValueBuilder<T> {
@@ -22,6 +23,8 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private final Function<T, JsonElement> encoder;
 
     private String comment = "";
+    private String tooltip = "";
+    private java.util.List<InfoPanelItem> info = java.util.Collections.emptyList();
     private RestartRequirement restartRequirement = RestartRequirement.NONE;
     private boolean sync;
     private boolean clientOnly;
@@ -56,6 +59,18 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
     @Override
     public ValueBuilder<T> comment(String comment) {
         this.comment = comment == null ? "" : comment;
+        return this;
+    }
+
+    @Override
+    public ValueBuilder<T> tooltip(String tooltip) {
+        this.tooltip = tooltip == null ? "" : tooltip;
+        return this;
+    }
+
+    @Override
+    public ValueBuilder<T> info(Consumer<com.iamkaf.konfig.api.v1.InfoPanelBuilder> builder) {
+        this.info = ConfigBuilderImpl.buildInfo(builder);
         return this;
     }
 
@@ -138,6 +153,8 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
         );
 
         this.owner.addEntry(this.path, entry, this.comment);
+        this.owner.addEntryTooltip(this.path, this.tooltip);
+        this.owner.addEntryInfo(this.path, this.info);
         return entry;
     }
 }

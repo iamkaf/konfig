@@ -104,11 +104,13 @@ public final class ExampleConfig {
 
         ENABLED = builder.bool("enabled", true)
                 .comment("Master toggle")
+                .tooltip("Enable example mod features")
                 .sync(true)
                 .build();
 
         RANGE = builder.intRange("range", 8, 1, 64)
                 .comment("Effect radius")
+                .tooltip("Controls the effect radius in blocks")
                 .sync(true)
                 .restart(RestartRequirement.WORLD)
                 .build();

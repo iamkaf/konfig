@@ -15,6 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public final class ConfigBuilderImpl implements ConfigBuilder {
     private final String modId;
@@ -30,6 +31,11 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     private final LinkedHashMap<String, ConfigValueImpl<?>> entries = new LinkedHashMap<String, ConfigValueImpl<?>>();
     private final LinkedHashMap<String, String> entryComments = new LinkedHashMap<String, String>();
     private final LinkedHashMap<String, String> categoryComments = new LinkedHashMap<String, String>();
+    private final LinkedHashMap<String, String> entryTooltips = new LinkedHashMap<String, String>();
+    private final LinkedHashMap<String, String> categoryTooltips = new LinkedHashMap<String, String>();
+    private List<InfoPanelItem> globalInfo = java.util.Collections.emptyList();
+    private final LinkedHashMap<String, List<InfoPanelItem>> categoryInfo = new LinkedHashMap<String, List<InfoPanelItem>>();
+    private final LinkedHashMap<String, List<InfoPanelItem>> entryInfo = new LinkedHashMap<String, List<InfoPanelItem>>();
     private final LinkedHashMap<Integer, ConfigMigration> migrations = new LinkedHashMap<Integer, ConfigMigration>();
     private int inlineDecorationIndex;
 
@@ -113,6 +119,44 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
             this.categoryComments.remove(path);
         } else {
             this.categoryComments.put(path, normalized);
+        }
+        return this;
+    }
+
+    @Override
+    public ConfigBuilder categoryTooltip(String tooltip) {
+        if (this.categories.isEmpty()) {
+            throw new IllegalStateException("No category to attach tooltip");
+        }
+
+        String path = currentCategoryPath();
+        String normalized = normalizeComment(tooltip);
+        if (isBlank(normalized)) {
+            this.categoryTooltips.remove(path);
+        } else {
+            this.categoryTooltips.put(path, normalized);
+        }
+        return this;
+    }
+
+    @Override
+    public ConfigBuilder info(Consumer<InfoPanelBuilder> builder) {
+        this.globalInfo = buildInfo(builder);
+        return this;
+    }
+
+    @Override
+    public ConfigBuilder categoryInfo(Consumer<InfoPanelBuilder> builder) {
+        if (this.categories.isEmpty()) {
+            throw new IllegalStateException("No category to attach info");
+        }
+
+        String path = currentCategoryPath();
+        List<InfoPanelItem> items = buildInfo(builder);
+        if (items.isEmpty()) {
+            this.categoryInfo.remove(path);
+        } else {
+            this.categoryInfo.put(path, items);
         }
         return this;
     }
@@ -368,6 +412,11 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 new LinkedHashMap<String, ConfigValueImpl<?>>(this.entries),
                 new LinkedHashMap<String, String>(this.entryComments),
                 new LinkedHashMap<String, String>(this.categoryComments),
+                new LinkedHashMap<String, String>(this.entryTooltips),
+                new LinkedHashMap<String, String>(this.categoryTooltips),
+                this.globalInfo,
+                new LinkedHashMap<String, List<InfoPanelItem>>(this.categoryInfo),
+                new LinkedHashMap<String, List<InfoPanelItem>>(this.entryInfo),
                 this.fileComment,
                 this.schemaVersion,
                 new LinkedHashMap<Integer, ConfigMigration>(this.migrations)
@@ -387,6 +436,29 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         } else {
             this.entryComments.put(path, normalizeComment(comment));
         }
+    }
+
+    void addEntryTooltip(String path, String tooltip) {
+        if (isBlank(tooltip)) {
+            this.entryTooltips.remove(path);
+        } else {
+            this.entryTooltips.put(path, normalizeComment(tooltip));
+        }
+    }
+
+    void addEntryInfo(String path, List<InfoPanelItem> info) {
+        if (info == null || info.isEmpty()) {
+            this.entryInfo.remove(path);
+        } else {
+            this.entryInfo.put(path, info);
+        }
+    }
+
+    static List<InfoPanelItem> buildInfo(Consumer<InfoPanelBuilder> builder) {
+        Objects.requireNonNull(builder, "builder");
+        InfoPanelBuilderImpl info = new InfoPanelBuilderImpl();
+        builder.accept(info);
+        return info.build();
     }
 
     private String path(String key) {
