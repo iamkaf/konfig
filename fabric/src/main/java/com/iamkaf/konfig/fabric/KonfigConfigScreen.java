@@ -8,12 +8,15 @@ import com.iamkaf.konfig.impl.v1.ColorValueHelper;
 import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.ConfigValueImpl;
 import com.iamkaf.konfig.impl.v1.EntryKind;
+import com.iamkaf.konfig.impl.v1.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.KonfigManager;
 import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.StringListValueHelper;
 import com.mojang.blaze3d.platform.InputConstants;
-//? if >=1.17 {
+//? if >=1.16 {
 import com.mojang.blaze3d.systems.RenderSystem;
+//?} else {
+import com.mojang.blaze3d.platform.GlStateManager;
 //?}
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
@@ -60,6 +63,11 @@ public final class KonfigConfigScreen extends Screen {
     private static final int URL_BUTTON_WIDTH = 60;
     private static final int SUGGESTION_LIMIT = 7;
     private static final int SUGGESTION_ROW_HEIGHT = 14;
+    private static final int INFO_PANEL_MIN_WIDTH = 140;
+    private static final int INFO_PANEL_MAX_WIDTH = 210;
+    private static final int INFO_PANEL_PADDING = 16;
+    private static final int INFO_PANEL_GAP = 10;
+    private static final int INFO_PANEL_IMAGE_MAX_WIDTH = 168;
 
     private final Screen parent;
     private final String modIdFilter;
@@ -72,6 +80,11 @@ public final class KonfigConfigScreen extends Screen {
     private EntryList list;
     private RegistryTextInputRow activeRegistryRow;
     private RegistryTextInputRow renderedRegistryRow;
+    private EntryRef hoveredEntry;
+    private EntryRef activeInfoEntry;
+    private boolean mouseOverInfoPanel;
+    private boolean mouseOverInfoPanelBridge;
+    private final List<InfoPanelLink> infoPanelLinks = new ArrayList<InfoPanelLink>();
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -152,6 +165,9 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && this.handleInfoPanelClick(mouseX, mouseY)) {
+            return true;
+        }
         if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionClick(mouseX, mouseY)) {
             return true;
         }
@@ -183,21 +199,28 @@ public final class KonfigConfigScreen extends Screen {
     @Override
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
+        this.hoveredEntry = null;
+        this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
+        this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
+        this.infoPanelLinks.clear();
         GuiComponent.fill(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
         if (this.list != null) {
             this.list.render(guiGraphics, mouseX, mouseY, partialTick);
         }
+        GuiComponent.fill(guiGraphics, 0, this.height - LIST_BOTTOM_MARGIN, this.mainPanelRight(), this.height, 0xC0101010);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
 
         drawCenteredString(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         this.font.draw(guiGraphics, text(entryCountText()), 12, 12, 0xFFC0C0C0);
+        GuiComponent.fill(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
+        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
 
         if (!this.statusMessage.isEmpty()) {
-            drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+            drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.mainPanelRight() / 2, this.height - 38, this.statusColor);
         }
 
         if (this.entries.isEmpty()) {
-            drawCenteredString(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+            drawCenteredString(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
 
         if (this.renderedRegistryRow != null) {
@@ -210,15 +233,16 @@ public final class KonfigConfigScreen extends Screen {
         this.children.clear();
 
         int listHeight = Math.max(48, this.height - LIST_TOP - LIST_BOTTOM_MARGIN);
-        this.list = new EntryList(this.minecraft, this.width, listHeight, LIST_TOP);
+        this.list = new EntryList(this.minecraft, this.mainPanelRight(), listHeight, LIST_TOP);
         this.children.add(this.list);
         for (EntryRef entry : this.entries) {
             this.list.addKonfigEntry(createRow(entry));
         }
 
         int footerY = this.height - 26;
-        this.addButton(new Button(this.width / 2 - 82, footerY, 80, 20, translate("konfig.screen.reset"), button -> this.resetEntries()));
-        this.addButton(new Button(this.width / 2 + 2, footerY, 80, 20, translate("konfig.screen.done"), button -> this.onClose()));
+        int footerCenter = this.mainPanelRight() / 2;
+        this.addButton(new Button(footerCenter - 82, footerY, 80, 20, translate("konfig.screen.reset"), button -> this.resetEntries()));
+        this.addButton(new Button(footerCenter + 2, footerY, 80, 20, translate("konfig.screen.done"), button -> this.onClose()));
     }
 
     private ConfigRow createRow(EntryRef entry) {
@@ -328,6 +352,224 @@ public final class KonfigConfigScreen extends Screen {
             return text(this.screenTitle);
         }
         return this.title;
+    }
+
+    private int mainPanelRight() {
+        int infoPanelWidth = Mth.clamp(this.width / 3, INFO_PANEL_MIN_WIDTH, INFO_PANEL_MAX_WIDTH);
+        int mainRight = this.width - infoPanelWidth;
+        return Math.max(220, mainRight);
+    }
+
+    private void updateHoveredEntry(EntryRef entry, boolean hovered) {
+        if (hovered) {
+            this.hoveredEntry = entry;
+            this.activeInfoEntry = entry;
+        }
+    }
+
+    private List<InfoPanelItem> activeInfoItems() {
+        EntryRef hovered = this.hoveredEntry;
+        if (hovered == null && (this.mouseOverInfoPanel || this.mouseOverInfoPanelBridge)) {
+            hovered = this.activeInfoEntry;
+        }
+        if (hovered != null) {
+            List<InfoPanelItem> entryInfo = hovered.handle.entryInfo(hovered.value.path());
+            if (!entryInfo.isEmpty()) {
+                return entryInfo;
+            }
+            if (!isBlank(hovered.categoryPath)) {
+                List<InfoPanelItem> categoryInfo = hovered.handle.categoryInfo(hovered.categoryPath);
+                if (!categoryInfo.isEmpty()) {
+                    return categoryInfo;
+                }
+            }
+            List<InfoPanelItem> globalInfo = hovered.handle.globalInfo();
+            if (!globalInfo.isEmpty()) {
+                return globalInfo;
+            }
+        }
+        for (EntryRef entry : this.entries) {
+            List<InfoPanelItem> globalInfo = entry.handle.globalInfo();
+            if (!globalInfo.isEmpty()) {
+                return globalInfo;
+            }
+        }
+        return Collections.emptyList();
+    }
+
+    private boolean isPointInInfoPanel(double mouseX, double mouseY) {
+        return mouseX >= this.mainPanelRight() + 1
+                && mouseX <= this.width
+                && mouseY >= LIST_TOP
+                && mouseY <= this.height;
+    }
+
+    private boolean isPointInInfoPanelBridge(double mouseX, double mouseY) {
+        return mouseX >= this.mainPanelRight() - 24
+                && mouseX <= this.mainPanelRight() + 1
+                && mouseY >= LIST_TOP
+                && mouseY <= this.height - LIST_BOTTOM_MARGIN;
+    }
+
+    private boolean handleInfoPanelClick(double mouseX, double mouseY) {
+        if (!this.isPointInInfoPanel(mouseX, mouseY)) {
+            return false;
+        }
+        for (InfoPanelLink link : this.infoPanelLinks) {
+            if (link.contains(mouseX, mouseY)) {
+                try {
+                    Util.getPlatform().openUri(URI.create(link.target));
+                    this.statusMessage = "Opened " + link.target;
+                    this.statusColor = 0xFF80FF80;
+                } catch (Exception exception) {
+                    Constants.LOG.warn("Failed to open info panel URL {}", link.target, exception);
+                    this.statusMessage = "Failed to open " + link.target;
+                    this.statusColor = 0xFFFF8080;
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void renderInfoPanel(PoseStack guiGraphics, int mouseX, int mouseY) {
+        int left = this.mainPanelRight() + 1;
+        int right = this.width;
+        int top = LIST_TOP;
+        int bottom = this.height;
+        GuiComponent.fill(guiGraphics, left, top, right, bottom, 0x22000000);
+
+        List<InfoPanelItem> items = this.activeInfoItems();
+        if (items.isEmpty()) {
+            return;
+        }
+
+        int x = left + INFO_PANEL_PADDING;
+        int y = top + INFO_PANEL_PADDING;
+        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2));
+        for (InfoPanelItem item : items) {
+            if (y >= bottom - INFO_PANEL_PADDING) {
+                break;
+            }
+            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, bottom - INFO_PANEL_PADDING, mouseX, mouseY);
+        }
+    }
+
+    private int renderInfoPanelItem(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom, int mouseX, int mouseY) {
+        if (item.kind == EntryKind.HEADER) {
+            this.font.draw(guiGraphics, text(item.label), x, y, 0xFFFFFFFF);
+            return y + 16;
+        }
+        if (item.kind == EntryKind.IMAGE) {
+            return this.renderInfoImage(guiGraphics, item, x, y, width, bottom);
+        }
+        if (item.kind == EntryKind.URL) {
+            Component label = text(item.label + " >");
+            int linkWidth = this.font.width(label);
+            InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
+            this.infoPanelLinks.add(link);
+            boolean hovered = link.contains(mouseX, mouseY);
+            this.font.draw(guiGraphics, label, x, y, hovered ? 0xFFFFFFFF : 0xFF80C8FF);
+            if (hovered) {
+                GuiComponent.fill(guiGraphics, x, y + this.font.lineHeight, x + Math.min(width, linkWidth), y + this.font.lineHeight + 1, 0xFFFFFFFF);
+            }
+            return y + 16;
+        }
+        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoImage(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom) {
+        ImageOptions options = item.imageOptions;
+        int imageWidth = Math.min(Math.min(options.width(), INFO_PANEL_IMAGE_MAX_WIDTH), width - (options.padding() * 2));
+        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
+        imageHeight = Math.min(imageHeight, Math.max(1, bottom - y - options.padding()));
+        int imageX = x + options.padding();
+        if (options.align() == ImageOptions.Align.CENTER) {
+            imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
+        } else if (options.align() == ImageOptions.Align.RIGHT) {
+            imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
+        }
+        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
+        y += imageHeight + (options.padding() * 2);
+        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        }
+        return y + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoParagraph(PoseStack guiGraphics, String value, int x, int y, int width, int color) {
+        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
+            if (paragraph.trim().isEmpty()) {
+                y += 8;
+                continue;
+            }
+            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
+        }
+        return y;
+    }
+
+    private int renderWrappedLines(PoseStack guiGraphics, String value, int x, int y, int width, int color) {
+        for (String line : this.wrapLines(value, width)) {
+            this.font.draw(guiGraphics, line, (float) x, (float) y, color);
+            y += this.font.lineHeight;
+        }
+        return y;
+    }
+
+    private List<String> wrapLines(String value, int width) {
+        List<String> lines = new ArrayList<String>();
+        StringBuilder current = new StringBuilder();
+        for (String word : value.split(" ")) {
+            if (word.isEmpty()) {
+                continue;
+            }
+            String candidate = current.length() == 0 ? word : current + " " + word;
+            if (this.font.width(candidate) <= width) {
+                current.setLength(0);
+                current.append(candidate);
+                continue;
+            }
+            if (current.length() > 0) {
+                lines.add(current.toString());
+                current.setLength(0);
+            }
+            while (this.font.width(word) > width && word.length() > 1) {
+                int split = word.length();
+                while (split > 1 && this.font.width(word.substring(0, split)) > width) {
+                    split--;
+                }
+                lines.add(word.substring(0, split));
+                word = word.substring(split);
+            }
+            current.append(word);
+        }
+        if (current.length() > 0) {
+            lines.add(current.toString());
+        }
+        return lines;
+    }
+
+    private static final class InfoPanelLink {
+        private final int x;
+        private final int y;
+        private final int width;
+        private final int height;
+        private final String target;
+
+        private InfoPanelLink(int x, int y, int width, int height, String target) {
+            this.x = x;
+            this.y = y;
+            this.width = width;
+            this.height = height;
+            this.target = target;
+        }
+
+        private boolean contains(double mouseX, double mouseY) {
+            return mouseX >= this.x
+                    && mouseX <= this.x + this.width
+                    && mouseY >= this.y
+                    && mouseY <= this.y + this.height;
+        }
     }
 
     private static List<EntryRef> collectEntries(String modIdFilter) {
@@ -671,13 +913,22 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private static void drawImage(PoseStack guiGraphics, String target, int x, int y, int width, int height) {
+        drawImage(guiGraphics, target, x, y, width, height, width, height);
+    }
+
+    private static void drawImage(PoseStack guiGraphics, String target, int x, int y, int width, int height, int sourceWidth, int sourceHeight) {
         ResourceLocation texture = textureIdentifier(target);
 //? if >=1.17 {
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.setShaderTexture(0, texture);
+//?} elif >=1.16 {
+        Minecraft.getInstance().getTextureManager().bind(texture);
+        RenderSystem.color4f(1.0F, 1.0F, 1.0F, 1.0F);
 //?} else {
         Minecraft.getInstance().getTextureManager().bind(texture);
+        GlStateManager.color4f(1.0F, 1.0F, 1.0F, 1.0F);
 //?}
-        GuiComponent.blit(guiGraphics, x, y, 0, 0.0F, 0.0F, width, height, width, height);
+        GuiComponent.blit(guiGraphics, x, y, width, height, 0.0F, 0.0F, sourceWidth, sourceHeight, sourceWidth, sourceHeight);
     }
 
     private static boolean supportsRegistryIcon(String registryId) {
@@ -942,7 +1193,7 @@ public final class KonfigConfigScreen extends Screen {
 
     private final class EntryList extends ContainerObjectSelectionList<ConfigRow> {
         private EntryList(net.minecraft.client.Minecraft minecraft, int width, int height, int y) {
-            super(minecraft, width, height, y, y + height, ROW_HEIGHT);
+            super(minecraft, width, KonfigConfigScreen.this.height, y, y + height, ROW_HEIGHT);
 //? if <=1.16.3 {
             this.setRenderHeader(false, 0);
 //?} else {
@@ -957,12 +1208,12 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         public int getRowWidth() {
-            return KonfigConfigScreen.this.width - 28;
+            return KonfigConfigScreen.this.mainPanelRight() - 28;
         }
 
         @Override
         protected int getScrollbarPosition() {
-            return this.x1 - 6;
+            return KonfigConfigScreen.this.mainPanelRight() - 6;
         }
 
         @Override
@@ -989,6 +1240,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
@@ -1085,6 +1337,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
                 KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
@@ -1148,6 +1401,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
@@ -1165,7 +1419,7 @@ public final class KonfigConfigScreen extends Screen {
             int contentHeight = contentHeight(imageSize[1]);
             int imageX = imageX(x, width, contentWidth);
             int imageY = imageY(y, height, contentHeight);
-            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1], this.entry.value.imageOptions().width(), this.entry.value.imageOptions().height());
             if (this.hasCaption()) {
                 ImageOptions options = this.entry.value.imageOptions();
                 if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
@@ -1184,6 +1438,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
@@ -1196,7 +1451,9 @@ public final class KonfigConfigScreen extends Screen {
                 KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
             }
-            KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 8.0F, y + 10.0F, 0xFFCFCFCF);
+            int lineCount = KonfigConfigScreen.this.wrapLines(this.entry.displayLabel().getString(), Math.max(1, width - 16)).size();
+            int textY = y + Math.max(4, (height - (lineCount * KonfigConfigScreen.this.font.lineHeight)) / 2);
+            KonfigConfigScreen.this.renderWrappedLines(guiGraphics, this.entry.displayLabel().getString(), x + 8, textY, Math.max(1, width - 16), 0xFFCFCFCF);
         }
     }
 
@@ -1215,6 +1472,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
@@ -1229,7 +1487,7 @@ public final class KonfigConfigScreen extends Screen {
 //?}
             }
 
-            int controlWidth = URL_BUTTON_WIDTH;
+            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
             int controlX = x + width - controlWidth;
             int controlY = y + (height - CONTROL_HEIGHT) / 2;
             layoutControl(this.control(), controlX, controlY, controlWidth);
@@ -1311,6 +1569,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 GuiComponent.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
@@ -2731,6 +2990,7 @@ public final class KonfigConfigScreen extends Screen {
         private final Component label;
         private final Component contextLabel;
         private final String tooltip;
+        private final String categoryPath;
         private final boolean editable;
 
         private EntryRef(ConfigHandleImpl handle, ConfigValueImpl<?> value, boolean editable) {
@@ -2740,17 +3000,27 @@ public final class KonfigConfigScreen extends Screen {
                 this.label = text(value.inlineLabel());
                 this.contextLabel = text("");
                 this.tooltip = value.kind() == EntryKind.URL && !isBlank(value.inlineTarget()) ? value.inlineTarget() : handle.tooltip(value.path());
+                this.categoryPath = categoryPath(value.path());
                 this.editable = false;
             } else {
                 this.label = translatedLabel(handle, value);
                 this.contextLabel = contextLabel(handle, value);
                 this.tooltip = handle.tooltip(value.path());
+                this.categoryPath = categoryPath(value.path());
                 this.editable = editable;
             }
         }
 
         private Component displayLabel() {
             return this.label;
+        }
+
+        private static String categoryPath(String path) {
+            int lastSeparator = path.lastIndexOf('.');
+            if (lastSeparator < 0) {
+                return "";
+            }
+            return path.substring(0, lastSeparator);
         }
     }
 }

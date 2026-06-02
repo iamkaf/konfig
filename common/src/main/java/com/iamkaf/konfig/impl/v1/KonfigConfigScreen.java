@@ -334,6 +334,10 @@ public final class KonfigConfigScreen extends Screen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
+        this.hoveredEntry = null;
+        this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
+        this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
+        this.infoPanelLinks.clear();
         fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
@@ -342,7 +346,17 @@ public final class KonfigConfigScreen extends Screen {
     @Override
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
+        this.hoveredEntry = null;
+        this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
+        this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
+        this.infoPanelLinks.clear();
         fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+//? if <=1.19.3 {
+        if (this.list != null) {
+            this.list.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
+        fillRect(guiGraphics, 0, this.height - LIST_BOTTOM_MARGIN, this.mainPanelRight(), this.height, 0xC0101010);
+//?}
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
     }
@@ -366,9 +380,11 @@ public final class KonfigConfigScreen extends Screen {
     private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
+        fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
+        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
         this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
@@ -378,9 +394,11 @@ public final class KonfigConfigScreen extends Screen {
     private void renderMainScreenChrome(PoseStack guiGraphics, int mouseX, int mouseY) {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
+        fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
+        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
         this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.width / 2, this.height / 2 - 10, 0xFFC0C0C0);
+            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
@@ -397,13 +415,13 @@ public final class KonfigConfigScreen extends Screen {
 //?} elif >=1.20 {
     private void renderMainStatus(GuiGraphics guiGraphics) {
         if (!this.statusMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.mainPanelRight() / 2, this.height - 38, this.statusColor);
         }
     }
 //?} else {
     private void renderMainStatus(PoseStack guiGraphics) {
         if (!this.statusMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
+            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.mainPanelRight() / 2, this.height - 38, this.statusColor);
         }
     }
 //?}
@@ -412,7 +430,11 @@ public final class KonfigConfigScreen extends Screen {
         this.clearWidgets();
 
         int listHeight = Math.max(48, this.height - LIST_TOP - LIST_BOTTOM_MARGIN);
+//? if <=1.19.3 {
+        this.list = this.addWidget(new EntryList(this.minecraft, this.mainPanelRight(), listHeight, LIST_TOP));
+//?} else {
         this.list = this.addRenderableWidget(new EntryList(this.minecraft, this.mainPanelRight(), listHeight, LIST_TOP));
+//?}
         for (EntryRef entry : this.entries) {
             this.list.addKonfigEntry(createRow(entry));
         }
@@ -659,7 +681,7 @@ public final class KonfigConfigScreen extends Screen {
         } else if (options.align() == ImageOptions.Align.RIGHT) {
             imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
         }
-        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight);
+        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
         y += imageHeight + (options.padding() * 2);
         if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
             y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
@@ -673,12 +695,184 @@ public final class KonfigConfigScreen extends Screen {
                 y += 8;
                 continue;
             }
-            guiGraphics.textWithWordWrap(this.font, text(paragraph.trim()), x, y, width, color);
-            y += this.font.wordWrapHeight(text(paragraph.trim()), width) + 4;
+            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
+        }
+        return y;
+    }
+//?} elif >=1.20 {
+    private void renderInfoPanel(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int left = this.mainPanelRight() + 1;
+        int right = this.width;
+        int top = LIST_TOP;
+        int bottom = this.height;
+        fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
+
+        List<InfoPanelItem> items = this.activeInfoItems();
+        if (items.isEmpty()) {
+            return;
+        }
+
+        int x = left + INFO_PANEL_PADDING;
+        int y = top + INFO_PANEL_PADDING;
+        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2));
+        for (InfoPanelItem item : items) {
+            if (y >= bottom - INFO_PANEL_PADDING) {
+                break;
+            }
+            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, bottom - INFO_PANEL_PADDING, mouseX, mouseY);
+        }
+    }
+
+    private int renderInfoPanelItem(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom, int mouseX, int mouseY) {
+        if (item.kind == EntryKind.HEADER) {
+            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
+            return y + 16;
+        }
+        if (item.kind == EntryKind.IMAGE) {
+            return this.renderInfoImage(guiGraphics, item, x, y, width, bottom);
+        }
+        if (item.kind == EntryKind.URL) {
+            Component label = text(item.label + " >");
+            int linkWidth = this.font.width(label);
+            InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
+            this.infoPanelLinks.add(link);
+            boolean hovered = link.contains(mouseX, mouseY);
+            drawText(guiGraphics, this.font, label, x, y, hovered ? 0xFFFFFFFF : 0xFF80C8FF);
+            if (hovered) {
+                fillRect(guiGraphics, x, y + this.font.lineHeight, x + Math.min(width, linkWidth), y + this.font.lineHeight + 1, 0xFFFFFFFF);
+            }
+            return y + 16;
+        }
+        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoImage(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom) {
+        ImageOptions options = item.imageOptions;
+        int imageWidth = Math.min(options.width(), width - (options.padding() * 2));
+        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
+        imageHeight = Math.min(imageHeight, Math.max(1, bottom - y - options.padding()));
+        int imageX = x + options.padding();
+        if (options.align() == ImageOptions.Align.CENTER) {
+            imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
+        } else if (options.align() == ImageOptions.Align.RIGHT) {
+            imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
+        }
+        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
+        y += imageHeight + (options.padding() * 2);
+        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        }
+        return y + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoParagraph(GuiGraphics guiGraphics, String value, int x, int y, int width, int color) {
+        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
+            if (paragraph.trim().isEmpty()) {
+                y += 8;
+                continue;
+            }
+            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
+        }
+        return y;
+    }
+//?} else {
+    private void renderInfoPanel(PoseStack guiGraphics, int mouseX, int mouseY) {
+        int left = this.mainPanelRight() + 1;
+        int right = this.width;
+        int top = LIST_TOP;
+        int bottom = this.height;
+        fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
+
+        List<InfoPanelItem> items = this.activeInfoItems();
+        if (items.isEmpty()) {
+            return;
+        }
+
+        int x = left + INFO_PANEL_PADDING;
+        int y = top + INFO_PANEL_PADDING;
+        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2));
+        for (InfoPanelItem item : items) {
+            if (y >= bottom - INFO_PANEL_PADDING) {
+                break;
+            }
+            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, bottom - INFO_PANEL_PADDING, mouseX, mouseY);
+        }
+    }
+
+    private int renderInfoPanelItem(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom, int mouseX, int mouseY) {
+        if (item.kind == EntryKind.HEADER) {
+            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
+            return y + 16;
+        }
+        if (item.kind == EntryKind.IMAGE) {
+            return this.renderInfoImage(guiGraphics, item, x, y, width, bottom);
+        }
+        if (item.kind == EntryKind.URL) {
+            Component label = text(item.label + " >");
+            int linkWidth = this.font.width(label);
+            InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
+            this.infoPanelLinks.add(link);
+            boolean hovered = link.contains(mouseX, mouseY);
+            drawText(guiGraphics, this.font, label, x, y, hovered ? 0xFFFFFFFF : 0xFF80C8FF);
+            if (hovered) {
+                fillRect(guiGraphics, x, y + this.font.lineHeight, x + Math.min(width, linkWidth), y + this.font.lineHeight + 1, 0xFFFFFFFF);
+            }
+            return y + 16;
+        }
+        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoImage(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom) {
+        ImageOptions options = item.imageOptions;
+        int imageWidth = Math.min(options.width(), width - (options.padding() * 2));
+        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
+        imageHeight = Math.min(imageHeight, Math.max(1, bottom - y - options.padding()));
+        int imageX = x + options.padding();
+        if (options.align() == ImageOptions.Align.CENTER) {
+            imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
+        } else if (options.align() == ImageOptions.Align.RIGHT) {
+            imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
+        }
+        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
+        y += imageHeight + (options.padding() * 2);
+        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        }
+        return y + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoParagraph(PoseStack guiGraphics, String value, int x, int y, int width, int color) {
+        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
+            if (paragraph.trim().isEmpty()) {
+                y += 8;
+                continue;
+            }
+            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
         }
         return y;
     }
 //?}
+
+//? if >=26.1 {
+    private int renderWrappedLines(GuiGraphicsExtractor guiGraphics, String value, int x, int y, int width, int color) {
+//?} elif >=1.20 {
+    private int renderWrappedLines(GuiGraphics guiGraphics, String value, int x, int y, int width, int color) {
+//?} else {
+    private int renderWrappedLines(PoseStack guiGraphics, String value, int x, int y, int width, int color) {
+//?}
+        List<net.minecraft.util.FormattedCharSequence> lines = this.font.split(text(value), Math.max(1, width));
+        for (net.minecraft.util.FormattedCharSequence line : lines) {
+//? if >=26.1 {
+            guiGraphics.text(this.font, line, x, y, color);
+//?} elif >=1.20 {
+            guiGraphics.drawString(this.font, line, x, y, color);
+//?} else {
+            this.font.draw(guiGraphics, line, (float) x, (float) y, color);
+//?}
+            y += this.font.lineHeight;
+        }
+        return y;
+    }
 
     private static final class InfoPanelLink {
         private final int x;
@@ -855,7 +1049,7 @@ public final class KonfigConfigScreen extends Screen {
 //? if >=1.20.3 {
             super(minecraft, width, height, y, ROW_HEIGHT);
 //?} else {
-            super(minecraft, width, height, y, y + height, ROW_HEIGHT);
+            super(minecraft, width, KonfigConfigScreen.this.height, y, y + height, ROW_HEIGHT);
 //?}
 //? if <=1.16.3 {
             this.setRenderHeader(false, 0);
@@ -955,6 +1149,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 //?} elif >=1.20 {
         protected final void renderStandardRow(GuiGraphics guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
             }
@@ -972,6 +1167,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 //?} else {
         protected final void renderStandardRow(PoseStack guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
             }
@@ -1125,6 +1321,7 @@ public final class KonfigConfigScreen extends Screen {
             int y = this.getContentY();
             int width = this.getContentWidth();
             int height = this.getContentHeight();
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
             fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
             drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
@@ -1132,6 +1329,7 @@ public final class KonfigConfigScreen extends Screen {
 //?} elif >=1.20 {
         @Override
         protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
             fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
             drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
@@ -1139,6 +1337,7 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
             fillRect(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
             drawCenteredText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + (width / 2), y + 10, 0xFFF8E38F);
@@ -1223,7 +1422,7 @@ public final class KonfigConfigScreen extends Screen {
             int contentHeight = contentHeight(imageSize[1]);
             int imageX = imageX(x, width, contentWidth);
             int imageY = imageY(y, height, contentHeight);
-            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1], this.entry.value.imageOptions().width(), this.entry.value.imageOptions().height());
             if (this.hasCaption()) {
                 ImageOptions options = this.entry.value.imageOptions();
                 if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
@@ -1244,6 +1443,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void renderImageRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
@@ -1253,7 +1453,7 @@ public final class KonfigConfigScreen extends Screen {
             int contentHeight = contentHeight(imageSize[1]);
             int imageX = imageX(x, width, contentWidth);
             int imageY = imageY(y, height, contentHeight);
-            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1], this.entry.value.imageOptions().width(), this.entry.value.imageOptions().height());
             if (this.hasCaption()) {
                 ImageOptions options = this.entry.value.imageOptions();
                 if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
@@ -1270,6 +1470,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void renderImageRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
@@ -1279,7 +1480,7 @@ public final class KonfigConfigScreen extends Screen {
             int contentHeight = contentHeight(imageSize[1]);
             int imageX = imageX(x, width, contentWidth);
             int imageY = imageY(y, height, contentHeight);
-            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1], this.entry.value.imageOptions().width(), this.entry.value.imageOptions().height());
             if (this.hasCaption()) {
                 ImageOptions options = this.entry.value.imageOptions();
                 if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
@@ -1292,6 +1493,7 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
@@ -1301,7 +1503,7 @@ public final class KonfigConfigScreen extends Screen {
             int contentHeight = contentHeight(imageSize[1]);
             int imageX = imageX(x, width, contentWidth);
             int imageY = imageY(y, height, contentHeight);
-            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1]);
+            drawImage(guiGraphics, this.entry.value.inlineTarget(), imageX, imageY, imageSize[0], imageSize[1], this.entry.value.imageOptions().width(), this.entry.value.imageOptions().height());
             if (this.hasCaption()) {
                 ImageOptions options = this.entry.value.imageOptions();
                 if (options.captionPosition() == ImageOptions.CaptionPosition.RIGHT) {
@@ -1352,29 +1554,38 @@ public final class KonfigConfigScreen extends Screen {
             int y = this.getContentY();
             int width = this.getContentWidth();
             int height = this.getContentHeight();
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
             showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 8, y + 10, 0xFFCFCFCF);
+            int lineCount = KonfigConfigScreen.this.font.split(this.entry.displayLabel(), Math.max(1, width - 16)).size();
+            int textY = y + Math.max(4, (height - (lineCount * KonfigConfigScreen.this.font.lineHeight)) / 2);
+            KonfigConfigScreen.this.renderWrappedLines(guiGraphics, this.entry.displayLabel().getString(), x + 8, textY, Math.max(1, width - 16), 0xFFCFCFCF);
         }
 //?} elif >=1.20 {
         @Override
         protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
             showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 8, y + 10, 0xFFCFCFCF);
+            int lineCount = KonfigConfigScreen.this.font.split(this.entry.displayLabel(), Math.max(1, width - 16)).size();
+            int textY = y + Math.max(4, (height - (lineCount * KonfigConfigScreen.this.font.lineHeight)) / 2);
+            KonfigConfigScreen.this.renderWrappedLines(guiGraphics, this.entry.displayLabel().getString(), x + 8, textY, Math.max(1, width - 16), 0xFFCFCFCF);
         }
 //?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
             showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 8, y + 10, 0xFFCFCFCF);
+            List<net.minecraft.util.FormattedCharSequence> lines = KonfigConfigScreen.this.font.split(this.entry.displayLabel(), Math.max(1, width - 16));
+            int textY = y + Math.max(4, (height - (lines.size() * KonfigConfigScreen.this.font.lineHeight)) / 2);
+            KonfigConfigScreen.this.renderWrappedLines(guiGraphics, this.entry.displayLabel().getString(), x + 8, textY, Math.max(1, width - 16), 0xFFCFCFCF);
         }
 //?}
     }
@@ -2026,6 +2237,7 @@ public final class KonfigConfigScreen extends Screen {
             int y = this.getContentY();
             int width = this.getContentWidth();
             int height = this.getContentHeight();
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
@@ -2064,6 +2276,7 @@ public final class KonfigConfigScreen extends Screen {
 //?} elif >=1.20 {
         @Override
         protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
@@ -2102,6 +2315,7 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
                 fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }

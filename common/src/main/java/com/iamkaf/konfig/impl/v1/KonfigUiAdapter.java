@@ -150,6 +150,10 @@ final class KonfigUiAdapter {
     }
 
     static void drawImage(GuiGraphicsExtractor guiGraphics, String target, int x, int y, int width, int height) {
+        drawImage(guiGraphics, target, x, y, width, height, width, height);
+    }
+
+    static void drawImage(GuiGraphicsExtractor guiGraphics, String target, int x, int y, int width, int height, int sourceWidth, int sourceHeight) {
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, textureIdentifier(target), x, y, 0.0F, 0.0F, width, height, width, height);
     }
 
@@ -176,6 +180,10 @@ final class KonfigUiAdapter {
     }
 
     static void drawImage(GuiGraphics guiGraphics, String target, int x, int y, int width, int height) {
+        drawImage(guiGraphics, target, x, y, width, height, width, height);
+    }
+
+    static void drawImage(GuiGraphics guiGraphics, String target, int x, int y, int width, int height, int sourceWidth, int sourceHeight) {
 //? if >=1.21.11 {
         guiGraphics.blit(RenderPipelines.GUI_TEXTURED, textureIdentifier(target), x, y, 0.0F, 0.0F, width, height, width, height);
 //?} elif >=1.21.6 {
@@ -214,8 +222,13 @@ final class KonfigUiAdapter {
     }
 
     static void drawImage(PoseStack guiGraphics, String target, int x, int y, int width, int height) {
+        drawImage(guiGraphics, target, x, y, width, height, width, height);
+    }
+
+    static void drawImage(PoseStack guiGraphics, String target, int x, int y, int width, int height, int sourceWidth, int sourceHeight) {
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.setShaderTexture(0, textureIdentifier(target));
-        GuiComponent.blit(guiGraphics, x, y, 0, 0.0F, 0.0F, width, height, width, height);
+        GuiComponent.blit(guiGraphics, x, y, width, height, 0.0F, 0.0F, sourceWidth, sourceHeight, sourceWidth, sourceHeight);
     }
 
     static void showTooltip(Screen screen, Font font, PoseStack guiGraphics, String tooltip, int mouseX, int mouseY, int left, int top, int right, int bottom) {
