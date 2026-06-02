@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.3.1
+
+### Fixed
+
+- Fixed registry-backed config screen icons on Minecraft `26.1`, `26.1.1`, and `26.1.2`.
+
 ## 0.3.0
 
 ### Added

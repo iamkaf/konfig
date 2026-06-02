@@ -3,8 +3,12 @@ package com.iamkaf.konfig.impl.v1;
 //? if >=1.17 {
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.core.Holder;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 //?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -103,6 +107,27 @@ final class KonfigRegistryAdapter {
 //?}
     }
 
+    private static ItemStack iconStack(Item item) {
+        if (item == null || item == Items.AIR) {
+            return ItemStack.EMPTY;
+        }
+//? if >=26.1 {
+        if (item.builtInRegistryHolder().areComponentsBound()) {
+            return new ItemStack(item);
+        }
+        // Title-screen config previews can run before item holders have bound components;
+        // provide the default name/model components so the direct-holder stack still renders.
+        DataComponentMap components = DataComponentMap.builder()
+                .addAll(DataComponents.COMMON_ITEM_COMPONENTS)
+                .set(DataComponents.ITEM_NAME, Component.translatable(item.getDescriptionId()))
+                .set(DataComponents.ITEM_MODEL, BuiltInRegistries.ITEM.getKey(item))
+                .build();
+        return new ItemStack(Holder.direct(item, components));
+//?} else {
+        return new ItemStack(item);
+//?}
+    }
+
     private static ItemStack registryIconStack(ResourceKey<? extends Registry<?>> registryKey, String value) {
         if (!supportsRegistryIcon(registryKey)) {
             return ItemStack.EMPTY;
@@ -128,10 +153,7 @@ final class KonfigRegistryAdapter {
         if (registryKey == Registry.ITEM_REGISTRY) {
             Item item = Registry.ITEM.get(identifier);
 //?}
-            if (item != null && item != Items.AIR) {
-                return new ItemStack(item);
-            }
-            return ItemStack.EMPTY;
+            return iconStack(item);
         }
 
 //? if >=1.19.3 {
@@ -151,7 +173,7 @@ final class KonfigRegistryAdapter {
         if (item == null || item == Items.AIR) {
             return ItemStack.EMPTY;
         }
-        return new ItemStack(item);
+        return iconStack(item);
     }
 
 //? if >=26.1 {
