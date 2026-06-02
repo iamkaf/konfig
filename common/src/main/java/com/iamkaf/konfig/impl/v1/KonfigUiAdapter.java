@@ -159,6 +159,16 @@ final class KonfigUiAdapter {
 
     static void showTooltip(Screen screen, Font font, GuiGraphicsExtractor guiGraphics, String tooltip, int mouseX, int mouseY, int left, int top, int right, int bottom) {
         if (!KonfigScreenSupport.isBlank(tooltip) && mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom) {
+            if (screen instanceof KonfigConfigScreen configScreen) {
+                configScreen.queueTooltip(tooltip, mouseX, mouseY);
+                return;
+            }
+            renderTooltipNow(screen, font, guiGraphics, tooltip, mouseX, mouseY);
+        }
+    }
+
+    static void renderTooltipNow(Screen screen, Font font, GuiGraphicsExtractor guiGraphics, String tooltip, int mouseX, int mouseY) {
+        if (!KonfigScreenSupport.isBlank(tooltip)) {
             guiGraphics.setComponentTooltipForNextFrame(font, tooltipLines(tooltip), mouseX, mouseY);
         }
     }
@@ -197,6 +207,16 @@ final class KonfigUiAdapter {
 
     static void showTooltip(Screen screen, Font font, GuiGraphics guiGraphics, String tooltip, int mouseX, int mouseY, int left, int top, int right, int bottom) {
         if (!KonfigScreenSupport.isBlank(tooltip) && mouseX >= left && mouseX <= right && mouseY >= top && mouseY <= bottom) {
+            if (screen instanceof KonfigConfigScreen configScreen) {
+                configScreen.queueTooltip(tooltip, mouseX, mouseY);
+                return;
+            }
+            renderTooltipNow(screen, font, guiGraphics, tooltip, mouseX, mouseY);
+        }
+    }
+
+    static void renderTooltipNow(Screen screen, Font font, GuiGraphics guiGraphics, String tooltip, int mouseX, int mouseY) {
+        if (!KonfigScreenSupport.isBlank(tooltip)) {
 //? if >=1.21.6 {
             guiGraphics.setTooltipForNextFrame(font, font.split(KonfigScreenSupport.text(tooltip), Math.max(screen.width / 2, 200)), mouseX, mouseY);
 //?} else {
@@ -233,6 +253,17 @@ final class KonfigUiAdapter {
 
     static void showTooltip(Screen screen, Font font, PoseStack guiGraphics, String tooltip, int mouseX, int mouseY, int left, int top, int right, int bottom) {
         if (KonfigScreenSupport.isBlank(tooltip) || mouseX < left || mouseX > right || mouseY < top || mouseY > bottom) {
+            return;
+        }
+        if (screen instanceof KonfigConfigScreen configScreen) {
+            configScreen.queueTooltip(tooltip, mouseX, mouseY);
+            return;
+        }
+        renderTooltipNow(screen, font, guiGraphics, tooltip, mouseX, mouseY);
+    }
+
+    static void renderTooltipNow(Screen screen, Font font, PoseStack guiGraphics, String tooltip, int mouseX, int mouseY) {
+        if (KonfigScreenSupport.isBlank(tooltip)) {
             return;
         }
 //? if <=1.16.1 {

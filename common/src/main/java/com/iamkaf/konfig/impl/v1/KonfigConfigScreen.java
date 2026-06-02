@@ -177,6 +177,9 @@ public final class KonfigConfigScreen extends Screen {
     private List<InfoPanelItem> renderedInfoPanelItems = Collections.emptyList();
     private double infoPanelScroll;
     private int infoPanelMaxScroll;
+    private String pendingTooltip;
+    private int pendingTooltipMouseX;
+    private int pendingTooltipMouseY;
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -357,6 +360,7 @@ public final class KonfigConfigScreen extends Screen {
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
         this.hoveredEntry = null;
+        this.pendingTooltip = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
         this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
         this.infoPanelLinks.clear();
@@ -369,6 +373,7 @@ public final class KonfigConfigScreen extends Screen {
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
         this.hoveredEntry = null;
+        this.pendingTooltip = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
         this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
         this.infoPanelLinks.clear();
@@ -381,6 +386,7 @@ public final class KonfigConfigScreen extends Screen {
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
         this.hoveredEntry = null;
+        this.pendingTooltip = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
         this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
         this.infoPanelLinks.clear();
@@ -408,6 +414,7 @@ public final class KonfigConfigScreen extends Screen {
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
+        this.renderPendingTooltip(guiGraphics);
     }
 //?} elif >=1.20 {
     private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -421,6 +428,7 @@ public final class KonfigConfigScreen extends Screen {
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
+        this.renderPendingTooltip(guiGraphics);
     }
 //?} else {
     private void renderMainScreenChrome(PoseStack guiGraphics, int mouseX, int mouseY) {
@@ -434,6 +442,27 @@ public final class KonfigConfigScreen extends Screen {
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
+        this.renderPendingTooltip(guiGraphics);
+    }
+//?}
+
+    void queueTooltip(String tooltip, int mouseX, int mouseY) {
+        this.pendingTooltip = tooltip;
+        this.pendingTooltipMouseX = mouseX;
+        this.pendingTooltipMouseY = mouseY;
+    }
+
+//? if >=26.1 {
+    private void renderPendingTooltip(GuiGraphicsExtractor guiGraphics) {
+        renderTooltipNow(this, this.font, guiGraphics, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
+    }
+//?} elif >=1.20 {
+    private void renderPendingTooltip(GuiGraphics guiGraphics) {
+        renderTooltipNow(this, this.font, guiGraphics, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
+    }
+//?} else {
+    private void renderPendingTooltip(PoseStack guiGraphics) {
+        renderTooltipNow(this, this.font, guiGraphics, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
     }
 //?}
 

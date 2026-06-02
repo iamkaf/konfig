@@ -87,6 +87,9 @@ public final class KonfigConfigScreen extends Screen {
     private List<InfoPanelItem> renderedInfoPanelItems = Collections.emptyList();
     private double infoPanelScroll;
     private int infoPanelMaxScroll;
+    private List<String> pendingTooltipLines;
+    private int pendingTooltipMouseX;
+    private int pendingTooltipMouseY;
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -210,6 +213,7 @@ public final class KonfigConfigScreen extends Screen {
     public void render(int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
         this.hoveredEntry = null;
+        this.pendingTooltipLines = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
         this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
         this.infoPanelLinks.clear();
@@ -235,6 +239,20 @@ public final class KonfigConfigScreen extends Screen {
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(mouseX, mouseY);
         }
+        this.renderPendingTooltip();
+    }
+
+    private void queueTooltip(List<String> lines, int mouseX, int mouseY) {
+        this.pendingTooltipLines = lines;
+        this.pendingTooltipMouseX = mouseX;
+        this.pendingTooltipMouseY = mouseY;
+    }
+
+    private void renderPendingTooltip() {
+        if (this.pendingTooltipLines == null || this.pendingTooltipLines.isEmpty()) {
+            return;
+        }
+        super.renderTooltip(this.pendingTooltipLines, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
     }
 
     private void rebuildScreenWidgets() {
@@ -1398,7 +1416,7 @@ public final class KonfigConfigScreen extends Screen {
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
                 }
             }
 
@@ -1484,7 +1502,7 @@ public final class KonfigConfigScreen extends Screen {
         protected void renderRow(int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
             }
             GuiComponent.fill(x, y + 4, x + width, y + height - 4, 0x552B3550);
             drawCenteredString(KonfigConfigScreen.this.font, this.entry.displayLabel().getString(), x + (width / 2), y + 10, 0xFFF8E38F);
@@ -1545,7 +1563,7 @@ public final class KonfigConfigScreen extends Screen {
                 GuiComponent.fill(x, y, x + width, y + height, 0x16000000);
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
             }
             int[] imageSize = imageSize(width, height);
             int contentWidth = contentWidth(imageSize[0]);
@@ -1576,7 +1594,7 @@ public final class KonfigConfigScreen extends Screen {
                 GuiComponent.fill(x, y, x + width, y + height, 0x16000000);
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
             }
             int lineCount = KonfigConfigScreen.this.wrapLines(this.entry.displayLabel().getString(), Math.max(1, width - 16)).size();
             int textY = y + Math.max(4, (height - (lineCount * KonfigConfigScreen.this.font.lineHeight)) / 2);
@@ -1604,7 +1622,7 @@ public final class KonfigConfigScreen extends Screen {
                 GuiComponent.fill(x, y, x + width, y + height, 0x22000000);
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
             }
             int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
             int controlX = x + width - controlWidth;
@@ -1695,7 +1713,7 @@ public final class KonfigConfigScreen extends Screen {
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
                 }
             }
 
@@ -2038,7 +2056,7 @@ public final class KonfigConfigScreen extends Screen {
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(tooltipLines(this.entry.tooltip), mouseX, mouseY);
                 }
             }
 

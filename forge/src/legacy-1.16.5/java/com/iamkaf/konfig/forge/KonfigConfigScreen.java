@@ -94,6 +94,9 @@ public final class KonfigConfigScreen extends Screen {
     private List<InfoPanelItem> renderedInfoPanelItems = Collections.emptyList();
     private double infoPanelScroll;
     private int infoPanelMaxScroll;
+    private List pendingTooltipLines;
+    private int pendingTooltipMouseX;
+    private int pendingTooltipMouseY;
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -217,6 +220,7 @@ public final class KonfigConfigScreen extends Screen {
     public void render(MatrixStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
         this.hoveredEntry = null;
+        this.pendingTooltipLines = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
         this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
         this.infoPanelLinks.clear();
@@ -242,6 +246,21 @@ public final class KonfigConfigScreen extends Screen {
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
+        this.renderPendingTooltip(guiGraphics);
+    }
+
+    private void queueTooltip(MatrixStack guiGraphics, List lines, int mouseX, int mouseY) {
+        this.pendingTooltipLines = lines;
+        this.pendingTooltipMouseX = mouseX;
+        this.pendingTooltipMouseY = mouseY;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void renderPendingTooltip(MatrixStack guiGraphics) {
+        if (this.pendingTooltipLines == null || this.pendingTooltipLines.isEmpty()) {
+            return;
+        }
+        super.renderTooltip(guiGraphics, this.pendingTooltipLines, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
     }
 
     private void rebuildScreenWidgets() {
@@ -1356,7 +1375,7 @@ public final class KonfigConfigScreen extends Screen {
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderTooltip(
+                    KonfigConfigScreen.this.queueTooltip(
                             guiGraphics,
                             KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
                             mouseX,
@@ -1467,7 +1486,7 @@ public final class KonfigConfigScreen extends Screen {
         protected void renderRow(MatrixStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(
+                KonfigConfigScreen.this.queueTooltip(
                         guiGraphics,
                         KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
                         mouseX,
@@ -1533,7 +1552,7 @@ public final class KonfigConfigScreen extends Screen {
                 AbstractGui.fill(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(
+                KonfigConfigScreen.this.queueTooltip(
                         guiGraphics,
                         KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
                         mouseX,
@@ -1569,7 +1588,7 @@ public final class KonfigConfigScreen extends Screen {
                 AbstractGui.fill(guiGraphics, x, y, x + width, y + height, 0x16000000);
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(
+                KonfigConfigScreen.this.queueTooltip(
                         guiGraphics,
                         KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
                         mouseX,
@@ -1602,7 +1621,7 @@ public final class KonfigConfigScreen extends Screen {
                 AbstractGui.fill(guiGraphics, x, y, x + width, y + height, 0x22000000);
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                KonfigConfigScreen.this.renderTooltip(
+                KonfigConfigScreen.this.queueTooltip(
                         guiGraphics,
                         KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
                         mouseX,
@@ -1699,7 +1718,7 @@ public final class KonfigConfigScreen extends Screen {
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderTooltip(
+                    KonfigConfigScreen.this.queueTooltip(
                             guiGraphics,
                             KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
                             mouseX,
@@ -2047,7 +2066,7 @@ public final class KonfigConfigScreen extends Screen {
 
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
-                    KonfigConfigScreen.this.renderTooltip(
+                    KonfigConfigScreen.this.queueTooltip(
                             guiGraphics,
                             KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)),
                             mouseX,

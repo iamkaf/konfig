@@ -22,6 +22,10 @@ See the full changelog at https://github.com/iamkaf/konfig
 - Builder comment APIs now write TOML comments only; config-screen tooltips use explicit tooltip APIs.
 - NeoForge coverage now spans every supported line from `1.21.1` through `26.1.2`.
 
+### Fixed
+
+- Config-screen tooltips now render above other screen elements.
+
 ## 0.2.0
 
 ### Changed

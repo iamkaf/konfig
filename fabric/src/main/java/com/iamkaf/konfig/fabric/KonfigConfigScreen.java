@@ -93,6 +93,9 @@ public final class KonfigConfigScreen extends Screen {
     private List<InfoPanelItem> renderedInfoPanelItems = Collections.emptyList();
     private double infoPanelScroll;
     private int infoPanelMaxScroll;
+    private List pendingTooltipLines;
+    private int pendingTooltipMouseX;
+    private int pendingTooltipMouseY;
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -216,6 +219,7 @@ public final class KonfigConfigScreen extends Screen {
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
         this.hoveredEntry = null;
+        this.pendingTooltipLines = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
         this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
         this.infoPanelLinks.clear();
@@ -241,6 +245,25 @@ public final class KonfigConfigScreen extends Screen {
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
+        this.renderPendingTooltip(guiGraphics);
+    }
+
+    private void queueTooltip(PoseStack guiGraphics, List lines, int mouseX, int mouseY) {
+        this.pendingTooltipLines = lines;
+        this.pendingTooltipMouseX = mouseX;
+        this.pendingTooltipMouseY = mouseY;
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private void renderPendingTooltip(PoseStack guiGraphics) {
+        if (this.pendingTooltipLines == null || this.pendingTooltipLines.isEmpty()) {
+            return;
+        }
+//? if <=1.16.3 {
+        super.renderTooltip(guiGraphics, this.pendingTooltipLines, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
+//?} else {
+        super.renderComponentTooltip(guiGraphics, this.pendingTooltipLines, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
+//?}
     }
 
     private void rebuildScreenWidgets() {
@@ -1368,11 +1391,11 @@ public final class KonfigConfigScreen extends Screen {
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
-                    KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?} elif <=1.16.3 {
-                    KonfigConfigScreen.this.renderTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
 //?} else {
-                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
                 }
             }
@@ -1460,11 +1483,11 @@ public final class KonfigConfigScreen extends Screen {
             KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?} elif <=1.16.3 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
 //?} else {
-                KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
             }
             GuiComponent.fill(guiGraphics, x, y + 4, x + width, y + height - 4, 0x552B3550);
@@ -1527,11 +1550,11 @@ public final class KonfigConfigScreen extends Screen {
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?} elif <=1.16.3 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
 //?} else {
-                KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
             }
             int[] imageSize = imageSize(width, height);
@@ -1564,11 +1587,11 @@ public final class KonfigConfigScreen extends Screen {
             }
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?} elif <=1.16.3 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
 //?} else {
-                KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
             }
             int lineCount = KonfigConfigScreen.this.wrapLines(this.entry.displayLabel().getString(), Math.max(1, width - 16)).size();
@@ -1599,11 +1622,11 @@ public final class KonfigConfigScreen extends Screen {
 
             if (!isBlank(this.entry.tooltip) && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?} elif <=1.16.3 {
-                KonfigConfigScreen.this.renderTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
 //?} else {
-                KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
             }
 
@@ -1697,11 +1720,11 @@ public final class KonfigConfigScreen extends Screen {
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
-                    KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?} elif <=1.16.3 {
-                    KonfigConfigScreen.this.renderTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
 //?} else {
-                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
                 }
             }
@@ -2045,11 +2068,11 @@ public final class KonfigConfigScreen extends Screen {
             if (!isBlank(this.entry.tooltip)) {
                 if (mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height) {
 //? if <=1.16.1 {
-                    KonfigConfigScreen.this.renderTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?} elif <=1.16.3 {
-                    KonfigConfigScreen.this.renderTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, KonfigConfigScreen.this.font.split(text(this.entry.tooltip), Math.max(KonfigConfigScreen.this.width / 2, 200)), mouseX, mouseY);
 //?} else {
-                    KonfigConfigScreen.this.renderComponentTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
+                    KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltipLines(this.entry.tooltip), mouseX, mouseY);
 //?}
                 }
             }
