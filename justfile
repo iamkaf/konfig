@@ -220,6 +220,9 @@ publish-all *args:
   @test -n "$MAVEN_PUBLISH_PASSWORD" || (echo "MAVEN_PUBLISH_PASSWORD is required" >&2; exit 1)
   @for version in $(just list-versions); do echo "==> publish $version"; just publish-version "$version" {{args}}; done
 
+publish-platforms-all *args:
+  @./gradlew publishingRelease {{args}} --console=plain
+
 boot-check node timeout="60":
   @if ! just list-nodes | grep -Fxq "{{node}}"; then \
     echo "Unknown node: {{node}}"; \
