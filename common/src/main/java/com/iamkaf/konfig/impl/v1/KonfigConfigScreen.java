@@ -399,7 +399,6 @@ public final class KonfigConfigScreen extends Screen {
 //? if >=26.1 {
     private void renderMainScreenChrome(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
-        drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
         fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(guiGraphics, mouseX, mouseY);
         this.renderMainStatus(guiGraphics);
@@ -413,7 +412,6 @@ public final class KonfigConfigScreen extends Screen {
 //?} elif >=1.20 {
     private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
-        drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
         fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(guiGraphics, mouseX, mouseY);
         this.renderMainStatus(guiGraphics);
@@ -427,7 +425,6 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
     private void renderMainScreenChrome(PoseStack guiGraphics, int mouseX, int mouseY) {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
-        drawText(guiGraphics, this.font, text(entryCountText()), 12, 12, 0xFFC0C0C0);
         fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(guiGraphics, mouseX, mouseY);
         this.renderMainStatus(guiGraphics);
@@ -575,10 +572,6 @@ public final class KonfigConfigScreen extends Screen {
             this.statusColor = 0xFFFF8080;
         }
         this.rebuildScreenWidgets();
-    }
-
-    private String entryCountText() {
-        return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
     }
 
     private int infoPanelWidth() {

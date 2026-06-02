@@ -221,7 +221,6 @@ public final class KonfigConfigScreen extends Screen {
         super.render(mouseX, mouseY, partialTick);
 
         drawCenteredString(this.font, screenTitle().getString(), this.width / 2, 8, 0xFFFFFFFF);
-        this.font.draw(entryCountText(), 12.0F, 12.0F, 0xFFC0C0C0);
         GuiComponent.fill(this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(mouseX, mouseY);
 
@@ -351,10 +350,6 @@ public final class KonfigConfigScreen extends Screen {
             this.statusColor = 0xFFFF8080;
         }
         this.rebuildScreenWidgets();
-    }
-
-    private String entryCountText() {
-        return this.entries.size() + (this.entries.size() == 1 ? " entry" : " entries");
     }
 
     private Component screenTitle() {
