@@ -1,6 +1,7 @@
 pluginManagement {
     repositories {
         mavenLocal()
+        maven("https://maven.kaf.sh") { name = "Kaf Maven" }
         gradlePluginPortal()
         mavenCentral()
     }
