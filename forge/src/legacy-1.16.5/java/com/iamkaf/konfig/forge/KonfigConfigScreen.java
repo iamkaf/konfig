@@ -40,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -70,6 +71,8 @@ public final class KonfigConfigScreen extends Screen {
     private static final int INFO_PANEL_PADDING = 16;
     private static final int INFO_PANEL_GAP = 10;
     private static final int INFO_PANEL_IMAGE_MAX_WIDTH = 168;
+    private static final int INFO_PANEL_SCROLLBAR_WIDTH = 4;
+    private static final int INFO_PANEL_SCROLL_STEP = 18;
 
     private final Screen parent;
     private final String modIdFilter;
@@ -87,6 +90,10 @@ public final class KonfigConfigScreen extends Screen {
     private boolean mouseOverInfoPanel;
     private boolean mouseOverInfoPanelBridge;
     private final List<InfoPanelLink> infoPanelLinks = new ArrayList<InfoPanelLink>();
+    private final Map<List<InfoPanelItem>, Double> infoPanelScrollPositions = new IdentityHashMap<List<InfoPanelItem>, Double>();
+    private List<InfoPanelItem> renderedInfoPanelItems = Collections.emptyList();
+    private double infoPanelScroll;
+    private int infoPanelMaxScroll;
     private String statusMessage = "";
     private int statusColor = 0xFFFF8080;
 
@@ -196,6 +203,14 @@ public final class KonfigConfigScreen extends Screen {
             this.activeRegistryRow.refreshSuggestions();
         }
         return handled;
+    }
+
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (this.handleInfoPanelScroll(mouseX, mouseY, delta)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
     }
 
     @Override
@@ -434,6 +449,15 @@ public final class KonfigConfigScreen extends Screen {
         return false;
     }
 
+    private boolean handleInfoPanelScroll(double mouseX, double mouseY, double scrollY) {
+        if (!this.isPointInInfoPanel(mouseX, mouseY) || this.infoPanelMaxScroll <= 0) {
+            return false;
+        }
+        this.infoPanelScroll = MathHelper.clamp(this.infoPanelScroll - (scrollY * INFO_PANEL_SCROLL_STEP), 0.0D, (double) this.infoPanelMaxScroll);
+        this.rememberInfoPanelScroll();
+        return true;
+    }
+
     private void renderInfoPanel(MatrixStack guiGraphics, int mouseX, int mouseY) {
         int left = this.mainPanelRight() + 1;
         int right = this.width;
@@ -443,27 +467,41 @@ public final class KonfigConfigScreen extends Screen {
 
         List<InfoPanelItem> items = this.activeInfoItems();
         if (items.isEmpty()) {
+            this.setRenderedInfoPanelItems(Collections.emptyList());
+            this.infoPanelScroll = 0.0D;
+            this.infoPanelMaxScroll = 0;
             return;
         }
 
+        this.setRenderedInfoPanelItems(items);
+
         int x = left + INFO_PANEL_PADDING;
-        int y = top + INFO_PANEL_PADDING;
-        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2));
+        int viewportTop = top + INFO_PANEL_PADDING;
+        int viewportBottom = bottom - INFO_PANEL_PADDING;
+        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2) - INFO_PANEL_SCROLLBAR_WIDTH - 4);
+        int contentHeight = this.measureInfoPanelItems(items, contentWidth);
+        int viewportHeight = Math.max(1, viewportBottom - viewportTop);
+        this.infoPanelMaxScroll = Math.max(0, contentHeight - viewportHeight);
+        this.infoPanelScroll = MathHelper.clamp(this.infoPanelScroll, 0.0D, (double) this.infoPanelMaxScroll);
+        this.rememberInfoPanelScroll();
+
+        int y = viewportTop - (int) Math.round(this.infoPanelScroll);
+        this.enableInfoPanelScissor(left, viewportTop, right, viewportBottom);
         for (InfoPanelItem item : items) {
-            if (y >= bottom - INFO_PANEL_PADDING) {
-                break;
-            }
-            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, bottom - INFO_PANEL_PADDING, mouseX, mouseY);
+            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, mouseX, mouseY);
         }
+        this.disableInfoPanelScissor();
+
+        this.renderInfoPanelScrollbar(guiGraphics, right, viewportTop, viewportBottom);
     }
 
-    private int renderInfoPanelItem(MatrixStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom, int mouseX, int mouseY) {
+    private int renderInfoPanelItem(MatrixStack guiGraphics, InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
         if (item.kind == EntryKind.HEADER) {
             this.font.draw(guiGraphics, text(item.label), x, y, 0xFFFFFFFF);
             return y + 16;
         }
         if (item.kind == EntryKind.IMAGE) {
-            return this.renderInfoImage(guiGraphics, item, x, y, width, bottom);
+            return this.renderInfoImage(guiGraphics, item, x, y, width);
         }
         if (item.kind == EntryKind.URL) {
             ITextComponent label = text(item.label + " >");
@@ -480,11 +518,10 @@ public final class KonfigConfigScreen extends Screen {
         return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
     }
 
-    private int renderInfoImage(MatrixStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom) {
+    private int renderInfoImage(MatrixStack guiGraphics, InfoPanelItem item, int x, int y, int width) {
         ImageOptions options = item.imageOptions;
-        int imageWidth = Math.min(Math.min(options.width(), INFO_PANEL_IMAGE_MAX_WIDTH), width - (options.padding() * 2));
+        int imageWidth = Math.max(1, Math.min(Math.min(options.width(), INFO_PANEL_IMAGE_MAX_WIDTH), width - (options.padding() * 2)));
         int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
-        imageHeight = Math.min(imageHeight, Math.max(1, bottom - y - options.padding()));
         int imageX = x + options.padding();
         if (options.align() == ImageOptions.Align.CENTER) {
             imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
@@ -497,6 +534,92 @@ public final class KonfigConfigScreen extends Screen {
             y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
         }
         return y + INFO_PANEL_GAP;
+    }
+
+    private void setRenderedInfoPanelItems(List<InfoPanelItem> items) {
+        if (items == this.renderedInfoPanelItems) {
+            return;
+        }
+        this.rememberInfoPanelScroll();
+        this.renderedInfoPanelItems = items;
+        Double rememberedScroll = this.infoPanelScrollPositions.get(items);
+        this.infoPanelScroll = rememberedScroll == null ? 0.0D : rememberedScroll.doubleValue();
+    }
+
+    private void rememberInfoPanelScroll() {
+        if (!this.renderedInfoPanelItems.isEmpty()) {
+            this.infoPanelScrollPositions.put(this.renderedInfoPanelItems, this.infoPanelScroll);
+        }
+    }
+
+    private int measureInfoPanelItems(List<InfoPanelItem> items, int width) {
+        int height = 0;
+        for (InfoPanelItem item : items) {
+            height += this.measureInfoPanelItem(item, width);
+        }
+        return height;
+    }
+
+    private int measureInfoPanelItem(InfoPanelItem item, int width) {
+        if (item.kind == EntryKind.HEADER || item.kind == EntryKind.URL) {
+            return 16;
+        }
+        if (item.kind == EntryKind.IMAGE) {
+            return this.measureInfoImage(item, width);
+        }
+        return this.measureInfoParagraph(item.label, width) + INFO_PANEL_GAP;
+    }
+
+    private int measureInfoImage(InfoPanelItem item, int width) {
+        ImageOptions options = item.imageOptions;
+        int imageWidth = Math.max(1, Math.min(Math.min(options.width(), INFO_PANEL_IMAGE_MAX_WIDTH), width - (options.padding() * 2)));
+        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
+        int height = imageHeight + (options.padding() * 2);
+        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            height += this.measureInfoParagraph(item.label, width);
+        }
+        return height + INFO_PANEL_GAP;
+    }
+
+    private int measureInfoParagraph(String value, int width) {
+        int height = 0;
+        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
+            if (paragraph.trim().isEmpty()) {
+                height += 8;
+                continue;
+            }
+            height += this.wrapLines(paragraph.trim(), width).size() * this.font.lineHeight;
+            height += 4;
+        }
+        return height;
+    }
+
+    private void renderInfoPanelScrollbar(MatrixStack guiGraphics, int right, int top, int bottom) {
+        if (this.infoPanelMaxScroll <= 0) {
+            return;
+        }
+
+        int trackLeft = right - INFO_PANEL_SCROLLBAR_WIDTH - 4;
+        int trackRight = right - 4;
+        int viewportHeight = Math.max(1, bottom - top);
+        int contentHeight = viewportHeight + this.infoPanelMaxScroll;
+        int thumbHeight = MathHelper.clamp((viewportHeight * viewportHeight) / contentHeight, 18, viewportHeight);
+        int thumbTop = top + (int) Math.round((viewportHeight - thumbHeight) * (this.infoPanelScroll / (double) this.infoPanelMaxScroll));
+        AbstractGui.fill(guiGraphics, trackLeft, top, trackRight, bottom, 0x44000000);
+        AbstractGui.fill(guiGraphics, trackLeft, thumbTop, trackRight, thumbTop + thumbHeight, 0xAAFFFFFF);
+    }
+
+    private void enableInfoPanelScissor(int left, int top, int right, int bottom) {
+        double scale = this.minecraft.getWindow().getGuiScale();
+        int scissorX = (int) Math.round(left * scale);
+        int scissorY = (int) Math.round(this.minecraft.getWindow().getHeight() - (bottom * scale));
+        int scissorWidth = Math.max(0, (int) Math.round((right - left) * scale));
+        int scissorHeight = Math.max(0, (int) Math.round((bottom - top) * scale));
+        RenderSystem.enableScissor(scissorX, scissorY, scissorWidth, scissorHeight);
+    }
+
+    private void disableInfoPanelScissor() {
+        RenderSystem.disableScissor();
     }
 
     private int renderInfoParagraph(MatrixStack guiGraphics, String value, int x, int y, int width, int color) {

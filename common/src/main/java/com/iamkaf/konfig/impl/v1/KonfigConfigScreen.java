@@ -102,6 +102,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
 //?} else {
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 //?}
 import net.minecraft.client.gui.components.AbstractSliderButton;
@@ -291,7 +292,6 @@ public final class KonfigConfigScreen extends Screen {
         return handled;
     }
 
-//? if >=26.1 {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (this.handleInfoPanelScroll(mouseX, mouseY, scrollY)) {
@@ -299,7 +299,6 @@ public final class KonfigConfigScreen extends Screen {
         }
         return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
-//?}
 //?} else {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
@@ -333,6 +332,24 @@ public final class KonfigConfigScreen extends Screen {
         }
         return handled;
     }
+
+//? if >=1.20.2 {
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (this.handleInfoPanelScroll(mouseX, mouseY, scrollY)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
+    }
+//?} else {
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (this.handleInfoPanelScroll(mouseX, mouseY, delta)) {
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, delta);
+    }
+//?}
 //?}
 
 //? if >=26.1 {
@@ -640,7 +657,6 @@ public final class KonfigConfigScreen extends Screen {
         return false;
     }
 
-//? if >=26.1 {
     private boolean handleInfoPanelScroll(double mouseX, double mouseY, double scrollY) {
         if (!this.isPointInInfoPanel(mouseX, mouseY) || this.infoPanelMaxScroll <= 0) {
             return false;
@@ -650,6 +666,7 @@ public final class KonfigConfigScreen extends Screen {
         return true;
     }
 
+//? if >=26.1 {
     private void renderInfoPanel(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
         int left = this.mainPanelRight() + 1;
         int right = this.width;
@@ -685,22 +702,6 @@ public final class KonfigConfigScreen extends Screen {
         guiGraphics.disableScissor();
 
         this.renderInfoPanelScrollbar(guiGraphics, right, viewportTop, viewportBottom);
-    }
-
-    private void setRenderedInfoPanelItems(List<InfoPanelItem> items) {
-        if (items == this.renderedInfoPanelItems) {
-            return;
-        }
-        this.rememberInfoPanelScroll();
-        this.renderedInfoPanelItems = items;
-        Double rememberedScroll = this.infoPanelScrollPositions.get(items);
-        this.infoPanelScroll = rememberedScroll == null ? 0.0D : rememberedScroll.doubleValue();
-    }
-
-    private void rememberInfoPanelScroll() {
-        if (!this.renderedInfoPanelItems.isEmpty()) {
-            this.infoPanelScrollPositions.put(this.renderedInfoPanelItems, this.infoPanelScroll);
-        }
     }
 
     private int renderInfoPanelItem(GuiGraphicsExtractor guiGraphics, InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
@@ -744,6 +745,270 @@ public final class KonfigConfigScreen extends Screen {
         return y + INFO_PANEL_GAP;
     }
 
+    private void renderInfoPanelScrollbar(GuiGraphicsExtractor guiGraphics, int right, int top, int bottom) {
+        if (this.infoPanelMaxScroll <= 0) {
+            return;
+        }
+
+        int trackLeft = right - INFO_PANEL_SCROLLBAR_WIDTH - 4;
+        int trackRight = right - 4;
+        int viewportHeight = Math.max(1, bottom - top);
+        int contentHeight = viewportHeight + this.infoPanelMaxScroll;
+        int thumbHeight = Mth.clamp((viewportHeight * viewportHeight) / contentHeight, 18, viewportHeight);
+        int thumbTop = top + (int) Math.round((viewportHeight - thumbHeight) * (this.infoPanelScroll / (double) this.infoPanelMaxScroll));
+        fillRect(guiGraphics, trackLeft, top, trackRight, bottom, 0x44000000);
+        fillRect(guiGraphics, trackLeft, thumbTop, trackRight, thumbTop + thumbHeight, 0xAAFFFFFF);
+    }
+
+    private int renderInfoParagraph(GuiGraphicsExtractor guiGraphics, String value, int x, int y, int width, int color) {
+        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
+            if (paragraph.trim().isEmpty()) {
+                y += 8;
+                continue;
+            }
+            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
+        }
+        return y;
+    }
+//?} elif >=1.20 {
+    private void renderInfoPanel(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        int left = this.mainPanelRight() + 1;
+        int right = this.width;
+        int top = LIST_TOP;
+        int bottom = this.height;
+        fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
+
+        List<InfoPanelItem> items = this.activeInfoItems();
+        if (items.isEmpty()) {
+            this.setRenderedInfoPanelItems(Collections.emptyList());
+            this.infoPanelScroll = 0.0D;
+            this.infoPanelMaxScroll = 0;
+            return;
+        }
+
+        this.setRenderedInfoPanelItems(items);
+
+        int x = left + INFO_PANEL_PADDING;
+        int viewportTop = top + INFO_PANEL_PADDING;
+        int viewportBottom = bottom - INFO_PANEL_PADDING;
+        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2) - INFO_PANEL_SCROLLBAR_WIDTH - 4);
+        int contentHeight = this.measureInfoPanelItems(items, contentWidth);
+        int viewportHeight = Math.max(1, viewportBottom - viewportTop);
+        this.infoPanelMaxScroll = Math.max(0, contentHeight - viewportHeight);
+        this.infoPanelScroll = Mth.clamp(this.infoPanelScroll, 0.0D, (double) this.infoPanelMaxScroll);
+        this.rememberInfoPanelScroll();
+
+        int y = viewportTop - (int) Math.round(this.infoPanelScroll);
+        guiGraphics.enableScissor(left, viewportTop, right, viewportBottom);
+        for (InfoPanelItem item : items) {
+            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, mouseX, mouseY);
+        }
+        guiGraphics.disableScissor();
+
+        this.renderInfoPanelScrollbar(guiGraphics, right, viewportTop, viewportBottom);
+    }
+
+    private int renderInfoPanelItem(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
+        if (item.kind == EntryKind.HEADER) {
+            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
+            return y + 16;
+        }
+        if (item.kind == EntryKind.IMAGE) {
+            return this.renderInfoImage(guiGraphics, item, x, y, width);
+        }
+        if (item.kind == EntryKind.URL) {
+            Component label = text(item.label + " >");
+            int linkWidth = this.font.width(label);
+            InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
+            this.infoPanelLinks.add(link);
+            boolean hovered = link.contains(mouseX, mouseY);
+            drawText(guiGraphics, this.font, label, x, y, hovered ? 0xFFFFFFFF : 0xFF80C8FF);
+            if (hovered) {
+                fillRect(guiGraphics, x, y + this.font.lineHeight, x + Math.min(width, linkWidth), y + this.font.lineHeight + 1, 0xFFFFFFFF);
+            }
+            return y + 16;
+        }
+        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoImage(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width) {
+        ImageOptions options = item.imageOptions;
+        int imageWidth = Math.max(1, Math.min(options.width(), width - (options.padding() * 2)));
+        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
+        int imageX = x + options.padding();
+        if (options.align() == ImageOptions.Align.CENTER) {
+            imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
+        } else if (options.align() == ImageOptions.Align.RIGHT) {
+            imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
+        }
+        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
+        y += imageHeight + (options.padding() * 2);
+        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        }
+        return y + INFO_PANEL_GAP;
+    }
+
+    private void renderInfoPanelScrollbar(GuiGraphics guiGraphics, int right, int top, int bottom) {
+        if (this.infoPanelMaxScroll <= 0) {
+            return;
+        }
+
+        int trackLeft = right - INFO_PANEL_SCROLLBAR_WIDTH - 4;
+        int trackRight = right - 4;
+        int viewportHeight = Math.max(1, bottom - top);
+        int contentHeight = viewportHeight + this.infoPanelMaxScroll;
+        int thumbHeight = Mth.clamp((viewportHeight * viewportHeight) / contentHeight, 18, viewportHeight);
+        int thumbTop = top + (int) Math.round((viewportHeight - thumbHeight) * (this.infoPanelScroll / (double) this.infoPanelMaxScroll));
+        fillRect(guiGraphics, trackLeft, top, trackRight, bottom, 0x44000000);
+        fillRect(guiGraphics, trackLeft, thumbTop, trackRight, thumbTop + thumbHeight, 0xAAFFFFFF);
+    }
+
+    private int renderInfoParagraph(GuiGraphics guiGraphics, String value, int x, int y, int width, int color) {
+        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
+            if (paragraph.trim().isEmpty()) {
+                y += 8;
+                continue;
+            }
+            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
+        }
+        return y;
+    }
+//?} else {
+    private void renderInfoPanel(PoseStack guiGraphics, int mouseX, int mouseY) {
+        int left = this.mainPanelRight() + 1;
+        int right = this.width;
+        int top = LIST_TOP;
+        int bottom = this.height;
+        fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
+
+        List<InfoPanelItem> items = this.activeInfoItems();
+        if (items.isEmpty()) {
+            this.setRenderedInfoPanelItems(Collections.emptyList());
+            this.infoPanelScroll = 0.0D;
+            this.infoPanelMaxScroll = 0;
+            return;
+        }
+
+        this.setRenderedInfoPanelItems(items);
+
+        int x = left + INFO_PANEL_PADDING;
+        int viewportTop = top + INFO_PANEL_PADDING;
+        int viewportBottom = bottom - INFO_PANEL_PADDING;
+        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2) - INFO_PANEL_SCROLLBAR_WIDTH - 4);
+        int contentHeight = this.measureInfoPanelItems(items, contentWidth);
+        int viewportHeight = Math.max(1, viewportBottom - viewportTop);
+        this.infoPanelMaxScroll = Math.max(0, contentHeight - viewportHeight);
+        this.infoPanelScroll = Mth.clamp(this.infoPanelScroll, 0.0D, (double) this.infoPanelMaxScroll);
+        this.rememberInfoPanelScroll();
+
+        int y = viewportTop - (int) Math.round(this.infoPanelScroll);
+        this.enableInfoPanelScissor(left, viewportTop, right, viewportBottom);
+        for (InfoPanelItem item : items) {
+            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, mouseX, mouseY);
+        }
+        this.disableInfoPanelScissor();
+
+        this.renderInfoPanelScrollbar(guiGraphics, right, viewportTop, viewportBottom);
+    }
+
+    private int renderInfoPanelItem(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
+        if (item.kind == EntryKind.HEADER) {
+            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
+            return y + 16;
+        }
+        if (item.kind == EntryKind.IMAGE) {
+            return this.renderInfoImage(guiGraphics, item, x, y, width);
+        }
+        if (item.kind == EntryKind.URL) {
+            Component label = text(item.label + " >");
+            int linkWidth = this.font.width(label);
+            InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
+            this.infoPanelLinks.add(link);
+            boolean hovered = link.contains(mouseX, mouseY);
+            drawText(guiGraphics, this.font, label, x, y, hovered ? 0xFFFFFFFF : 0xFF80C8FF);
+            if (hovered) {
+                fillRect(guiGraphics, x, y + this.font.lineHeight, x + Math.min(width, linkWidth), y + this.font.lineHeight + 1, 0xFFFFFFFF);
+            }
+            return y + 16;
+        }
+        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+    }
+
+    private int renderInfoImage(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width) {
+        ImageOptions options = item.imageOptions;
+        int imageWidth = Math.max(1, Math.min(options.width(), width - (options.padding() * 2)));
+        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
+        int imageX = x + options.padding();
+        if (options.align() == ImageOptions.Align.CENTER) {
+            imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
+        } else if (options.align() == ImageOptions.Align.RIGHT) {
+            imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
+        }
+        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
+        y += imageHeight + (options.padding() * 2);
+        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        }
+        return y + INFO_PANEL_GAP;
+    }
+
+    private void renderInfoPanelScrollbar(PoseStack guiGraphics, int right, int top, int bottom) {
+        if (this.infoPanelMaxScroll <= 0) {
+            return;
+        }
+
+        int trackLeft = right - INFO_PANEL_SCROLLBAR_WIDTH - 4;
+        int trackRight = right - 4;
+        int viewportHeight = Math.max(1, bottom - top);
+        int contentHeight = viewportHeight + this.infoPanelMaxScroll;
+        int thumbHeight = Mth.clamp((viewportHeight * viewportHeight) / contentHeight, 18, viewportHeight);
+        int thumbTop = top + (int) Math.round((viewportHeight - thumbHeight) * (this.infoPanelScroll / (double) this.infoPanelMaxScroll));
+        fillRect(guiGraphics, trackLeft, top, trackRight, bottom, 0x44000000);
+        fillRect(guiGraphics, trackLeft, thumbTop, trackRight, thumbTop + thumbHeight, 0xAAFFFFFF);
+    }
+
+    private void enableInfoPanelScissor(int left, int top, int right, int bottom) {
+        double scale = this.minecraft.getWindow().getGuiScale();
+        int scissorX = (int) Math.round(left * scale);
+        int scissorY = (int) Math.round(this.minecraft.getWindow().getHeight() - (bottom * scale));
+        int scissorWidth = Math.max(0, (int) Math.round((right - left) * scale));
+        int scissorHeight = Math.max(0, (int) Math.round((bottom - top) * scale));
+        RenderSystem.enableScissor(scissorX, scissorY, scissorWidth, scissorHeight);
+    }
+
+    private void disableInfoPanelScissor() {
+        RenderSystem.disableScissor();
+    }
+
+    private int renderInfoParagraph(PoseStack guiGraphics, String value, int x, int y, int width, int color) {
+        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
+            if (paragraph.trim().isEmpty()) {
+                y += 8;
+                continue;
+            }
+            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
+        }
+        return y;
+    }
+//?}
+
+    private void setRenderedInfoPanelItems(List<InfoPanelItem> items) {
+        if (items == this.renderedInfoPanelItems) {
+            return;
+        }
+        this.rememberInfoPanelScroll();
+        this.renderedInfoPanelItems = items;
+        Double rememberedScroll = this.infoPanelScrollPositions.get(items);
+        this.infoPanelScroll = rememberedScroll == null ? 0.0D : rememberedScroll.doubleValue();
+    }
+
+    private void rememberInfoPanelScroll() {
+        if (!this.renderedInfoPanelItems.isEmpty()) {
+            this.infoPanelScrollPositions.put(this.renderedInfoPanelItems, this.infoPanelScroll);
+        }
+    }
+
     private int measureInfoPanelItems(List<InfoPanelItem> items, int width) {
         int height = 0;
         for (InfoPanelItem item : items) {
@@ -785,185 +1050,6 @@ public final class KonfigConfigScreen extends Screen {
         }
         return height;
     }
-
-    private void renderInfoPanelScrollbar(GuiGraphicsExtractor guiGraphics, int right, int top, int bottom) {
-        if (this.infoPanelMaxScroll <= 0) {
-            return;
-        }
-
-        int trackLeft = right - INFO_PANEL_SCROLLBAR_WIDTH - 4;
-        int trackRight = right - 4;
-        int viewportHeight = Math.max(1, bottom - top);
-        int contentHeight = viewportHeight + this.infoPanelMaxScroll;
-        int thumbHeight = Mth.clamp((viewportHeight * viewportHeight) / contentHeight, 18, viewportHeight);
-        int thumbTop = top + (int) Math.round((viewportHeight - thumbHeight) * (this.infoPanelScroll / (double) this.infoPanelMaxScroll));
-        fillRect(guiGraphics, trackLeft, top, trackRight, bottom, 0x44000000);
-        fillRect(guiGraphics, trackLeft, thumbTop, trackRight, thumbTop + thumbHeight, 0xAAFFFFFF);
-    }
-
-    private int renderInfoParagraph(GuiGraphicsExtractor guiGraphics, String value, int x, int y, int width, int color) {
-        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
-            if (paragraph.trim().isEmpty()) {
-                y += 8;
-                continue;
-            }
-            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
-        }
-        return y;
-    }
-//?} elif >=1.20 {
-    private void renderInfoPanel(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        int left = this.mainPanelRight() + 1;
-        int right = this.width;
-        int top = LIST_TOP;
-        int bottom = this.height;
-        fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
-
-        List<InfoPanelItem> items = this.activeInfoItems();
-        if (items.isEmpty()) {
-            return;
-        }
-
-        int x = left + INFO_PANEL_PADDING;
-        int y = top + INFO_PANEL_PADDING;
-        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2));
-        for (InfoPanelItem item : items) {
-            if (y >= bottom - INFO_PANEL_PADDING) {
-                break;
-            }
-            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, bottom - INFO_PANEL_PADDING, mouseX, mouseY);
-        }
-    }
-
-    private int renderInfoPanelItem(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom, int mouseX, int mouseY) {
-        if (item.kind == EntryKind.HEADER) {
-            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
-            return y + 16;
-        }
-        if (item.kind == EntryKind.IMAGE) {
-            return this.renderInfoImage(guiGraphics, item, x, y, width, bottom);
-        }
-        if (item.kind == EntryKind.URL) {
-            Component label = text(item.label + " >");
-            int linkWidth = this.font.width(label);
-            InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
-            this.infoPanelLinks.add(link);
-            boolean hovered = link.contains(mouseX, mouseY);
-            drawText(guiGraphics, this.font, label, x, y, hovered ? 0xFFFFFFFF : 0xFF80C8FF);
-            if (hovered) {
-                fillRect(guiGraphics, x, y + this.font.lineHeight, x + Math.min(width, linkWidth), y + this.font.lineHeight + 1, 0xFFFFFFFF);
-            }
-            return y + 16;
-        }
-        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
-    }
-
-    private int renderInfoImage(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom) {
-        ImageOptions options = item.imageOptions;
-        int imageWidth = Math.min(options.width(), width - (options.padding() * 2));
-        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
-        imageHeight = Math.min(imageHeight, Math.max(1, bottom - y - options.padding()));
-        int imageX = x + options.padding();
-        if (options.align() == ImageOptions.Align.CENTER) {
-            imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
-        } else if (options.align() == ImageOptions.Align.RIGHT) {
-            imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
-        }
-        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
-        y += imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
-        }
-        return y + INFO_PANEL_GAP;
-    }
-
-    private int renderInfoParagraph(GuiGraphics guiGraphics, String value, int x, int y, int width, int color) {
-        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
-            if (paragraph.trim().isEmpty()) {
-                y += 8;
-                continue;
-            }
-            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
-        }
-        return y;
-    }
-//?} else {
-    private void renderInfoPanel(PoseStack guiGraphics, int mouseX, int mouseY) {
-        int left = this.mainPanelRight() + 1;
-        int right = this.width;
-        int top = LIST_TOP;
-        int bottom = this.height;
-        fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
-
-        List<InfoPanelItem> items = this.activeInfoItems();
-        if (items.isEmpty()) {
-            return;
-        }
-
-        int x = left + INFO_PANEL_PADDING;
-        int y = top + INFO_PANEL_PADDING;
-        int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2));
-        for (InfoPanelItem item : items) {
-            if (y >= bottom - INFO_PANEL_PADDING) {
-                break;
-            }
-            y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, bottom - INFO_PANEL_PADDING, mouseX, mouseY);
-        }
-    }
-
-    private int renderInfoPanelItem(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom, int mouseX, int mouseY) {
-        if (item.kind == EntryKind.HEADER) {
-            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
-            return y + 16;
-        }
-        if (item.kind == EntryKind.IMAGE) {
-            return this.renderInfoImage(guiGraphics, item, x, y, width, bottom);
-        }
-        if (item.kind == EntryKind.URL) {
-            Component label = text(item.label + " >");
-            int linkWidth = this.font.width(label);
-            InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
-            this.infoPanelLinks.add(link);
-            boolean hovered = link.contains(mouseX, mouseY);
-            drawText(guiGraphics, this.font, label, x, y, hovered ? 0xFFFFFFFF : 0xFF80C8FF);
-            if (hovered) {
-                fillRect(guiGraphics, x, y + this.font.lineHeight, x + Math.min(width, linkWidth), y + this.font.lineHeight + 1, 0xFFFFFFFF);
-            }
-            return y + 16;
-        }
-        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
-    }
-
-    private int renderInfoImage(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int bottom) {
-        ImageOptions options = item.imageOptions;
-        int imageWidth = Math.min(options.width(), width - (options.padding() * 2));
-        int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
-        imageHeight = Math.min(imageHeight, Math.max(1, bottom - y - options.padding()));
-        int imageX = x + options.padding();
-        if (options.align() == ImageOptions.Align.CENTER) {
-            imageX = x + Math.max(options.padding(), (width - imageWidth) / 2);
-        } else if (options.align() == ImageOptions.Align.RIGHT) {
-            imageX = x + Math.max(options.padding(), width - options.padding() - imageWidth);
-        }
-        drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
-        y += imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
-        }
-        return y + INFO_PANEL_GAP;
-    }
-
-    private int renderInfoParagraph(PoseStack guiGraphics, String value, int x, int y, int width, int color) {
-        for (String paragraph : value.replace('\r', '\n').split("\\n")) {
-            if (paragraph.trim().isEmpty()) {
-                y += 8;
-                continue;
-            }
-            y = this.renderWrappedLines(guiGraphics, paragraph.trim(), x, y, width, color) + 4;
-        }
-        return y;
-    }
-//?}
 
 //? if >=26.1 {
     private int renderWrappedLines(GuiGraphicsExtractor guiGraphics, String value, int x, int y, int width, int color) {
