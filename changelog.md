@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.4.0
+
+### Changed
+
+- Ported to Minecraft 26.2.
+
 ## 0.3.1
 
 ### Fixed

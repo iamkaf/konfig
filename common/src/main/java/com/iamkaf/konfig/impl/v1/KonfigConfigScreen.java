@@ -236,7 +236,15 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void closeScreen() {
-        this.minecraft.setScreen(this.parent);
+        this.setScreen(this.parent);
+    }
+
+    private void setScreen(Screen screen) {
+//? if >=26.2-rc-1 {
+        this.minecraft.gui.setScreen(screen);
+//?} else {
+        this.minecraft.setScreen(screen);
+//?}
     }
 
     private void openInlineUrl(EntryRef entry) {
@@ -1907,7 +1915,7 @@ public final class KonfigConfigScreen extends Screen {
         private ColorRow(EntryRef entry) {
             super(entry);
             this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, colorText(entry.value), ignored -> {
-                KonfigConfigScreen.this.minecraft.setScreen(new ColorEditorScreen(entry));
+                KonfigConfigScreen.this.setScreen(new ColorEditorScreen(entry));
             });
         }
 
@@ -1985,7 +1993,7 @@ public final class KonfigConfigScreen extends Screen {
         private StringListRow(EntryRef entry) {
             super(entry);
             this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, stringListText(entry.value), ignored -> {
-                KonfigConfigScreen.this.minecraft.setScreen(new StringListEditorScreen(entry));
+                KonfigConfigScreen.this.setScreen(new StringListEditorScreen(entry));
             });
         }
 
@@ -2866,7 +2874,7 @@ public final class KonfigConfigScreen extends Screen {
 
         protected final void returnToParent() {
             KonfigConfigScreen.this.rebuildScreenWidgets();
-            this.minecraft.setScreen(KonfigConfigScreen.this);
+            KonfigConfigScreen.this.setScreen(KonfigConfigScreen.this);
         }
 
         protected final boolean persistEditedValue(Object previousValue) {
