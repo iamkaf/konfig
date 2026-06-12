@@ -10,6 +10,7 @@ Thumbs.db
 *.launch
 .gradle/
 .cache/
+.teakit/
 bin/
 out/
 run/
