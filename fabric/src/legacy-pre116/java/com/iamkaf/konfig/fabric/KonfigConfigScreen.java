@@ -102,7 +102,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(translate("konfig.screen.title"));
+        super(defaultScreenTitle(modIdFilter, screenTitle));
         this.parent = parent;
         this.modIdFilter = modIdFilter;
         this.screenTitle = screenTitle;
@@ -368,6 +368,32 @@ public final class KonfigConfigScreen extends Screen {
             this.statusColor = 0xFFFF8080;
         }
         this.rebuildScreenWidgets();
+    }
+
+    private static Component defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return text(screenTitle);
+        }
+        if (!isBlank(modIdFilter)) {
+            return translatedModTitle(modIdFilter);
+        }
+        return translate("konfig.screen.title.configurations");
+    }
+
+    private static Component translatedModTitle(String modId) {
+        String titleKey = "konfig.config." + modId + ".title";
+        Component translated = translate(titleKey);
+        if (!titleKey.equals(translated.getString())) {
+            return translated;
+        }
+
+        String legacyTitleKey = modId + ".configuration.title";
+        translated = translate(legacyTitleKey);
+        if (!legacyTitleKey.equals(translated.getString())) {
+            return translated;
+        }
+
+        return text(prettySegment(modId));
     }
 
     private Component screenTitle() {

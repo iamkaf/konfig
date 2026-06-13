@@ -17,9 +17,55 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(new TextComponent(screenTitle == null || screenTitle.trim().isEmpty() ? "Konfig" : screenTitle));
+        super(new TextComponent(defaultScreenTitle(modIdFilter, screenTitle)));
         this.parent = parent;
         this.screenTitle = screenTitle;
+    }
+
+    private static String defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return screenTitle;
+        }
+        if (!isBlank(modIdFilter)) {
+            return prettySegment(modIdFilter);
+        }
+        return "Configurations";
+    }
+
+    private static String prettySegment(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder(raw.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < raw.length(); i++) {
+            char character = raw.charAt(i);
+            if (character == '_' || character == '-' || character == '.') {
+                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
+                    builder.append(' ');
+                }
+                capitalizeNext = true;
+                continue;
+            }
+
+            if (capitalizeNext) {
+                builder.append(Character.toUpperCase(character));
+                capitalizeNext = false;
+            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
+                builder.append(' ').append(character);
+            } else {
+                builder.append(Character.toLowerCase(character));
+            }
+        }
+        if (builder.length() > 0) {
+            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
+        }
+        return builder.toString().trim();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     @Override
@@ -61,9 +107,55 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(new TextComponent(screenTitle == null || screenTitle.trim().isEmpty() ? "Konfig" : screenTitle));
+        super(new TextComponent(defaultScreenTitle(modIdFilter, screenTitle)));
         this.parent = parent;
         this.screenTitle = screenTitle;
+    }
+
+    private static String defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return screenTitle;
+        }
+        if (!isBlank(modIdFilter)) {
+            return prettySegment(modIdFilter);
+        }
+        return "Configurations";
+    }
+
+    private static String prettySegment(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder(raw.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < raw.length(); i++) {
+            char character = raw.charAt(i);
+            if (character == '_' || character == '-' || character == '.') {
+                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
+                    builder.append(' ');
+                }
+                capitalizeNext = true;
+                continue;
+            }
+
+            if (capitalizeNext) {
+                builder.append(Character.toUpperCase(character));
+                capitalizeNext = false;
+            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
+                builder.append(' ').append(character);
+            } else {
+                builder.append(Character.toLowerCase(character));
+            }
+        }
+        if (builder.length() > 0) {
+            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
+        }
+        return builder.toString().trim();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     @Override
@@ -192,7 +284,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(translate("konfig.screen.title"));
+        super(defaultScreenTitle(modIdFilter, screenTitle));
         this.parent = parent;
         this.modIdFilter = modIdFilter;
         this.screenTitle = screenTitle;
@@ -212,6 +304,32 @@ public final class KonfigConfigScreen extends Screen {
                 this.sessionStartValues.put(entry.value, snapshotValue(entry.value, value));
             }
         }
+    }
+
+    private static Component defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return text(screenTitle);
+        }
+        if (!isBlank(modIdFilter)) {
+            return translatedModTitle(modIdFilter);
+        }
+        return translate("konfig.screen.title.configurations");
+    }
+
+    private static Component translatedModTitle(String modId) {
+        String titleKey = "konfig.config." + modId + ".title";
+        Component translated = translate(titleKey);
+        if (!titleKey.equals(translated.getString())) {
+            return translated;
+        }
+
+        String legacyTitleKey = modId + ".configuration.title";
+        translated = translate(legacyTitleKey);
+        if (!legacyTitleKey.equals(translated.getString())) {
+            return translated;
+        }
+
+        return text(prettySegment(modId));
     }
 
     @Override
