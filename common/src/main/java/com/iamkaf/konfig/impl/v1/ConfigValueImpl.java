@@ -191,8 +191,12 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     }
 
     void setLocal(T value) {
+        T previousLocal = this.localValue;
         T checked = validateOrThrow(value);
         this.localValue = checked;
+        if (this.syncedValue != null && Objects.equals(this.syncedValue, previousLocal)) {
+            this.syncedValue = checked;
+        }
     }
 
     void setSynced(T value) {

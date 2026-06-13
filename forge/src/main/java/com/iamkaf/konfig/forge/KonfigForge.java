@@ -143,6 +143,16 @@ public final class KonfigForge {
     }
 
     private void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
+//? if >=1.17 {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            KonfigSync.onPlayerLeave(player);
+        }
+//?} else {
+        if (event.getEntity() instanceof ServerPlayerEntity) {
+            ServerPlayerEntity player = (ServerPlayerEntity) event.getEntity();
+            KonfigSync.onPlayerLeave(player);
+        }
+//?}
 //? if >=1.20.2 {
         if (event.getEntity().level().isClientSide()) {
             KonfigSync.onClientDisconnect();

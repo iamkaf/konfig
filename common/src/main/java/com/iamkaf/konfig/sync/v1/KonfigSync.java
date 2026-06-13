@@ -3,6 +3,7 @@ package com.iamkaf.konfig.sync.v1;
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigScope;
+import com.iamkaf.konfig.api.v1.ReloadCause;
 import com.iamkaf.konfig.api.v1.SyncMode;
 import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.KonfigManager;
@@ -10,8 +11,17 @@ import com.iamkaf.konfig.impl.v1.KonfigManager;
 import net.minecraft.server.level.ServerPlayer;
 //?}
 
+import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 public final class KonfigSync {
     private static SyncSender sender;
+//? if <=1.16.5 {
+    private static final Set<Object> players = Collections.newSetFromMap(new ConcurrentHashMap<Object, Boolean>());
+//?} else {
+    private static final Set<ServerPlayer> players = Collections.newSetFromMap(new ConcurrentHashMap<ServerPlayer, Boolean>());
+//?}
 
     private KonfigSync() {
     }
@@ -25,6 +35,7 @@ public final class KonfigSync {
 //?} else {
     public static void onPlayerJoin(ServerPlayer player) {
 //?}
+        players.add(player);
         if (sender == null) {
             return;
         }
@@ -68,6 +79,52 @@ public final class KonfigSync {
 //?}
                     sentCount,
                     totalBytes
+            );
+        }
+    }
+
+//? if <=1.16.5 {
+    public static void onPlayerLeave(Object player) {
+//?} else {
+    public static void onPlayerLeave(ServerPlayer player) {
+//?}
+        players.remove(player);
+    }
+
+    public static void onReload(ConfigHandleImpl handle, ReloadCause cause) {
+        if (sender == null || handle.scope() == ConfigScope.CLIENT || handle.syncMode() != SyncMode.LOGIN_AND_RELOAD) {
+            return;
+        }
+
+        if (players.isEmpty()) {
+            if (KonfigDebugConfig.enabled()) {
+                Constants.LOG.info(
+                        "[Konfig/Debug] Reload sync skipped for '{}' after {}: no connected players.",
+                        handle.id(),
+                        cause
+                );
+            }
+            return;
+        }
+
+        String payload = handle.snapshotJson();
+        int sentCount = 0;
+//? if <=1.16.5 {
+        for (Object player : players) {
+//?} else {
+        for (ServerPlayer player : players) {
+//?}
+            sender.send(player, new SyncSnapshot(handle.id(), payload));
+            sentCount++;
+        }
+
+        if (KonfigDebugConfig.enabled()) {
+            Constants.LOG.info(
+                    "[Konfig/Debug] Reload sync complete for '{}' after {}: sent={} bytes={}",
+                    handle.id(),
+                    cause,
+                    sentCount,
+                    payload.length()
             );
         }
     }
