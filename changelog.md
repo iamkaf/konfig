@@ -9,9 +9,19 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 ## 0.4.0
 
+### Added
+
+- Added translated info-panel builder methods for headers, text, and link labels.
+- Added fallback support for mod-owned config label and enum value translations, preserving existing translations when configs move into categorized screens.
+
 ### Changed
 
 - Ported to Minecraft 26.2.
+
+### Fixed
+
+- Server-synced config values now update connected players when a config is saved or reloaded.
+- Config screens opened for a specific mod now show that mod's title instead of the generic Konfig title.
 
 ## 0.3.1
 

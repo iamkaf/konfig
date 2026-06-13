@@ -9,6 +9,8 @@ import net.minecraft.resources.ResourceLocation;
 public interface InfoPanelBuilder {
     InfoPanelBuilder header(String text);
 
+    InfoPanelBuilder headerKey(String translationKey);
+
 //? if >=1.21.11 {
     InfoPanelBuilder image(Identifier textureId);
 
@@ -37,5 +39,9 @@ public interface InfoPanelBuilder {
 
     InfoPanelBuilder inlineText(String text);
 
+    InfoPanelBuilder inlineTextKey(String translationKey);
+
     InfoPanelBuilder url(String label, String url);
+
+    InfoPanelBuilder urlKey(String labelTranslationKey, String url);
 }

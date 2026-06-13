@@ -529,14 +529,14 @@ public final class KonfigConfigScreen extends Screen {
 
     private int renderInfoPanelItem(InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
         if (item.kind == EntryKind.HEADER) {
-            this.font.draw(item.label, x, y, 0xFFFFFFFF);
+            this.font.draw(infoText(item), x, y, 0xFFFFFFFF);
             return y + 16;
         }
         if (item.kind == EntryKind.IMAGE) {
             return this.renderInfoImage(item, x, y, width);
         }
         if (item.kind == EntryKind.URL) {
-            String label = item.label + " >";
+            String label = infoText(item) + " >";
             int linkWidth = this.font.width(label);
             InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
             this.infoPanelLinks.add(link);
@@ -547,7 +547,7 @@ public final class KonfigConfigScreen extends Screen {
             }
             return y + 16;
         }
-        return this.renderInfoParagraph(item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+        return this.renderInfoParagraph(infoText(item), x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
     }
 
     private int renderInfoImage(InfoPanelItem item, int x, int y, int width) {
@@ -562,8 +562,8 @@ public final class KonfigConfigScreen extends Screen {
         }
         drawImage(item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
         y += imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            y = this.renderInfoParagraph(item.label, x, y, width, 0xFFCFCFCF);
+        if (!isBlank(infoText(item)) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(infoText(item), x, y, width, 0xFFCFCFCF);
         }
         return y + INFO_PANEL_GAP;
     }
@@ -584,6 +584,14 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
+    private static Component infoLabel(InfoPanelItem item) {
+        return item.labelTranslationKey ? translate(item.label) : text(item.label);
+    }
+
+    private static String infoText(InfoPanelItem item) {
+        return infoLabel(item).getString();
+    }
+
     private int measureInfoPanelItems(List<InfoPanelItem> items, int width) {
         int height = 0;
         for (InfoPanelItem item : items) {
@@ -599,7 +607,7 @@ public final class KonfigConfigScreen extends Screen {
         if (item.kind == EntryKind.IMAGE) {
             return this.measureInfoImage(item, width);
         }
-        return this.measureInfoParagraph(item.label, width) + INFO_PANEL_GAP;
+        return this.measureInfoParagraph(infoText(item), width) + INFO_PANEL_GAP;
     }
 
     private int measureInfoImage(InfoPanelItem item, int width) {
@@ -607,8 +615,8 @@ public final class KonfigConfigScreen extends Screen {
         int imageWidth = Math.max(1, Math.min(Math.min(options.width(), INFO_PANEL_IMAGE_MAX_WIDTH), width - (options.padding() * 2)));
         int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
         int height = imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            height += this.measureInfoParagraph(item.label, width);
+        if (!isBlank(infoText(item)) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            height += this.measureInfoParagraph(infoText(item), width);
         }
         return height + INFO_PANEL_GAP;
     }
@@ -981,8 +989,14 @@ public final class KonfigConfigScreen extends Screen {
 
     private Component enumText(EntryRef entry, Enum<?> value) {
         String key = "konfig.value." + entry.handle.modId() + "." + entry.handle.name() + "." + entry.value.path() + "." + value.name().toLowerCase(Locale.ROOT);
-        Component translated = translate(key);
-        return key.equals(translated.getString()) ? text(prettySegment(value.name())) : translated;
+        Component translated = translationOrNull(key);
+        if (translated != null) {
+            return translated;
+        }
+
+        String legacyKey = entry.handle.modId() + ".config." + lastPathSegment(entry.value.path()) + "." + value.name().toLowerCase(Locale.ROOT);
+        translated = translationOrNull(legacyKey);
+        return translated == null ? text(prettySegment(value.name())) : translated;
     }
 
     private Component colorText(ConfigValueImpl<?> value) {
@@ -1204,8 +1218,27 @@ public final class KonfigConfigScreen extends Screen {
 
     private static Component translatedLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
         String key = "konfig.config." + handle.modId() + "." + handle.name() + "." + value.path();
+        Component translated = translationOrNull(key);
+        if (translated != null) {
+            return translated;
+        }
+
+        String legacyKey = handle.modId() + ".config." + lastPathSegment(value.path());
+        translated = translationOrNull(legacyKey);
+        return translated == null ? text(fallbackLabel(handle, value)) : translated;
+    }
+
+    private static Component translationOrNull(String key) {
         Component translated = translate(key);
-        return key.equals(translated.getString()) ? text(fallbackLabel(handle, value)) : translated;
+        return key.equals(translated.getString()) ? null : translated;
+    }
+
+    private static String lastPathSegment(String path) {
+        int lastSeparator = path.lastIndexOf('.');
+        if (lastSeparator < 0) {
+            return path;
+        }
+        return path.substring(lastSeparator + 1);
     }
 
     private static Component contextLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
