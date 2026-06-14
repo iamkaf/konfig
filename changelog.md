@@ -17,11 +17,13 @@ See the full changelog at https://github.com/iamkaf/konfig
 ### Changed
 
 - Ported to Minecraft 26.2.
+- Config screens now keep routine saves quiet and show important failures as Minecraft toasts.
 
 ### Fixed
 
 - Server-synced config values now update connected players when a config is saved or reloaded.
 - Config screens opened for a specific mod now show that mod's title instead of the generic Konfig title.
+- Invalid text and color edits now show feedback next to the setting instead of using the old footer status line.
 
 ## 0.3.1
 

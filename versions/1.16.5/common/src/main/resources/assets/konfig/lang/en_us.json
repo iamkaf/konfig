@@ -1,5 +1,6 @@
 {
   "konfig.screen.title": "Konfig",
+  "konfig.screen.title.configurations": "Configurations",
   "konfig.screen.page": "Page %s/%s - %s entries",
   "konfig.screen.previous": "<",
   "konfig.screen.next": ">",
@@ -21,5 +22,6 @@
   "konfig.toast.reset_failed": "Couldn't reset config",
   "konfig.toast.open_failed": "Couldn't open link",
   "konfig.toast.missing_url": "Missing link target",
+  "konfig.config.konfig.title": "Konfig",
   "konfig.config.konfig.konfig.debug.enabled": "Enable Debug Logging"
 }

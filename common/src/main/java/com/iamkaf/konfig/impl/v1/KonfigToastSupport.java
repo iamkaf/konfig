@@ -10,7 +10,27 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.FormattedCharSequence;
+//?} elif >=1.21.11 {
+/*import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.toasts.Toast;
+import net.minecraft.client.gui.components.toasts.ToastManager;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.FormattedCharSequence;*/
 //?} elif >=1.21.8 {
+/*import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.toasts.Toast;
+import net.minecraft.client.gui.components.toasts.ToastManager;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FormattedCharSequence;*/
+//?} elif >=1.21.6 {
 /*import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -36,6 +56,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;*/
 //?} elif >=1.19 {
 /*import com.mojang.blaze3d.systems.RenderSystem;
@@ -121,6 +142,8 @@ public final class KonfigToastSupport {
     private static final class KonfigFailureToast implements Toast {
 //? if >=26.1 {
         private static final Identifier BACKGROUND_SPRITE = Identifier.withDefaultNamespace("toast/system");
+//?} elif >=1.21.11 {
+/*        private static final Identifier BACKGROUND_SPRITE = Identifier.withDefaultNamespace("toast/system");*/
 //?} else {
 /*        private static final ResourceLocation BACKGROUND_SPRITE = ResourceLocation.withDefaultNamespace("toast/system");*/
 //?}
@@ -203,7 +226,7 @@ public final class KonfigToastSupport {
                 y += 12;
             }
         }
-//?} elif >=1.21.8 {
+//?} elif >=1.21.6 {
 /*        @Override
         public void render(GuiGraphics graphics, Font font, long fullyVisibleForMs) {
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BACKGROUND_SPRITE, 0, 0, this.width(), this.height());
@@ -263,6 +286,11 @@ public final class KonfigToastSupport {
     }
 
     private static final class KonfigFailureToast implements Toast {
+//? if >=1.21 {
+        private static final ResourceLocation BACKGROUND_SPRITE = ResourceLocation.withDefaultNamespace("toast/system");
+//?} elif >=1.20.2 {
+        private static final ResourceLocation BACKGROUND_SPRITE = new ResourceLocation("toast/system");
+//?}
         private Component title;
         private Component message;
         private long lastChanged;
@@ -292,7 +320,11 @@ public final class KonfigToastSupport {
                 this.lastChanged = visibleForMs;
                 this.changed = false;
             }
+//? if >=1.20.2 {
+            graphics.blitSprite(BACKGROUND_SPRITE, 0, 0, WIDTH, this.height());
+//?} else {
             graphics.blit(Toast.TEXTURE, 0, 0, 0, 64, WIDTH, this.height());
+//?}
             this.renderText(graphics, toastComponent);
             return visibleForMs - this.lastChanged < DISPLAY_TIME_MS * toastComponent.getNotificationDisplayTimeMultiplier() ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
         }
