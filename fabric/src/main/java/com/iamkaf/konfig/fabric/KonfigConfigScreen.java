@@ -10,6 +10,7 @@ import com.iamkaf.konfig.impl.v1.ConfigValueImpl;
 import com.iamkaf.konfig.impl.v1.EntryKind;
 import com.iamkaf.konfig.impl.v1.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.KonfigManager;
+import com.iamkaf.konfig.impl.v1.KonfigToastSupport;
 import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.StringListValueHelper;
 import com.mojang.blaze3d.platform.InputConstants;
@@ -62,6 +63,7 @@ public final class KonfigConfigScreen extends Screen {
     private static final int CONTROL_HEIGHT = 20;
     private static final int CONTROL_MIN_WIDTH = 132;
     private static final int CONTROL_MAX_WIDTH = 200;
+    private static final int VALIDATION_COLOR = 0xFFFF8080;
     private static final int URL_BUTTON_WIDTH = 60;
     private static final int SUGGESTION_LIMIT = 7;
     private static final int SUGGESTION_ROW_HEIGHT = 14;
@@ -96,8 +98,6 @@ public final class KonfigConfigScreen extends Screen {
     private List pendingTooltipLines;
     private int pendingTooltipMouseX;
     private int pendingTooltipMouseY;
-    private String statusMessage = "";
-    private int statusColor = 0xFFFF8080;
 
     public KonfigConfigScreen(Screen parent) {
         this(parent, null, null);
@@ -158,19 +158,15 @@ public final class KonfigConfigScreen extends Screen {
     private void openInlineUrl(EntryRef entry) {
         String target = entry.value.inlineUrl();
         if (isBlank(target)) {
-            this.statusMessage = "Missing decoration URL";
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.missingUrl();
             return;
         }
 
         try {
             Util.getPlatform().openUri(URI.create(target));
-            this.statusMessage = "Opened " + target;
-            this.statusColor = 0xFF80FF80;
         } catch (Exception exception) {
             Constants.LOG.warn("Failed to open inline URL {}", target, exception);
-            this.statusMessage = "Failed to open " + target;
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.openFailed(target);
         }
     }
 
@@ -233,10 +229,6 @@ public final class KonfigConfigScreen extends Screen {
         drawCenteredString(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         GuiComponent.fill(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(guiGraphics, mouseX, mouseY);
-
-        if (!this.statusMessage.isEmpty()) {
-            drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.mainPanelRight() / 2, this.height - 38, this.statusColor);
-        }
 
         if (this.entries.isEmpty()) {
             drawCenteredString(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
@@ -331,22 +323,21 @@ public final class KonfigConfigScreen extends Screen {
         try {
             Object parsed = parseDraft(entry.value, this.drafts.get(entry.value));
             if (sameValue(previousValue, parsed)) {
-                this.statusMessage = translate("konfig.screen.status.saved").getString();
-                this.statusColor = 0xFF80FF80;
                 return true;
             }
 
             setRawValue(entry.value, parsed);
             entry.handle.save();
-            this.statusMessage = translate("konfig.screen.status.saved").getString();
-            this.statusColor = 0xFF80FF80;
             return true;
         } catch (Exception exception) {
             setRawValue(entry.value, previousValue);
-            this.statusMessage = exception.getMessage() == null ? translate("konfig.screen.status.save_failed").getString() : exception.getMessage();
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.saveFailed(exceptionMessage(exception));
             return false;
         }
+    }
+
+    private static String exceptionMessage(Exception exception) {
+        return exception.getMessage() == null ? "" : exception.getMessage();
     }
 
     private void resetEntries() {
@@ -367,16 +358,12 @@ public final class KonfigConfigScreen extends Screen {
             for (ConfigHandleImpl handle : handles) {
                 handle.save();
             }
-
-            this.statusMessage = translate("konfig.screen.status.reset").getString();
-            this.statusColor = 0xFF80FF80;
         } catch (Exception exception) {
             for (Map.Entry<ConfigValueImpl<?>, Object> previousValue : previousValues.entrySet()) {
                 setRawValue(previousValue.getKey(), previousValue.getValue());
                 this.drafts.put(previousValue.getKey(), copyDraftValue(previousValue.getKey(), previousValue.getValue()));
             }
-            this.statusMessage = exception.getMessage() == null ? translate("konfig.screen.status.save_failed").getString() : exception.getMessage();
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.resetFailed(exceptionMessage(exception));
         }
         this.rebuildScreenWidgets();
     }
@@ -479,12 +466,9 @@ public final class KonfigConfigScreen extends Screen {
             if (link.contains(mouseX, mouseY)) {
                 try {
                     Util.getPlatform().openUri(URI.create(link.target));
-                    this.statusMessage = "Opened " + link.target;
-                    this.statusColor = 0xFF80FF80;
                 } catch (Exception exception) {
                     Constants.LOG.warn("Failed to open info panel URL {}", link.target, exception);
-                    this.statusMessage = "Failed to open " + link.target;
-                    this.statusColor = 0xFFFF8080;
+                    KonfigToastSupport.openFailed(link.target);
                 }
                 return true;
             }
@@ -1436,6 +1420,14 @@ public final class KonfigConfigScreen extends Screen {
         protected void tick() {
         }
 
+        protected int preferredHeight(int rowWidth) {
+            return ROW_HEIGHT;
+        }
+
+        protected String validationMessage() {
+            return "";
+        }
+
         @Override
         public void render(PoseStack guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             this.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
@@ -1467,6 +1459,9 @@ public final class KonfigConfigScreen extends Screen {
             KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.contextLabel, x + 4.0F, y + 1.0F, 0xFFA0A0A0);
             KonfigConfigScreen.this.font.draw(guiGraphics, this.entry.displayLabel(), x + 4.0F, y + 12.0F, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
             this.control().render(guiGraphics, mouseX, mouseY, partialTick);
+            if (!this.validationMessage().isEmpty()) {
+                KonfigConfigScreen.this.font.draw(guiGraphics, this.validationMessage(), controlX, controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
+            }
         }
 
         @Override
@@ -2357,6 +2352,7 @@ public final class KonfigConfigScreen extends Screen {
 
     private final class TextInputRow extends ConfigRow {
         private final EditBox input;
+        private String validationMessage = "";
 
         private TextInputRow(EntryRef entry) {
             super(entry);
@@ -2365,13 +2361,24 @@ public final class KonfigConfigScreen extends Screen {
             this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
             this.input.setResponder(value -> {
                 KonfigConfigScreen.this.drafts.put(entry.value, value);
-                KonfigConfigScreen.this.persistEntry(entry);
+                try {
+                    parseDraft(entry.value, value);
+                    this.validationMessage = "";
+                    KonfigConfigScreen.this.persistEntry(entry);
+                } catch (Exception exception) {
+                    this.validationMessage = exceptionMessage(exception);
+                }
             });
         }
 
         @Override
         protected AbstractWidget control() {
             return this.input;
+        }
+
+        @Override
+        protected String validationMessage() {
+            return this.validationMessage;
         }
 
         @Override
@@ -2390,8 +2397,6 @@ public final class KonfigConfigScreen extends Screen {
         protected static final int EDITOR_CONTENT_TOP = 42;
 
         protected final EntryRef entry;
-        protected String statusMessage = "";
-        protected int statusColor = 0xFFFF8080;
 
         private EntryEditorScreen(EntryRef entry) {
             super(entry.label);
@@ -2411,10 +2416,8 @@ public final class KonfigConfigScreen extends Screen {
         protected final boolean persistEditedValue(Object previousValue) {
             if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                this.copyStatusFromParent();
                 return false;
             }
-            this.copyStatusFromParent();
             return true;
         }
 
@@ -2425,25 +2428,13 @@ public final class KonfigConfigScreen extends Screen {
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, resetValue));
                 setRawValue(this.entry.value, resetValue);
                 this.entry.handle.save();
-                KonfigConfigScreen.this.statusMessage = translate("konfig.screen.status.reset").getString();
-                KonfigConfigScreen.this.statusColor = 0xFF80FF80;
-                this.copyStatusFromParent();
                 return true;
             } catch (Exception exception) {
                 setRawValue(this.entry.value, previousValue);
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                KonfigConfigScreen.this.statusMessage = exception.getMessage() == null
-                        ? translate("konfig.screen.status.save_failed").getString()
-                        : exception.getMessage();
-                KonfigConfigScreen.this.statusColor = 0xFFFF8080;
-                this.copyStatusFromParent();
+                KonfigToastSupport.resetFailed(exceptionMessage(exception));
                 return false;
             }
-        }
-
-        protected final void copyStatusFromParent() {
-            this.statusMessage = KonfigConfigScreen.this.statusMessage;
-            this.statusColor = KonfigConfigScreen.this.statusColor;
         }
 
         protected final void renderEditorChrome(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -2451,9 +2442,6 @@ public final class KonfigConfigScreen extends Screen {
             super.render(guiGraphics, mouseX, mouseY, partialTick);
             drawCenteredString(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
             this.font.draw(guiGraphics, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
-            if (!this.statusMessage.isEmpty()) {
-                drawCenteredString(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
-            }
         }
     }
 
@@ -2476,7 +2464,7 @@ public final class KonfigConfigScreen extends Screen {
         private static final int HEX_WIDTH = 108;
         private static final int HEX_Y = PREVIEW_Y + PREVIEW_SIZE + 8;
         private static final int SLIDER_WIDTH = 220;
-        private static final int SLIDER_Y = HEX_Y + 28;
+        private static final int SLIDER_Y = HEX_Y + 34;
         private static final int SLIDER_STEP = 26;
 
         private EditBox hexInput;
@@ -2485,6 +2473,7 @@ public final class KonfigConfigScreen extends Screen {
         private ChannelSlider blueSlider;
         private ChannelSlider alphaSlider;
         private boolean suppressHexResponder;
+        private String validationMessage = "";
 
         private ColorEditorScreen(EntryRef entry) {
             super(entry);
@@ -2524,6 +2513,7 @@ public final class KonfigConfigScreen extends Screen {
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             int previewX = this.width / 2 - PREVIEW_SIZE / 2;
             drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+            this.renderValidationMessage(guiGraphics);
         }
 
         @Override
@@ -2539,16 +2529,15 @@ public final class KonfigConfigScreen extends Screen {
             String normalized = normalizeHexInput(value);
             int expectedDigits = ColorValueHelper.expectedDigits(this.entry.value.kind());
             if (normalized.isEmpty()) {
-                this.statusMessage = "";
+                this.validationMessage = "";
                 return;
             }
             if (!isHexPrefix(normalized) || normalized.length() > expectedDigits) {
-                this.statusMessage = translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString();
-                this.statusColor = 0xFFFF8080;
+                this.validationMessage = translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString();
                 return;
             }
             if (normalized.length() < expectedDigits) {
-                this.statusMessage = "";
+                this.validationMessage = "";
                 return;
             }
 
@@ -2557,17 +2546,23 @@ public final class KonfigConfigScreen extends Screen {
                 int parsed = parseColor(this.entry.value, value);
                 KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(parsed));
                 if (this.persistEditedValue(previousValue)) {
+                    this.validationMessage = "";
                     this.syncWidgetsFromDraft();
                 } else {
                     this.syncWidgetsFromDraft();
                 }
             } catch (Exception exception) {
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                this.statusMessage = exception.getMessage() == null
+                this.validationMessage = exception.getMessage() == null
                         ? translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString()
                         : exception.getMessage();
-                this.statusColor = 0xFFFF8080;
                 this.syncWidgetsFromDraft();
+            }
+        }
+
+        private void renderValidationMessage(PoseStack guiGraphics) {
+            if (!this.validationMessage.isEmpty()) {
+                drawCenteredString(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + CONTROL_HEIGHT + 3, VALIDATION_COLOR);
             }
         }
 
