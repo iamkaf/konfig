@@ -283,6 +283,15 @@ final class KonfigScreenSupport {
         return translated == null ? text(prettySegment(value.name())) : translated;
     }
 
+    static Component decorationLabel(ConfigValueImpl<?> value) {
+        if (!value.inlineLabelTranslationKey()) {
+            return text(value.inlineLabel());
+        }
+
+        Component translated = translationOrNull(value.inlineLabel());
+        return translated == null ? text(value.inlineLabel()) : translated;
+    }
+
     private static Component translationOrNull(String key) {
         Component translated = translate(key);
         return key.equals(translated.getString()) ? null : translated;

@@ -36,6 +36,8 @@ public interface ConfigBuilder {
 
     ConfigBuilder header(String text);
 
+    ConfigBuilder headerKey(String translationKey);
+
 //? if >=1.21.11 {
     ConfigBuilder image(Identifier textureId);
 
