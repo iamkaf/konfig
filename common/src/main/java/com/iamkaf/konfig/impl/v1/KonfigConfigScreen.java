@@ -357,7 +357,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void setScreen(Screen screen) {
-//? if >=26.2-rc-2 {
+//? if >=26.2 {
         this.minecraft.gui.setScreen(screen);
 //?} else {
         this.minecraft.setScreen(screen);

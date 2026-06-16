@@ -85,7 +85,7 @@ Versioning is parity-based across supported Minecraft lines. The semantic releas
 | Example version | Meaning |
 |-----------------|---------|
 | `0.4.0+1.21.11` | Konfig `0.4.0` for Minecraft `1.21.11` |
-| `0.4.0+26.2-rc-2` | Konfig `0.4.0` for Minecraft `26.2-rc-2` |
+| `0.4.0+26.2` | Konfig `0.4.0` for Minecraft `26.2` |
 
 Do not depend on Konfig `common` directly. Use the loader-specific artifact.
 

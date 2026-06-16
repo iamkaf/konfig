@@ -125,7 +125,7 @@ public final class KonfigToastSupport {
     }
 
     private static void showToast(String titleKey, Component message) {
-//? if >=26.2-rc-2 {
+//? if >=26.2 {
         ToastManager toastManager = Minecraft.getInstance().gui.toastManager();
 //?} else {
 /*        ToastManager toastManager = Minecraft.getInstance().getToastManager();*/
