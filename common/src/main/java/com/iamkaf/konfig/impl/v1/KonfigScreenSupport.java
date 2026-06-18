@@ -256,8 +256,53 @@ final class KonfigScreenSupport {
 
     static Component translatedLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
         String key = "konfig.config." + handle.modId() + "." + handle.name() + "." + value.path();
+        Component translated = translationOrNull(key);
+        if (translated != null) {
+            return translated;
+        }
+
+        String legacyKey = handle.modId() + ".config." + lastPathSegment(value.path());
+        translated = translationOrNull(legacyKey);
+        return translated == null ? text(fallbackLabel(handle, value)) : translated;
+    }
+
+    static Component translatedEnumValue(EntryRef entry, Enum<?> value) {
+        String valueName = value.name().toLowerCase(Locale.ROOT);
+        String key = "konfig.value."
+                + entry.handle.modId() + "."
+                + entry.handle.name() + "."
+                + entry.value.path() + "."
+                + valueName;
+        Component translated = translationOrNull(key);
+        if (translated != null) {
+            return translated;
+        }
+
+        String legacyKey = entry.handle.modId() + ".config." + lastPathSegment(entry.value.path()) + "." + valueName;
+        translated = translationOrNull(legacyKey);
+        return translated == null ? text(prettySegment(value.name())) : translated;
+    }
+
+    static Component decorationLabel(ConfigValueImpl<?> value) {
+        if (!value.inlineLabelTranslationKey()) {
+            return text(value.inlineLabel());
+        }
+
+        Component translated = translationOrNull(value.inlineLabel());
+        return translated == null ? text(value.inlineLabel()) : translated;
+    }
+
+    private static Component translationOrNull(String key) {
         Component translated = translate(key);
-        return key.equals(translated.getString()) ? text(fallbackLabel(handle, value)) : translated;
+        return key.equals(translated.getString()) ? null : translated;
+    }
+
+    private static String lastPathSegment(String path) {
+        int lastSeparator = path.lastIndexOf('.');
+        if (lastSeparator < 0) {
+            return path;
+        }
+        return path.substring(lastSeparator + 1);
     }
 
     static Component contextLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {

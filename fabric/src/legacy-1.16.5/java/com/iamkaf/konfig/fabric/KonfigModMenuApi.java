@@ -13,7 +13,7 @@ import java.util.Map;
 public final class KonfigModMenuApi implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
-        return KonfigClientScreens::create;
+        return parent -> KonfigClientScreens.create(Constants.MOD_ID, parent);
     }
 
     @Override

@@ -167,6 +167,12 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         return this;
     }
 
+    @Override
+    public ConfigBuilder headerKey(String translationKey) {
+        addDecoration(EntryKind.HEADER, translationKey, null, null, true);
+        return this;
+    }
+
 //? if >=1.21.11 {
     @Override
     public ConfigBuilder image(Identifier textureId) {
@@ -487,10 +493,14 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     }
 
     private void addDecoration(EntryKind kind, String label, String target) {
-        addDecoration(kind, label, target, null);
+        addDecoration(kind, label, target, null, false);
     }
 
     private void addDecoration(EntryKind kind, String label, String target, ImageOptions imageOptions) {
+        addDecoration(kind, label, target, imageOptions, false);
+    }
+
+    private void addDecoration(EntryKind kind, String label, String target, ImageOptions imageOptions, boolean labelTranslationKey) {
         String normalizedLabel = label == null ? "" : label.trim();
         if (kind != EntryKind.IMAGE && isBlank(normalizedLabel)) {
             throw new IllegalArgumentException("decoration text cannot be blank");
@@ -498,7 +508,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
 
         String prefix = currentCategoryPath();
         String path = (isBlank(prefix) ? "" : prefix + ".") + "__inline_" + String.format(Locale.ROOT, "%04d", ++this.inlineDecorationIndex);
-        ConfigValueImpl<String> entry = ConfigValueImpl.inlineDecoration(path, kind, normalizedLabel, target, imageOptions);
+        ConfigValueImpl<String> entry = ConfigValueImpl.inlineDecoration(path, kind, normalizedLabel, target, imageOptions, labelTranslationKey);
         this.entries.put(path, entry);
         this.entryComments.remove(path);
     }

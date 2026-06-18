@@ -15,6 +15,6 @@ public final class KonfigModMenuApi implements ModMenuApi {
 
     @Override
     public Function<Screen, ? extends Screen> getConfigScreenFactory() {
-        return KonfigClientScreens::create;
+        return parent -> KonfigClientScreens.create(Constants.MOD_ID, parent);
     }
 }

@@ -49,6 +49,9 @@ public final class KonfigNeoForge {
     }
 
     private void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+            KonfigSync.onPlayerLeave(player);
+        }
         if (event.getEntity().level().isClientSide()) {
             KonfigSync.onClientDisconnect();
         }

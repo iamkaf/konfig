@@ -1,2 +1,5 @@
 modId = "konfig"
 projectKey = "konfig"
+
+[defaults.systemProperties]
+"teakit.autoWorld" = "false"

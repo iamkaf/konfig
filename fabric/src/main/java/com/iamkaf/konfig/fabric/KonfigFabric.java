@@ -66,5 +66,8 @@ public final class KonfigFabric implements ModInitializer {
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
                 KonfigSync.onPlayerJoin(handler.player)
         );
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+                KonfigSync.onPlayerLeave(handler.player)
+        );
     }
 }

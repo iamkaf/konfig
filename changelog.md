@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.4.0
+
+### Added
+
+- Added translated info-panel builder methods for headers, text, and link labels.
+- Added fallback support for mod-owned config label and enum value translations, preserving existing translations when configs move into categorized screens.
+
+### Changed
+
+- Ported to Minecraft 26.2.
+- Config screens now keep routine saves quiet and show important failures as Minecraft toasts.
+
+### Fixed
+
+- Server-synced config values now update connected players when a config is saved or reloaded.
+- Config screens opened for a specific mod now show that mod's title instead of the generic Konfig title.
+- Invalid text and color edits now show feedback next to the setting instead of using the old footer status line.
+
 ## 0.3.1
 
 ### Fixed

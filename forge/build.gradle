@@ -51,7 +51,13 @@ if (useLegacy1165ForgeSources) {
     }
     def modId = requiredProp(project, 'mod.id')
     def assetIndex = providers.provider { '1.16' }
-    def assetsDir = providers.provider { new File(gradle.gradleUserHomeDir, 'caches/forge_gradle/assets') }
+    def assetsDir = providers.provider {
+        [
+            new File(gradle.gradleUserHomeDir, 'caches/forge_gradle/assets'),
+            new File(gradle.gradleUserHomeDir, 'caches/fabric-loom/assets'),
+            new File(System.getProperty('user.home'), '.minecraft/assets'),
+        ].find { it.isDirectory() } ?: new File(gradle.gradleUserHomeDir, 'caches/forge_gradle/assets')
+    }
     def assetsDirPath = providers.provider { assetsDir.get().absolutePath }
     def legacyForgeNativesDir = layout.buildDirectory.dir('legacy-forge-natives')
     def legacyForgeNativesDirPath = providers.provider { legacyForgeNativesDir.get().asFile.absolutePath }
@@ -304,6 +310,7 @@ if (useLegacy1165ForgeSources) {
     def stageTeaKitLegacyForgeMod = tasks.register('stageTeaKitLegacyForgeMod') {
         onlyIf { useTeaKit && hasTeaKit }
         outputs.dir(legacyForgeModsDir)
+        outputs.upToDateWhen { false }
         doLast {
             def source = legacyTeaKitForgeJar.get()
             if (source == null || !source.isFile()) {
@@ -615,6 +622,7 @@ if (useLegacy1171To1182ForgeRunHack) {
         dependsOn 'prepareClientRun'
         inputs.file(layout.buildDirectory.file('moddev/clientRunVmArgs.txt'))
         outputs.file(layout.buildDirectory.file('moddev/clientRunVmArgs.txt'))
+        outputs.upToDateWhen { false }
         doLast {
             def runArgsFile = layout.buildDirectory.file('moddev/clientRunVmArgs.txt').get().asFile
             def patchedArgs = runArgsFile.text
@@ -644,6 +652,7 @@ if (useLegacy1171To1182ForgeRunHack) {
     def stageTeaKitLegacyForgeMod = tasks.register('stageTeaKitLegacyForgeMod') {
         onlyIf { useTeaKit && hasTeaKit }
         outputs.dir(legacyForgeModsDir)
+        outputs.upToDateWhen { false }
         doLast {
             def source = legacyTeaKitForgeJar.get()
             if (source == null || !source.isFile()) {
@@ -721,6 +730,9 @@ if (useLegacy1171To1182ForgeRunHack) {
                 task.doFirst {
                     systemProperty 'legacyClassPath', filteredLegacyRuntimeClasspath.get()
                     systemProperty 'ignoreList', finalIgnoreList
+                    if (['1.18', '1.18.1'].contains(minecraftVersion)) {
+                        jvmArgs '--add-opens=java.base/java.lang.invoke=cpw.mods.securejarhandler'
+                    }
                     if (minecraftVersion == '1.18') {
                         jvmArgs '--add-reads', 'org.spongepowered.mixin=com.google.gson'
                     }
@@ -730,7 +742,7 @@ if (useLegacy1171To1182ForgeRunHack) {
                 task.doFirst {
                     if (useLegacy118xForgeJarRunHack) {
                         environment 'MOD_CLASSES', ''
-                    } else {
+                    } else if (!useLegacy1171To1182ForgeRunHack) {
                         project.delete(fileTree(legacyForgeModsDir.asFile) {
                             include 'teakit-forge-*.jar'
                             include 'konfig-forge-*.jar'
@@ -745,7 +757,7 @@ if (useLegacy1171To1182ForgeRunHack) {
             if (useLegacy118xForgeJarRunHack) {
                 task.dependsOn(stageLegacyForgeProjectJar)
             }
-            if (useTeaKit && hasTeaKit && (!useLegacy1171To1182ForgeRunHack || useLegacy118xForgeJarRunHack)) {
+            if (useTeaKit && hasTeaKit && useLegacy1171To1182ForgeRunHack) {
                 task.dependsOn(stageTeaKitLegacyForgeMod)
             }
             task.systemProperty 'java.library.path', lwjglNativesDir.get().asFile.absolutePath

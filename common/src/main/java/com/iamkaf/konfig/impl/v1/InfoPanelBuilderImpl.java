@@ -22,6 +22,12 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
         return this;
     }
 
+    @Override
+    public InfoPanelBuilder headerKey(String translationKey) {
+        this.add(EntryKind.HEADER, requireText(translationKey, "translationKey"), null, null, true);
+        return this;
+    }
+
 //? if >=1.21.11 {
     @Override
     public InfoPanelBuilder image(Identifier textureId) {
@@ -83,8 +89,20 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
     }
 
     @Override
+    public InfoPanelBuilder inlineTextKey(String translationKey) {
+        this.add(EntryKind.INLINE_TEXT, requireText(translationKey, "translationKey"), null, null, true);
+        return this;
+    }
+
+    @Override
     public InfoPanelBuilder url(String label, String url) {
         this.add(EntryKind.URL, requireText(label, "label"), requireText(url, "url"), null);
+        return this;
+    }
+
+    @Override
+    public InfoPanelBuilder urlKey(String labelTranslationKey, String url) {
+        this.add(EntryKind.URL, requireText(labelTranslationKey, "labelTranslationKey"), requireText(url, "url"), null, true);
         return this;
     }
 
@@ -93,7 +111,11 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
     }
 
     private void add(EntryKind kind, String label, String target, ImageOptions imageOptions) {
-        this.items.add(new InfoPanelItem(kind, label, target, imageOptions));
+        this.add(kind, label, target, imageOptions, false);
+    }
+
+    private void add(EntryKind kind, String label, String target, ImageOptions imageOptions, boolean labelTranslationKey) {
+        this.items.add(new InfoPanelItem(kind, label, target, imageOptions, labelTranslationKey));
     }
 
     private static String requireText(String value, String name) {

@@ -15,6 +15,7 @@ import com.iamkaf.konfig.api.v1.ConfigScope;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.ReloadCause;
 import com.iamkaf.konfig.api.v1.SyncMode;
+import com.iamkaf.konfig.sync.v1.KonfigSync;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -141,7 +142,7 @@ public final class ConfigHandleImpl implements ConfigHandle {
         }
 
         if (shouldPersist) {
-            save();
+            write();
         }
         if (KonfigDebugConfig.enabled()) {
             if (configFound) {
@@ -155,6 +156,11 @@ public final class ConfigHandleImpl implements ConfigHandle {
 
     @Override
     public void save() {
+        write();
+        notifyReload(ReloadCause.API_CALL);
+    }
+
+    private void write() {
         try {
             Files.createDirectories(this.path.getParent());
         } catch (IOException e) {
@@ -193,7 +199,7 @@ public final class ConfigHandleImpl implements ConfigHandle {
     @Override
     public void reload() {
         load();
-        this.listeners.forEach(listener -> listener.onReload(this, ReloadCause.API_CALL));
+        notifyReload(ReloadCause.API_CALL);
     }
 
     @Override
@@ -345,6 +351,11 @@ public final class ConfigHandleImpl implements ConfigHandle {
 
     private static <T> void syncEntryFromJson(ConfigValueImpl<T> entry, JsonObject root) {
         entry.setSynced(entry.decodeOrFallback(PathJson.get(root, entry.path())));
+    }
+
+    private void notifyReload(ReloadCause cause) {
+        this.listeners.forEach(listener -> listener.onReload(this, cause));
+        KonfigSync.onReload(this, cause);
     }
 
     private static void appendComment(StringBuilder builder, String comment) {

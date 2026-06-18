@@ -16,7 +16,7 @@ final class EntryRef {
         this.handle = handle;
         this.value = value;
         if (value.isDecoration()) {
-            this.label = KonfigScreenSupport.text(value.inlineLabel());
+            this.label = KonfigScreenSupport.decorationLabel(value);
             this.contextLabel = KonfigScreenSupport.text("");
             this.tooltip = value.kind() == EntryKind.URL && !KonfigScreenSupport.isBlank(value.inlineTarget())
                     ? value.inlineTarget()

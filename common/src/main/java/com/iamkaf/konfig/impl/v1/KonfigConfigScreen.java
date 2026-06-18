@@ -17,9 +17,55 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(new TextComponent(screenTitle == null || screenTitle.trim().isEmpty() ? "Konfig" : screenTitle));
+        super(new TextComponent(defaultScreenTitle(modIdFilter, screenTitle)));
         this.parent = parent;
         this.screenTitle = screenTitle;
+    }
+
+    private static String defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return screenTitle;
+        }
+        if (!isBlank(modIdFilter)) {
+            return prettySegment(modIdFilter);
+        }
+        return "Configurations";
+    }
+
+    private static String prettySegment(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder(raw.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < raw.length(); i++) {
+            char character = raw.charAt(i);
+            if (character == '_' || character == '-' || character == '.') {
+                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
+                    builder.append(' ');
+                }
+                capitalizeNext = true;
+                continue;
+            }
+
+            if (capitalizeNext) {
+                builder.append(Character.toUpperCase(character));
+                capitalizeNext = false;
+            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
+                builder.append(' ').append(character);
+            } else {
+                builder.append(Character.toLowerCase(character));
+            }
+        }
+        if (builder.length() > 0) {
+            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
+        }
+        return builder.toString().trim();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     @Override
@@ -61,9 +107,55 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(new TextComponent(screenTitle == null || screenTitle.trim().isEmpty() ? "Konfig" : screenTitle));
+        super(new TextComponent(defaultScreenTitle(modIdFilter, screenTitle)));
         this.parent = parent;
         this.screenTitle = screenTitle;
+    }
+
+    private static String defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return screenTitle;
+        }
+        if (!isBlank(modIdFilter)) {
+            return prettySegment(modIdFilter);
+        }
+        return "Configurations";
+    }
+
+    private static String prettySegment(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder(raw.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < raw.length(); i++) {
+            char character = raw.charAt(i);
+            if (character == '_' || character == '-' || character == '.') {
+                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
+                    builder.append(' ');
+                }
+                capitalizeNext = true;
+                continue;
+            }
+
+            if (capitalizeNext) {
+                builder.append(Character.toUpperCase(character));
+                capitalizeNext = false;
+            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
+                builder.append(' ').append(character);
+            } else {
+                builder.append(Character.toLowerCase(character));
+            }
+        }
+        if (builder.length() > 0) {
+            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
+        }
+        return builder.toString().trim();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     @Override
@@ -147,6 +239,7 @@ public final class KonfigConfigScreen extends Screen {
     private static final int CONTROL_HEIGHT = 20;
     private static final int CONTROL_MIN_WIDTH = 132;
     private static final int CONTROL_MAX_WIDTH = 200;
+    private static final int VALIDATION_COLOR = 0xFFFF8080;
     private static final int URL_BUTTON_WIDTH = 60;
     private static final int SUGGESTION_LIMIT = 7;
     private static final int SUGGESTION_ROW_HEIGHT = 14;
@@ -180,8 +273,6 @@ public final class KonfigConfigScreen extends Screen {
     private String pendingTooltip;
     private int pendingTooltipMouseX;
     private int pendingTooltipMouseY;
-    private String statusMessage = "";
-    private int statusColor = 0xFFFF8080;
 
     public KonfigConfigScreen(Screen parent) {
         this(parent, null, null);
@@ -192,7 +283,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(translate("konfig.screen.title"));
+        super(defaultScreenTitle(modIdFilter, screenTitle));
         this.parent = parent;
         this.modIdFilter = modIdFilter;
         this.screenTitle = screenTitle;
@@ -212,6 +303,32 @@ public final class KonfigConfigScreen extends Screen {
                 this.sessionStartValues.put(entry.value, snapshotValue(entry.value, value));
             }
         }
+    }
+
+    private static Component defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return text(screenTitle);
+        }
+        if (!isBlank(modIdFilter)) {
+            return translatedModTitle(modIdFilter);
+        }
+        return translate("konfig.screen.title.configurations");
+    }
+
+    private static Component translatedModTitle(String modId) {
+        String titleKey = "konfig.config." + modId + ".title";
+        Component translated = translate(titleKey);
+        if (!titleKey.equals(translated.getString())) {
+            return translated;
+        }
+
+        String legacyTitleKey = modId + ".configuration.title";
+        translated = translate(legacyTitleKey);
+        if (!legacyTitleKey.equals(translated.getString())) {
+            return translated;
+        }
+
+        return text(prettySegment(modId));
     }
 
     @Override
@@ -236,7 +353,15 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void closeScreen() {
-        this.minecraft.setScreen(this.parent);
+        this.setScreen(this.parent);
+    }
+
+    private void setScreen(Screen screen) {
+//? if >=26.2 {
+        this.minecraft.gui.setScreen(screen);
+//?} else {
+        this.minecraft.setScreen(screen);
+//?}
     }
 
     private void openInlineUrl(EntryRef entry) {
@@ -245,19 +370,15 @@ public final class KonfigConfigScreen extends Screen {
 
     private void openUrl(String target) {
         if (isBlank(target)) {
-            this.statusMessage = "Missing decoration URL";
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.missingUrl();
             return;
         }
 
         try {
             Util.getPlatform().openUri(URI.create(target));
-            this.statusMessage = "Opened " + target;
-            this.statusColor = 0xFF80FF80;
         } catch (Exception exception) {
             Constants.LOG.warn("Failed to open inline URL {}", target, exception);
-            this.statusMessage = "Failed to open " + target;
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.openFailed(target);
         }
     }
 
@@ -407,7 +528,6 @@ public final class KonfigConfigScreen extends Screen {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(guiGraphics, mouseX, mouseY);
-        this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
             drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
@@ -421,7 +541,6 @@ public final class KonfigConfigScreen extends Screen {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(guiGraphics, mouseX, mouseY);
-        this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
             drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
@@ -435,7 +554,6 @@ public final class KonfigConfigScreen extends Screen {
         drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
         fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
         this.renderInfoPanel(guiGraphics, mouseX, mouseY);
-        this.renderMainStatus(guiGraphics);
         if (this.entries.isEmpty()) {
             drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
@@ -463,26 +581,6 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
     private void renderPendingTooltip(PoseStack guiGraphics) {
         renderTooltipNow(this, this.font, guiGraphics, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
-    }
-//?}
-
-//? if >=26.1 {
-    private void renderMainStatus(GuiGraphicsExtractor guiGraphics) {
-        if (!this.statusMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.mainPanelRight() / 2, this.height - 38, this.statusColor);
-        }
-    }
-//?} elif >=1.20 {
-    private void renderMainStatus(GuiGraphics guiGraphics) {
-        if (!this.statusMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.mainPanelRight() / 2, this.height - 38, this.statusColor);
-        }
-    }
-//?} else {
-    private void renderMainStatus(PoseStack guiGraphics) {
-        if (!this.statusMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.mainPanelRight() / 2, this.height - 38, this.statusColor);
-        }
     }
 //?}
 
@@ -553,22 +651,21 @@ public final class KonfigConfigScreen extends Screen {
         try {
             Object parsed = parseDraft(entry.value, this.drafts.get(entry.value));
             if (sameValue(previousValue, parsed)) {
-                this.statusMessage = translate("konfig.screen.status.saved").getString();
-                this.statusColor = 0xFF80FF80;
                 return true;
             }
 
             setRawValue(entry.value, parsed);
             entry.handle.save();
-            this.statusMessage = translate("konfig.screen.status.saved").getString();
-            this.statusColor = 0xFF80FF80;
             return true;
         } catch (Exception exception) {
             setRawValue(entry.value, previousValue);
-            this.statusMessage = exception.getMessage() == null ? translate("konfig.screen.status.save_failed").getString() : exception.getMessage();
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.saveFailed(exceptionMessage(exception));
             return false;
         }
+    }
+
+    private static String exceptionMessage(Exception exception) {
+        return exception.getMessage() == null ? "" : exception.getMessage();
     }
 
     private void resetEntries() {
@@ -589,16 +686,12 @@ public final class KonfigConfigScreen extends Screen {
             for (ConfigHandleImpl handle : handles) {
                 handle.save();
             }
-
-            this.statusMessage = translate("konfig.screen.status.reset").getString();
-            this.statusColor = 0xFF80FF80;
         } catch (Exception exception) {
             for (Map.Entry<ConfigValueImpl<?>, Object> previousValue : previousValues.entrySet()) {
                 setRawValue(previousValue.getKey(), previousValue.getValue());
                 this.drafts.put(previousValue.getKey(), copyDraftValue(previousValue.getKey(), previousValue.getValue()));
             }
-            this.statusMessage = exception.getMessage() == null ? translate("konfig.screen.status.save_failed").getString() : exception.getMessage();
-            this.statusColor = 0xFFFF8080;
+            KonfigToastSupport.resetFailed(exceptionMessage(exception));
         }
         this.rebuildScreenWidgets();
     }
@@ -728,14 +821,14 @@ public final class KonfigConfigScreen extends Screen {
 
     private int renderInfoPanelItem(GuiGraphicsExtractor guiGraphics, InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
         if (item.kind == EntryKind.HEADER) {
-            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
+            drawText(guiGraphics, this.font, infoLabel(item), x, y, 0xFFFFFFFF);
             return y + 16;
         }
         if (item.kind == EntryKind.IMAGE) {
             return this.renderInfoImage(guiGraphics, item, x, y, width);
         }
         if (item.kind == EntryKind.URL) {
-            Component label = text(item.label + " >");
+            Component label = text(infoText(item) + " >");
             int linkWidth = this.font.width(label);
             InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
             this.infoPanelLinks.add(link);
@@ -746,7 +839,7 @@ public final class KonfigConfigScreen extends Screen {
             }
             return y + 16;
         }
-        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+        return this.renderInfoParagraph(guiGraphics, infoText(item), x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
     }
 
     private int renderInfoImage(GuiGraphicsExtractor guiGraphics, InfoPanelItem item, int x, int y, int width) {
@@ -761,8 +854,8 @@ public final class KonfigConfigScreen extends Screen {
         }
         drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
         y += imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        if (!isBlank(infoText(item)) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, infoText(item), x, y, width, 0xFFCFCFCF);
         }
         return y + INFO_PANEL_GAP;
     }
@@ -832,14 +925,14 @@ public final class KonfigConfigScreen extends Screen {
 
     private int renderInfoPanelItem(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
         if (item.kind == EntryKind.HEADER) {
-            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
+            drawText(guiGraphics, this.font, infoLabel(item), x, y, 0xFFFFFFFF);
             return y + 16;
         }
         if (item.kind == EntryKind.IMAGE) {
             return this.renderInfoImage(guiGraphics, item, x, y, width);
         }
         if (item.kind == EntryKind.URL) {
-            Component label = text(item.label + " >");
+            Component label = text(infoText(item) + " >");
             int linkWidth = this.font.width(label);
             InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
             this.infoPanelLinks.add(link);
@@ -850,7 +943,7 @@ public final class KonfigConfigScreen extends Screen {
             }
             return y + 16;
         }
-        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+        return this.renderInfoParagraph(guiGraphics, infoText(item), x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
     }
 
     private int renderInfoImage(GuiGraphics guiGraphics, InfoPanelItem item, int x, int y, int width) {
@@ -865,8 +958,8 @@ public final class KonfigConfigScreen extends Screen {
         }
         drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
         y += imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        if (!isBlank(infoText(item)) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, infoText(item), x, y, width, 0xFFCFCFCF);
         }
         return y + INFO_PANEL_GAP;
     }
@@ -936,14 +1029,14 @@ public final class KonfigConfigScreen extends Screen {
 
     private int renderInfoPanelItem(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width, int mouseX, int mouseY) {
         if (item.kind == EntryKind.HEADER) {
-            drawText(guiGraphics, this.font, text(item.label), x, y, 0xFFFFFFFF);
+            drawText(guiGraphics, this.font, infoLabel(item), x, y, 0xFFFFFFFF);
             return y + 16;
         }
         if (item.kind == EntryKind.IMAGE) {
             return this.renderInfoImage(guiGraphics, item, x, y, width);
         }
         if (item.kind == EntryKind.URL) {
-            Component label = text(item.label + " >");
+            Component label = text(infoText(item) + " >");
             int linkWidth = this.font.width(label);
             InfoPanelLink link = new InfoPanelLink(x, y, Math.min(width, linkWidth), this.font.lineHeight, item.target);
             this.infoPanelLinks.add(link);
@@ -954,7 +1047,7 @@ public final class KonfigConfigScreen extends Screen {
             }
             return y + 16;
         }
-        return this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
+        return this.renderInfoParagraph(guiGraphics, infoText(item), x, y, width, 0xFFCFCFCF) + INFO_PANEL_GAP;
     }
 
     private int renderInfoImage(PoseStack guiGraphics, InfoPanelItem item, int x, int y, int width) {
@@ -969,8 +1062,8 @@ public final class KonfigConfigScreen extends Screen {
         }
         drawImage(guiGraphics, item.target, imageX, y + options.padding(), imageWidth, imageHeight, options.width(), options.height());
         y += imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            y = this.renderInfoParagraph(guiGraphics, item.label, x, y, width, 0xFFCFCFCF);
+        if (!isBlank(infoText(item)) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            y = this.renderInfoParagraph(guiGraphics, infoText(item), x, y, width, 0xFFCFCFCF);
         }
         return y + INFO_PANEL_GAP;
     }
@@ -1031,6 +1124,14 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
+    private static Component infoLabel(InfoPanelItem item) {
+        return item.labelTranslationKey ? translate(item.label) : text(item.label);
+    }
+
+    private static String infoText(InfoPanelItem item) {
+        return infoLabel(item).getString();
+    }
+
     private int measureInfoPanelItems(List<InfoPanelItem> items, int width) {
         int height = 0;
         for (InfoPanelItem item : items) {
@@ -1046,7 +1147,7 @@ public final class KonfigConfigScreen extends Screen {
         if (item.kind == EntryKind.IMAGE) {
             return this.measureInfoImage(item, width);
         }
-        return this.measureInfoParagraph(item.label, width) + INFO_PANEL_GAP;
+        return this.measureInfoParagraph(infoText(item), width) + INFO_PANEL_GAP;
     }
 
     private int measureInfoImage(InfoPanelItem item, int width) {
@@ -1054,8 +1155,8 @@ public final class KonfigConfigScreen extends Screen {
         int imageWidth = Math.max(1, Math.min(options.width(), width - (options.padding() * 2)));
         int imageHeight = Math.max(1, (int) Math.round(options.height() * ((double) imageWidth / (double) options.width())));
         int height = imageHeight + (options.padding() * 2);
-        if (!isBlank(item.label) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
-            height += this.measureInfoParagraph(item.label, width);
+        if (!isBlank(infoText(item)) && options.captionPosition() != ImageOptions.CaptionPosition.NONE) {
+            height += this.measureInfoParagraph(infoText(item), width);
         }
         return height + INFO_PANEL_GAP;
     }
@@ -1186,9 +1287,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private Component enumText(EntryRef entry, Enum<?> value) {
-        String key = "konfig.value." + entry.handle.modId() + "." + entry.handle.name() + "." + entry.value.path() + "." + value.name().toLowerCase(Locale.ROOT);
-        Component translated = translate(key);
-        return key.equals(translated.getString()) ? text(prettySegment(value.name())) : translated;
+        return translatedEnumValue(entry, value);
     }
 
     private Component colorText(ConfigValueImpl<?> value) {
@@ -1344,6 +1443,10 @@ public final class KonfigConfigScreen extends Screen {
             return ROW_HEIGHT;
         }
 
+        protected String validationMessage() {
+            return "";
+        }
+
         protected final RowLayout rowLayout(int x, int y, int width, int height) {
             int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
             return new RowLayout(x, y, width, height, controlWidth, x + width - controlWidth, y + (height - CONTROL_HEIGHT) / 2);
@@ -1361,6 +1464,9 @@ public final class KonfigConfigScreen extends Screen {
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
             renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
+            if (!this.validationMessage().isEmpty()) {
+                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.validationMessage()), layout.controlX, layout.controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
+            }
         }
 
         protected final void renderColorRow(GuiGraphicsExtractor guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
@@ -1379,6 +1485,9 @@ public final class KonfigConfigScreen extends Screen {
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
             renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
+            if (!this.validationMessage().isEmpty()) {
+                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.validationMessage()), layout.controlX, layout.controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
+            }
         }
 
         protected final void renderColorRow(GuiGraphics guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
@@ -1397,6 +1506,9 @@ public final class KonfigConfigScreen extends Screen {
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
             renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
+            if (!this.validationMessage().isEmpty()) {
+                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.validationMessage()), layout.controlX, layout.controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
+            }
         }
 
         protected final void renderColorRow(PoseStack guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
@@ -1907,7 +2019,7 @@ public final class KonfigConfigScreen extends Screen {
         private ColorRow(EntryRef entry) {
             super(entry);
             this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, colorText(entry.value), ignored -> {
-                KonfigConfigScreen.this.minecraft.setScreen(new ColorEditorScreen(entry));
+                KonfigConfigScreen.this.setScreen(new ColorEditorScreen(entry));
             });
         }
 
@@ -1985,7 +2097,7 @@ public final class KonfigConfigScreen extends Screen {
         private StringListRow(EntryRef entry) {
             super(entry);
             this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, stringListText(entry.value), ignored -> {
-                KonfigConfigScreen.this.minecraft.setScreen(new StringListEditorScreen(entry));
+                KonfigConfigScreen.this.setScreen(new StringListEditorScreen(entry));
             });
         }
 
@@ -2818,6 +2930,7 @@ public final class KonfigConfigScreen extends Screen {
 
     private final class TextInputRow extends ConfigRow {
         private final EditBox input;
+        private String validationMessage = "";
 
         private TextInputRow(EntryRef entry) {
             super(entry);
@@ -2826,13 +2939,29 @@ public final class KonfigConfigScreen extends Screen {
             this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
             this.input.setResponder(value -> {
                 KonfigConfigScreen.this.drafts.put(entry.value, value);
-                KonfigConfigScreen.this.persistEntry(entry);
+                try {
+                    parseDraft(entry.value, value);
+                    this.validationMessage = "";
+                    KonfigConfigScreen.this.persistEntry(entry);
+                } catch (Exception exception) {
+                    this.validationMessage = exceptionMessage(exception);
+                }
             });
         }
 
         @Override
         protected AbstractWidget control() {
             return this.input;
+        }
+
+        @Override
+        protected int preferredHeight(int rowWidth) {
+            return ROW_HEIGHT + 12;
+        }
+
+        @Override
+        protected String validationMessage() {
+            return this.validationMessage;
         }
 
         @Override
@@ -2851,8 +2980,6 @@ public final class KonfigConfigScreen extends Screen {
         protected static final int EDITOR_CONTENT_TOP = 42;
 
         protected final EntryRef entry;
-        protected String statusMessage = "";
-        protected int statusColor = 0xFFFF8080;
 
         private EntryEditorScreen(EntryRef entry) {
             super(entry.label);
@@ -2866,16 +2993,14 @@ public final class KonfigConfigScreen extends Screen {
 
         protected final void returnToParent() {
             KonfigConfigScreen.this.rebuildScreenWidgets();
-            this.minecraft.setScreen(KonfigConfigScreen.this);
+            KonfigConfigScreen.this.setScreen(KonfigConfigScreen.this);
         }
 
         protected final boolean persistEditedValue(Object previousValue) {
             if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                this.copyStatusFromParent();
                 return false;
             }
-            this.copyStatusFromParent();
             return true;
         }
 
@@ -2886,25 +3011,13 @@ public final class KonfigConfigScreen extends Screen {
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, resetValue));
                 setRawValue(this.entry.value, resetValue);
                 this.entry.handle.save();
-                KonfigConfigScreen.this.statusMessage = translate("konfig.screen.status.reset").getString();
-                KonfigConfigScreen.this.statusColor = 0xFF80FF80;
-                this.copyStatusFromParent();
                 return true;
             } catch (Exception exception) {
                 setRawValue(this.entry.value, previousValue);
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                KonfigConfigScreen.this.statusMessage = exception.getMessage() == null
-                        ? translate("konfig.screen.status.save_failed").getString()
-                        : exception.getMessage();
-                KonfigConfigScreen.this.statusColor = 0xFFFF8080;
-                this.copyStatusFromParent();
+                KonfigToastSupport.resetFailed(exceptionMessage(exception));
                 return false;
             }
-        }
-
-        protected final void copyStatusFromParent() {
-            this.statusMessage = KonfigConfigScreen.this.statusMessage;
-            this.statusColor = KonfigConfigScreen.this.statusColor;
         }
 
 //? if >=26.1 {
@@ -2913,9 +3026,6 @@ public final class KonfigConfigScreen extends Screen {
             super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
             drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
             drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
-            if (!this.statusMessage.isEmpty()) {
-                drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
-            }
         }
 //?} elif >=1.20 {
         protected final void renderEditorChrome(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -2923,9 +3033,6 @@ public final class KonfigConfigScreen extends Screen {
             super.render(guiGraphics, mouseX, mouseY, partialTick);
             drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
             drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
-            if (!this.statusMessage.isEmpty()) {
-                drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
-            }
         }
 //?} else {
         protected final void renderEditorChrome(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -2933,9 +3040,6 @@ public final class KonfigConfigScreen extends Screen {
             super.render(guiGraphics, mouseX, mouseY, partialTick);
             drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
             drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
-            if (!this.statusMessage.isEmpty()) {
-                drawCenteredText(guiGraphics, this.font, text(this.statusMessage), this.width / 2, this.height - 38, this.statusColor);
-            }
         }
 //?}
     }
@@ -2959,7 +3063,7 @@ public final class KonfigConfigScreen extends Screen {
         private static final int HEX_WIDTH = 108;
         private static final int HEX_Y = PREVIEW_Y + PREVIEW_SIZE + 8;
         private static final int SLIDER_WIDTH = 220;
-        private static final int SLIDER_Y = HEX_Y + 28;
+        private static final int SLIDER_Y = HEX_Y + 34;
         private static final int SLIDER_STEP = 26;
 
         private EditBox hexInput;
@@ -2968,6 +3072,7 @@ public final class KonfigConfigScreen extends Screen {
         private ChannelSlider blueSlider;
         private ChannelSlider alphaSlider;
         private boolean suppressHexResponder;
+        private String validationMessage = "";
 
         private ColorEditorScreen(EntryRef entry) {
             super(entry);
@@ -3007,6 +3112,7 @@ public final class KonfigConfigScreen extends Screen {
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             int previewX = this.width / 2 - PREVIEW_SIZE / 2;
             drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+            this.renderValidationMessage(guiGraphics);
         }
 //?} elif >=1.20 {
         @Override
@@ -3014,6 +3120,7 @@ public final class KonfigConfigScreen extends Screen {
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             int previewX = this.width / 2 - PREVIEW_SIZE / 2;
             drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+            this.renderValidationMessage(guiGraphics);
         }
 //?} else {
         @Override
@@ -3021,6 +3128,7 @@ public final class KonfigConfigScreen extends Screen {
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
             int previewX = this.width / 2 - PREVIEW_SIZE / 2;
             drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+            this.renderValidationMessage(guiGraphics);
         }
 //?}
 
@@ -3037,16 +3145,15 @@ public final class KonfigConfigScreen extends Screen {
             String normalized = normalizeHexInput(value);
             int expectedDigits = ColorValueHelper.expectedDigits(this.entry.value.kind());
             if (normalized.isEmpty()) {
-                this.statusMessage = "";
+                this.validationMessage = "";
                 return;
             }
             if (!isHexPrefix(normalized) || normalized.length() > expectedDigits) {
-                this.statusMessage = translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString();
-                this.statusColor = 0xFFFF8080;
+                this.validationMessage = translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString();
                 return;
             }
             if (normalized.length() < expectedDigits) {
-                this.statusMessage = "";
+                this.validationMessage = "";
                 return;
             }
 
@@ -3055,19 +3162,39 @@ public final class KonfigConfigScreen extends Screen {
                 int parsed = parseColor(this.entry.value, value);
                 KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(parsed));
                 if (this.persistEditedValue(previousValue)) {
+                    this.validationMessage = "";
                     this.syncWidgetsFromDraft();
                 } else {
                     this.syncWidgetsFromDraft();
                 }
             } catch (Exception exception) {
                 KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                this.statusMessage = exception.getMessage() == null
+                this.validationMessage = exception.getMessage() == null
                         ? translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString()
                         : exception.getMessage();
-                this.statusColor = 0xFFFF8080;
                 this.syncWidgetsFromDraft();
             }
         }
+
+//? if >=26.1 {
+        private void renderValidationMessage(GuiGraphicsExtractor guiGraphics) {
+            if (!this.validationMessage.isEmpty()) {
+                drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + CONTROL_HEIGHT + 3, VALIDATION_COLOR);
+            }
+        }
+//?} elif >=1.20 {
+        private void renderValidationMessage(GuiGraphics guiGraphics) {
+            if (!this.validationMessage.isEmpty()) {
+                drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + CONTROL_HEIGHT + 3, VALIDATION_COLOR);
+            }
+        }
+//?} else {
+        private void renderValidationMessage(PoseStack guiGraphics) {
+            if (!this.validationMessage.isEmpty()) {
+                drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + CONTROL_HEIGHT + 3, VALIDATION_COLOR);
+            }
+        }
+//?}
 
         private String currentHex() {
             int color = KonfigConfigScreen.this.currentColor(this.entry.value);

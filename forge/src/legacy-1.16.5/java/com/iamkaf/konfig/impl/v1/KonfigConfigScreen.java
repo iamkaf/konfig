@@ -6,14 +6,66 @@ import net.minecraft.util.text.StringTextComponent;
 
 public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
+    private final String screenTitle;
 
     public KonfigConfigScreen(Screen parent) {
-        this(parent, null);
+        this(parent, null, null);
     }
 
     public KonfigConfigScreen(Screen parent, String modIdFilter) {
-        super(new StringTextComponent("Konfig"));
+        this(parent, modIdFilter, null);
+    }
+
+    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
+        super(new StringTextComponent(defaultScreenTitle(modIdFilter, screenTitle)));
         this.parent = parent;
+        this.screenTitle = screenTitle;
+    }
+
+    private static String defaultScreenTitle(String modIdFilter, String screenTitle) {
+        if (!isBlank(screenTitle)) {
+            return screenTitle;
+        }
+        if (!isBlank(modIdFilter)) {
+            return prettySegment(modIdFilter);
+        }
+        return "Configurations";
+    }
+
+    private static String prettySegment(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder builder = new StringBuilder(raw.length());
+        boolean capitalizeNext = true;
+        for (int i = 0; i < raw.length(); i++) {
+            char character = raw.charAt(i);
+            if (character == '_' || character == '-' || character == '.') {
+                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
+                    builder.append(' ');
+                }
+                capitalizeNext = true;
+                continue;
+            }
+
+            if (capitalizeNext) {
+                builder.append(Character.toUpperCase(character));
+                capitalizeNext = false;
+            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
+                builder.append(' ').append(character);
+            } else {
+                builder.append(Character.toLowerCase(character));
+            }
+        }
+        if (builder.length() > 0) {
+            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
+        }
+        return builder.toString().trim();
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.trim().isEmpty();
     }
 
     @Override

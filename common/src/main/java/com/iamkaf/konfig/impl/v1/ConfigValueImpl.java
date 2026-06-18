@@ -31,6 +31,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final Number rangeMax;
     private final boolean persistent;
     private final String inlineLabel;
+    private final boolean inlineLabelTranslationKey;
     private final String inlineTarget;
     private final ImageOptions imageOptions;
 //? if <=1.16.5 {
@@ -59,6 +60,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             Number rangeMax,
             boolean persistent,
             String inlineLabel,
+            boolean inlineLabelTranslationKey,
             String inlineTarget,
             ImageOptions imageOptions,
 //? if <=1.16.5 {
@@ -83,6 +85,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.rangeMax = rangeMax;
         this.persistent = persistent;
         this.inlineLabel = inlineLabel;
+        this.inlineLabelTranslationKey = inlineLabelTranslationKey;
         this.inlineTarget = inlineTarget;
         this.imageOptions = imageOptions == null ? ImageOptions.defaults() : imageOptions;
 //? if <=1.16.5 {
@@ -131,6 +134,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 rangeMax,
                 true,
                 null,
+                false,
                 null,
                 null,
 //? if <=1.16.5 {
@@ -142,6 +146,10 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     }
 
     static ConfigValueImpl<String> inlineDecoration(String path, EntryKind kind, String label, String target, ImageOptions imageOptions) {
+        return inlineDecoration(path, kind, label, target, imageOptions, false);
+    }
+
+    static ConfigValueImpl<String> inlineDecoration(String path, EntryKind kind, String label, String target, ImageOptions imageOptions, boolean labelTranslationKey) {
         return new ConfigValueImpl<String>(
                 path,
                 label,
@@ -159,6 +167,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 null,
                 false,
                 label,
+                labelTranslationKey,
                 target,
                 imageOptions,
 //? if <=1.16.5 {
@@ -191,8 +200,12 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     }
 
     void setLocal(T value) {
+        T previousLocal = this.localValue;
         T checked = validateOrThrow(value);
         this.localValue = checked;
+        if (this.syncedValue != null && Objects.equals(this.syncedValue, previousLocal)) {
+            this.syncedValue = checked;
+        }
     }
 
     void setSynced(T value) {
@@ -261,6 +274,10 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
 
     public String inlineLabel() {
         return this.inlineLabel;
+    }
+
+    public boolean inlineLabelTranslationKey() {
+        return this.inlineLabelTranslationKey;
     }
 
     public String inlineUrl() {
