@@ -56,6 +56,13 @@ public final class KonfigDebugConfig {
                 .header("About Konfig Debug Settings")
                 .inlineText("These settings control Konfig's debug logging and diagnostics.")
                 .url("Konfig Documentation", "https://github.com/iamkaf/konfig"));
+        debugMode = builder.dropdown("mode", "standard", Arrays.asList("quiet", "standard", "verbose"))
+                .comment("Controls the amount of Konfig diagnostic detail shown in generated debug surfaces.")
+                .info(info -> info
+                        .header("Debug Mode")
+                        .inlineText("Changes how much diagnostic context Konfig exposes while testing generated screens.")
+                        .inlineText("Default: Standard"))
+                .build();
         debugEnabled = builder.bool("enabled", false)
                 .comment("Enable verbose Konfig internal logs")
                 .info(info -> info
@@ -63,13 +70,6 @@ public final class KonfigDebugConfig {
                         .inlineText("When enabled, Konfig will write detailed diagnostic and debug information to the log files.")
                         .inlineText("This can help diagnose issues but may produce a lot of log output.")
                         .inlineText("Default: OFF"))
-                .build();
-        debugMode = builder.dropdown("mode", "standard", Arrays.asList("quiet", "standard", "verbose"))
-                .comment("Controls the amount of Konfig diagnostic detail shown in generated debug surfaces.")
-                .info(info -> info
-                        .header("Debug Mode")
-                        .inlineText("Changes how much diagnostic context Konfig exposes while testing generated screens.")
-                        .inlineText("Default: Standard"))
                 .build();
         builder.pop();
 
