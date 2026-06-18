@@ -65,6 +65,8 @@ final class KonfigScreenSupport {
                     return stringValue(draft);
                 case STRING_LIST:
                     return parseStringList(draft, value.path());
+                case DROPDOWN:
+                    return stringValue(draft).trim();
                 case ENUM:
                     return parseEnum(value, draft);
                 case COLOR_RGB:
@@ -281,6 +283,23 @@ final class KonfigScreenSupport {
         String legacyKey = entry.handle.modId() + ".config." + lastPathSegment(entry.value.path()) + "." + valueName;
         translated = translationOrNull(legacyKey);
         return translated == null ? text(prettySegment(value.name())) : translated;
+    }
+
+    static Component translatedDropdownValue(EntryRef entry, String option) {
+        String valueName = option == null ? "" : option;
+        String key = "konfig.value."
+                + entry.handle.modId() + "."
+                + entry.handle.name() + "."
+                + entry.value.path() + "."
+                + valueName;
+        Component translated = translationOrNull(key);
+        if (translated != null) {
+            return translated;
+        }
+
+        String legacyKey = entry.handle.modId() + ".config." + lastPathSegment(entry.value.path()) + "." + valueName;
+        translated = translationOrNull(legacyKey);
+        return translated == null ? text(prettySegment(valueName)) : translated;
     }
 
     static Component decorationLabel(ConfigValueImpl<?> value) {

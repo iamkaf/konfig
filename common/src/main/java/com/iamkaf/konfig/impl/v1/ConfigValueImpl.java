@@ -9,6 +9,8 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -29,6 +31,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
+    private final List<String> dropdownOptions;
     private final boolean persistent;
     private final String inlineLabel;
     private final boolean inlineLabelTranslationKey;
@@ -58,6 +61,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             RestartRequirement restartRequirement,
             Number rangeMin,
             Number rangeMax,
+            List<String> dropdownOptions,
             boolean persistent,
             String inlineLabel,
             boolean inlineLabelTranslationKey,
@@ -83,6 +87,9 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
+        this.dropdownOptions = dropdownOptions == null || dropdownOptions.isEmpty()
+                ? Collections.emptyList()
+                : Collections.unmodifiableList(new java.util.ArrayList<String>(dropdownOptions));
         this.persistent = persistent;
         this.inlineLabel = inlineLabel;
         this.inlineLabelTranslationKey = inlineLabelTranslationKey;
@@ -111,6 +118,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             RestartRequirement restartRequirement,
             Number rangeMin,
             Number rangeMax,
+            List<String> dropdownOptions,
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -132,6 +140,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 restartRequirement,
                 rangeMin,
                 rangeMax,
+                dropdownOptions,
                 true,
                 null,
                 false,
@@ -165,6 +174,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 RestartRequirement.NONE,
                 null,
                 null,
+                Collections.emptyList(),
                 false,
                 label,
                 labelTranslationKey,
@@ -258,6 +268,10 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
 
     public Number rangeMax() {
         return this.rangeMax;
+    }
+
+    public List<String> dropdownOptions() {
+        return this.dropdownOptions;
     }
 
     public EntryKind kind() {

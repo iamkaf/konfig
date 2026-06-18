@@ -34,6 +34,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private UnaryOperator<T> canonicalizer = UnaryOperator.identity();
     private Number rangeMin;
     private Number rangeMax;
+    private java.util.List<String> dropdownOptions = java.util.Collections.emptyList();
 //? if <=1.16.5 {
     private String boundRegistryId;
 //?} else {
@@ -118,6 +119,13 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
         return this;
     }
 
+    ValueBuilderImpl<T> dropdownOptions(java.util.List<String> dropdownOptions) {
+        this.dropdownOptions = dropdownOptions == null
+                ? java.util.Collections.emptyList()
+                : java.util.Collections.unmodifiableList(new java.util.ArrayList<String>(dropdownOptions));
+        return this;
+    }
+
 //? if <=1.16.5 {
     ValueBuilderImpl<T> bindRegistry(String registryId) {
         this.boundRegistryId = registryId == null ? null : registryId.trim();
@@ -145,6 +153,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
                 this.restartRequirement,
                 this.rangeMin,
                 this.rangeMax,
+                this.dropdownOptions,
 //? if <=1.16.5 {
                 this.boundRegistryId
 //?} else {

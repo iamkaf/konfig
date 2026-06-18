@@ -11,7 +11,9 @@ import net.minecraft.resources.ResourceLocation;
 
 import java.nio.file.Path;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
@@ -329,6 +331,27 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     }
 
     @Override
+    public ValueBuilder<String> dropdown(String key, String defaultValue, List<String> options) {
+        String path = path(key);
+        List<String> normalizedOptions = normalizeDropdownOptions(options);
+        String normalizedDefault = normalizeDropdownOption(defaultValue, "defaultValue");
+        if (!normalizedOptions.contains(normalizedDefault)) {
+            throw new IllegalArgumentException("Default dropdown value must be one of the declared options for " + path);
+        }
+
+        return new ValueBuilderImpl<String>(
+                this,
+                path,
+                normalizedDefault,
+                EntryKind.DROPDOWN,
+                JsonElement::getAsString,
+                JsonPrimitive::new
+        ).dropdownOptions(normalizedOptions)
+                .canonicalize(value -> value == null ? null : value.trim())
+                .validate(value -> value != null && normalizedOptions.contains(value), "Dropdown value not one of declared options");
+    }
+
+    @Override
     public <E extends Enum<E>> ValueBuilder<E> enumValue(String key, E defaultValue) {
         Objects.requireNonNull(defaultValue, "defaultValue");
         final Class<E> enumClass = (Class<E>) defaultValue.getDeclaringClass();
@@ -534,6 +557,26 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
 
     private static String normalizeComment(String comment) {
         return isBlank(comment) ? "" : comment.trim();
+    }
+
+    private static List<String> normalizeDropdownOptions(List<String> options) {
+        Objects.requireNonNull(options, "options");
+        LinkedHashSet<String> unique = new LinkedHashSet<String>();
+        for (String option : options) {
+            String normalized = normalizeDropdownOption(option, "dropdown option");
+            if (!unique.add(normalized)) {
+                throw new IllegalArgumentException("Duplicate dropdown option: " + normalized);
+            }
+        }
+        if (unique.isEmpty()) {
+            throw new IllegalArgumentException("Dropdown options cannot be empty");
+        }
+        return java.util.Collections.unmodifiableList(new ArrayList<String>(unique));
+    }
+
+    private static String normalizeDropdownOption(String option, String name) {
+        String normalized = option == null ? "" : option.trim();
+        return requireSimpleSegment(normalized, name);
     }
 
     private static String requireSimpleSegment(String value, String name) {

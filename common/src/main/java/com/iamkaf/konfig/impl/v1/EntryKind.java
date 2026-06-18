@@ -11,6 +11,7 @@ public enum EntryKind {
     DOUBLE,
     STRING,
     STRING_LIST,
+    DROPDOWN,
     ENUM,
     COLOR_RGB,
     COLOR_ARGB,
