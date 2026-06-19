@@ -302,6 +302,33 @@ final class KonfigScreenSupport {
         return translated == null ? text(prettySegment(valueName)) : translated;
     }
 
+    static Component translatedDropdownOption(EntryRef entry, DropdownOptionMetadata option) {
+        if (option == null) {
+            return translatedDropdownValue(entry, "");
+        }
+        if (!isBlank(option.label())) {
+            if (!option.labelTranslationKey()) {
+                return text(option.label());
+            }
+
+            Component translated = translationOrNull(option.label());
+            return translated == null ? text(option.label()) : translated;
+        }
+        return translatedDropdownValue(entry, option.value());
+    }
+
+    static String translatedDropdownTooltip(DropdownOptionMetadata option) {
+        if (option == null || isBlank(option.tooltip())) {
+            return "";
+        }
+        if (!option.tooltipTranslationKey()) {
+            return option.tooltip();
+        }
+
+        Component translated = translationOrNull(option.tooltip());
+        return translated == null ? option.tooltip() : translated.getString();
+    }
+
     static Component decorationLabel(ConfigValueImpl<?> value) {
         if (!value.inlineLabelTranslationKey()) {
             return text(value.inlineLabel());

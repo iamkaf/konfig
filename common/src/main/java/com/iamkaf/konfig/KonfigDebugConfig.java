@@ -12,7 +12,6 @@ import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Collection;
 
 public final class KonfigDebugConfig {
@@ -56,7 +55,22 @@ public final class KonfigDebugConfig {
                 .header("About Konfig Debug Settings")
                 .inlineText("These settings control Konfig's debug logging and diagnostics.")
                 .url("Konfig Documentation", "https://github.com/iamkaf/konfig"));
-        debugMode = builder.dropdown("mode", "standard", Arrays.asList("quiet", "standard", "verbose"))
+        debugMode = builder.dropdown("mode", "standard", options -> options
+                        .option("quiet", "Quiet", option -> option
+                                .tooltip("Only critical Konfig diagnostics.")
+                                .info(info -> info
+                                        .header("Quiet")
+                                        .inlineText("Keeps Konfig quiet unless something needs attention.")))
+                        .option("standard", "Standard", option -> option
+                                .tooltip("Balanced Konfig diagnostics.")
+                                .info(info -> info
+                                        .header("Standard")
+                                        .inlineText("Shows the normal amount of diagnostic context while testing generated screens.")))
+                        .option("verbose", "Verbose", option -> option
+                                .tooltip("Detailed Konfig lifecycle and screen diagnostics.")
+                                .info(info -> info
+                                        .header("Verbose")
+                                        .inlineText("Adds detailed lifecycle and generated-screen diagnostics for development."))))
                 .comment("Controls the amount of Konfig diagnostic detail shown in generated debug surfaces.")
                 .info(info -> info
                         .header("Debug Mode")

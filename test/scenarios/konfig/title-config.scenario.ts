@@ -28,11 +28,12 @@ describe("Konfig config screen", () => {
 
 function scenarioFor(minecraftVersion: string, loader: LoaderId | string): ScenarioDefinition {
   if (loader === "fabric") {
+    if (minecraftVersion === "26.2") return fabricModern;
     if (includes(FABRIC_LEGACY, minecraftVersion)) return fabricLegacy;
     if (includes(FABRIC_117, minecraftVersion)) return fabric117;
     if (includes(FABRIC_11934, minecraftVersion)) return fabric11934;
     if (includes(FABRIC_12034, minecraftVersion)) return fabric12034;
-    return fabricModern;
+    return fabricModernPre262;
   }
 
   if (loader === "forge") {
@@ -127,10 +128,16 @@ const fabricModern = {
   cleanup: [],
 } as ScenarioDefinition;
 
-const fabric117 = {
+const fabricModernPre262 = {
   ...fabricModern,
+  name: "konfig-title-config-fabric-pre262",
+  steps: replaceStep(fabricModern.steps, 11, { action: "click_mouse", x: 203, y: 185 }),
+} as ScenarioDefinition;
+
+const fabric117 = {
+  ...fabricModernPre262,
   name: "konfig-title-config-fabric-117",
-  steps: replaceStep(fabricModern.steps, 5, {
+  steps: replaceStep(fabricModernPre262.steps, 5, {
     action: "activate_widget",
     label: "Configure...",
     contains: false,
@@ -140,9 +147,9 @@ const fabric117 = {
 } as ScenarioDefinition;
 
 const fabric11934 = {
-  ...fabricModern,
+  ...fabricModernPre262,
   name: "konfig-title-config-fabric-11934",
-  steps: replaceStep(fabricModern.steps, 5, {
+  steps: replaceStep(fabricModernPre262.steps, 5, {
     action: "activate_widget_class",
     widgetClass: "com.terraformersmc.modmenu.gui.ModsScreen$1",
     contains: false,
@@ -152,9 +159,9 @@ const fabric11934 = {
 } as ScenarioDefinition;
 
 const fabric12034 = {
-  ...fabricModern,
+  ...fabricModernPre262,
   name: "konfig-title-config-fabric-12034",
-  steps: replaceStep(fabricModern.steps, 5, {
+  steps: replaceStep(fabricModernPre262.steps, 5, {
     action: "activate_widget_class",
     widgetClass: "com.terraformersmc.modmenu.gui.widget.LegacyTexturedButtonWidget",
     contains: false,

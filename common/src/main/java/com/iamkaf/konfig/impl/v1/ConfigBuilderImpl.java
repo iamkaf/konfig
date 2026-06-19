@@ -333,9 +333,10 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     @Override
     public ValueBuilder<String> dropdown(String key, String defaultValue, List<String> options) {
         String path = path(key);
-        List<String> normalizedOptions = normalizeDropdownOptions(options);
+        List<DropdownOptionMetadata> normalizedOptions = normalizeDropdownOptions(options);
+        List<String> normalizedValues = dropdownOptionValues(normalizedOptions);
         String normalizedDefault = normalizeDropdownOption(defaultValue, "defaultValue");
-        if (!normalizedOptions.contains(normalizedDefault)) {
+        if (!normalizedValues.contains(normalizedDefault)) {
             throw new IllegalArgumentException("Default dropdown value must be one of the declared options for " + path);
         }
 
@@ -348,7 +349,32 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 JsonPrimitive::new
         ).dropdownOptions(normalizedOptions)
                 .canonicalize(value -> value == null ? null : value.trim())
-                .validate(value -> value != null && normalizedOptions.contains(value), "Dropdown value not one of declared options");
+                .validate(value -> value != null && normalizedValues.contains(value), "Dropdown value not one of declared options");
+    }
+
+    @Override
+    public ValueBuilder<String> dropdown(String key, String defaultValue, Consumer<DropdownOptionsBuilder> options) {
+        Objects.requireNonNull(options, "options");
+        String path = path(key);
+        DropdownOptionsBuilderImpl builder = new DropdownOptionsBuilderImpl();
+        options.accept(builder);
+        List<DropdownOptionMetadata> normalizedOptions = builder.build();
+        List<String> normalizedValues = dropdownOptionValues(normalizedOptions);
+        String normalizedDefault = normalizeDropdownOption(defaultValue, "defaultValue");
+        if (!normalizedValues.contains(normalizedDefault)) {
+            throw new IllegalArgumentException("Default dropdown value must be one of the declared options for " + path);
+        }
+
+        return new ValueBuilderImpl<String>(
+                this,
+                path,
+                normalizedDefault,
+                EntryKind.DROPDOWN,
+                JsonElement::getAsString,
+                JsonPrimitive::new
+        ).dropdownOptions(normalizedOptions)
+                .canonicalize(value -> value == null ? null : value.trim())
+                .validate(value -> value != null && normalizedValues.contains(value), "Dropdown value not one of declared options");
     }
 
     @Override
@@ -559,7 +585,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         return isBlank(comment) ? "" : comment.trim();
     }
 
-    private static List<String> normalizeDropdownOptions(List<String> options) {
+    private static List<DropdownOptionMetadata> normalizeDropdownOptions(List<String> options) {
         Objects.requireNonNull(options, "options");
         LinkedHashSet<String> unique = new LinkedHashSet<String>();
         for (String option : options) {
@@ -571,12 +597,24 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         if (unique.isEmpty()) {
             throw new IllegalArgumentException("Dropdown options cannot be empty");
         }
-        return java.util.Collections.unmodifiableList(new ArrayList<String>(unique));
+        List<DropdownOptionMetadata> result = new ArrayList<DropdownOptionMetadata>();
+        for (String value : unique) {
+            result.add(new DropdownOptionMetadata(value, "", false, "", false, java.util.Collections.emptyList()));
+        }
+        return java.util.Collections.unmodifiableList(result);
     }
 
-    private static String normalizeDropdownOption(String option, String name) {
+    static String normalizeDropdownOption(String option, String name) {
         String normalized = option == null ? "" : option.trim();
         return requireSimpleSegment(normalized, name);
+    }
+
+    private static List<String> dropdownOptionValues(List<DropdownOptionMetadata> options) {
+        List<String> values = new ArrayList<String>();
+        for (DropdownOptionMetadata option : options) {
+            values.add(option.value());
+        }
+        return java.util.Collections.unmodifiableList(values);
     }
 
     private static String requireSimpleSegment(String value, String name) {
