@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa?style=for-the-badge&labelColor=0d1117" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/minecraft-1.14.4%E2%86%9226.1.2-5eead4?style=for-the-badge&labelColor=0d1117" alt="Minecraft 1.14.4 to 26.1.2" />
+  <img src="https://img.shields.io/badge/minecraft-1.14.4%E2%86%9226.2-5eead4?style=for-the-badge&labelColor=0d1117" alt="Minecraft 1.14.4 to 26.2" />
   <img src="https://img.shields.io/badge/loaders-Fabric%20%7C%20Forge%20%7C%20NeoForge-fbbf24?style=for-the-badge&labelColor=0d1117" alt="Fabric, Forge, and NeoForge" />
 </p>
 
@@ -314,9 +314,9 @@ The source of truth is the build graph generated from `versions/*/gradle.propert
 
 | Loader | Supported lines |
 |--------|-----------------|
-| Fabric | Every line from `1.14.4` through `26.1.2` |
-| Forge | `1.16.5`; `1.17.1`; `1.18`, `1.18.1`, `1.18.2`; `1.19`, `1.19.1`, `1.19.2`, `1.19.3`, `1.19.4`; `1.20`, `1.20.1`, `1.20.2`, `1.20.3`, `1.20.4`, `1.20.6`; `1.21`, `1.21.1`; `1.21.3` through `26.1.2` |
-| NeoForge | `1.21.1` through `26.1.2` |
+| Fabric | Every line from `1.14.4` through `26.2` |
+| Forge | `1.16.5`; `1.17.1`; `1.18`, `1.18.1`, `1.18.2`; `1.19`, `1.19.1`, `1.19.2`, `1.19.3`, `1.19.4`; `1.20`, `1.20.1`, `1.20.2`, `1.20.3`, `1.20.4`, `1.20.6`; `1.21`, `1.21.1`; `1.21.3` through `26.2` |
+| NeoForge | `1.21.1` through `26.2` |
 
 Notable floors:
 
