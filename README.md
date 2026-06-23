@@ -32,7 +32,7 @@ It is built for shared common code. Loader-specific integration stays in the loa
 
 | Area | Details |
 |------|---------|
-| Typed values | Booleans, ranged integers, ranged longs, ranged doubles, enums, strings, string lists, RGB colors, ARGB colors, and custom codecs |
+| Typed values | Booleans, ranged integers, ranged longs, ranged doubles, dropdowns, enums, strings, string lists, RGB colors, ARGB colors, and custom codecs |
 | Side-aware scopes | `CLIENT`, `COMMON`, and `SERVER` configs |
 | Files | Commented TOML under `config/<modid>/<name>.toml` |
 | Sync | `NONE`, `LOGIN`, and `LOGIN_AND_RELOAD` sync modes |
@@ -104,6 +104,7 @@ public final class ExampleConfig {
     public static final ConfigHandle HANDLE;
     public static final ConfigValue<Boolean> ENABLED;
     public static final ConfigValue<Integer> RANGE;
+    public static final ConfigValue<String> MODE;
 
     static {
         ConfigBuilder builder = Konfig.builder("examplemod", "common")
@@ -124,6 +125,16 @@ public final class ExampleConfig {
                 .tooltip("Controls the effect radius in blocks")
                 .sync(true)
                 .restart(RestartRequirement.WORLD)
+                .build();
+
+        MODE = builder.dropdown("mode", "balanced", options -> options
+                        .option("quiet", option -> option.tooltip("Prefer fewer effects"))
+                        .option("balanced", "Balanced")
+                        .option("loud", option -> option
+                                .labelKey("examplemod.config.mode.loud")
+                                .tooltipKey("examplemod.config.mode.loud.tooltip")))
+                .comment("Effect intensity preset")
+                .tooltip("Select the default intensity preset")
                 .build();
 
         builder.pop();
@@ -185,12 +196,40 @@ Value builders share the same metadata methods:
 | `doubleRange(key, defaultValue, min, max)` | `Double` | Enforces and displays a double range |
 | `string(key, defaultValue, minLen, maxLen)` | `String` | Supports length bounds and registry autocomplete |
 | `stringList(key, defaultValue)` | `List<String>` | Supports registry autocomplete per entry |
+| `dropdown(key, defaultValue, options)` | `String` | Restricts values to a fixed option list and renders as a dropdown |
 | `enumValue(key, defaultValue)` | enum | Uses the enum constants as choices |
 | `colorRgb(key, defaultValue)` | `Integer` | RGB color value |
 | `colorArgb(key, defaultValue)` | `Integer` | ARGB color value |
 | `custom(key, defaultValue, codec)` | custom | Uses a `KonfigCodec<T>` |
 
 String and string-list values can be connected to a registry for autocomplete. On newer lines, use a `ResourceKey<? extends Registry<?>>`. On older lines, use the registry id string overload.
+
+Dropdown values are stored as strings and must always match one of the declared options. For simple menus, pass a list:
+
+```java
+ConfigValue<String> QUALITY = builder.dropdown(
+        "quality",
+        "balanced",
+        java.util.Arrays.asList("fast", "balanced", "fancy")
+).build();
+```
+
+Use the builder overload when options need display metadata:
+
+```java
+ConfigValue<String> QUALITY = builder.dropdown("quality", "balanced", options -> options
+        .option("fast", "Fast")
+        .option("balanced", option -> option
+                .labelKey("examplemod.config.quality.balanced")
+                .tooltipKey("examplemod.config.quality.balanced.tooltip"))
+        .option("fancy", option -> option
+                .label("Fancy")
+                .tooltip("Prefer visuals over speed")
+                .info(info -> info.inlineText("This may cost extra frames."))))
+        .build();
+```
+
+When an option has no explicit label, generated screens try `konfig.value.<modid>.<config>.<path>.<option>` first, then the legacy `<modid>.config.<lastPathSegment>.<option>` key, and finally fall back to a prettified option value.
 
 ## Files And Sync
 
@@ -212,6 +251,7 @@ Konfig generates screens from the registered config handles. The screen uses the
 |----------------|-----------------|
 | Booleans | Toggle editor |
 | Numbers | Numeric editor with range metadata |
+| Dropdowns | Dropdown menu with fixed string options, option labels, option tooltips, scrolling, and keyboard navigation |
 | Enums | Choice editor |
 | String lists | List editor |
 | RGB and ARGB colors | Color editor |
