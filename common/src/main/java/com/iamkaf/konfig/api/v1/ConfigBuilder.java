@@ -80,6 +80,10 @@ public interface ConfigBuilder {
 
     StringListValueBuilder stringList(String key, List<String> defaultValue);
 
+    ValueBuilder<String> dropdown(String key, String defaultValue, List<String> options);
+
+    ValueBuilder<String> dropdown(String key, String defaultValue, Consumer<DropdownOptionsBuilder> options);
+
     <E extends Enum<E>> ValueBuilder<E> enumValue(String key, E defaultValue);
 
     ValueBuilder<Integer> colorRgb(String key, int defaultValue);

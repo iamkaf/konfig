@@ -206,6 +206,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
 //? if >=1.21.9 {
+import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 //?}
@@ -243,6 +244,8 @@ public final class KonfigConfigScreen extends Screen {
     private static final int URL_BUTTON_WIDTH = 60;
     private static final int SUGGESTION_LIMIT = 7;
     private static final int SUGGESTION_ROW_HEIGHT = 14;
+    private static final int DROPDOWN_CHEVRON_WIDTH = 16;
+    private static final long DROPDOWN_TYPE_SELECT_RESET_MS = 1000L;
     private static final int INFO_PANEL_MIN_WIDTH = 170;
     private static final int INFO_PANEL_MAX_WIDTH = 310;
     private static final int INFO_PANEL_PADDING = 16;
@@ -261,8 +264,12 @@ public final class KonfigConfigScreen extends Screen {
     private EntryList list;
     private RegistryTextInputRow activeRegistryRow;
     private RegistryTextInputRow renderedRegistryRow;
+    private DropdownRow activeDropdownRow;
+    private DropdownRow renderedDropdownRow;
     private EntryRef hoveredEntry;
     private EntryRef activeInfoEntry;
+    private EntryRef activeDropdownOptionEntry;
+    private List<InfoPanelItem> activeDropdownOptionInfo = Collections.emptyList();
     private boolean mouseOverInfoPanel;
     private boolean mouseOverInfoPanelBridge;
     private final List<InfoPanelLink> infoPanelLinks = new ArrayList<InfoPanelLink>();
@@ -385,6 +392,9 @@ public final class KonfigConfigScreen extends Screen {
 //? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownClick(event)) {
+            return true;
+        }
         if (event.button() == 0 && this.handleInfoPanelClick(event.x(), event.y())) {
             return true;
         }
@@ -393,6 +403,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         boolean handled = super.mouseClicked(event, doubleClick);
+        if (this.activeDropdownRow != null
+                && !this.activeDropdownRow.isPointInsideButton(event.x(), event.y())
+                && !this.activeDropdownRow.isPointInsideDropdown(event.x(), event.y())) {
+            this.activeDropdownRow.closeDropdown();
+        }
         RegistryTextInputRow focusedRow = this.findFocusedRegistryRow();
         if (focusedRow != null) {
             this.setActiveRegistryRow(focusedRow);
@@ -406,6 +421,13 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownKey(event)) {
+            return true;
+        }
+        DropdownRow focusedDropdown = this.findFocusedDropdownRow();
+        if (focusedDropdown != null && focusedDropdown.handleClosedDropdownKey(event.key())) {
+            return true;
+        }
         if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionKey(event)) {
             return true;
         }
@@ -417,7 +439,18 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     @Override
+    public boolean charTyped(CharacterEvent event) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownChar(event.codepoint())) {
+            return true;
+        }
+        return super.charTyped(event);
+    }
+
+    @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownScroll(mouseX, mouseY, scrollY)) {
+            return true;
+        }
         if (this.handleInfoPanelScroll(mouseX, mouseY, scrollY)) {
             return true;
         }
@@ -426,6 +459,9 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownClick(mouseX, mouseY)) {
+            return true;
+        }
         if (button == 0 && this.handleInfoPanelClick(mouseX, mouseY)) {
             return true;
         }
@@ -434,6 +470,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         boolean handled = super.mouseClicked(mouseX, mouseY, button);
+        if (this.activeDropdownRow != null
+                && !this.activeDropdownRow.isPointInsideButton(mouseX, mouseY)
+                && !this.activeDropdownRow.isPointInsideDropdown(mouseX, mouseY)) {
+            this.activeDropdownRow.closeDropdown();
+        }
         RegistryTextInputRow focusedRow = this.findFocusedRegistryRow();
         if (focusedRow != null) {
             this.setActiveRegistryRow(focusedRow);
@@ -447,6 +488,13 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownKey(keyCode)) {
+            return true;
+        }
+        DropdownRow focusedDropdown = this.findFocusedDropdownRow();
+        if (focusedDropdown != null && focusedDropdown.handleClosedDropdownKey(keyCode)) {
+            return true;
+        }
         if (this.activeRegistryRow != null && this.activeRegistryRow.handleSuggestionKey(keyCode)) {
             return true;
         }
@@ -457,9 +505,20 @@ public final class KonfigConfigScreen extends Screen {
         return handled;
     }
 
+    @Override
+    public boolean charTyped(char codePoint, int modifiers) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownChar(codePoint)) {
+            return true;
+        }
+        return super.charTyped(codePoint, modifiers);
+    }
+
 //? if >=1.20.2 {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownScroll(mouseX, mouseY, scrollY)) {
+            return true;
+        }
         if (this.handleInfoPanelScroll(mouseX, mouseY, scrollY)) {
             return true;
         }
@@ -468,6 +527,9 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.handleDropdownScroll(mouseX, mouseY, delta)) {
+            return true;
+        }
         if (this.handleInfoPanelScroll(mouseX, mouseY, delta)) {
             return true;
         }
@@ -480,6 +542,7 @@ public final class KonfigConfigScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
+        this.renderedDropdownRow = null;
         this.hoveredEntry = null;
         this.pendingTooltip = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
@@ -493,6 +556,7 @@ public final class KonfigConfigScreen extends Screen {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
+        this.renderedDropdownRow = null;
         this.hoveredEntry = null;
         this.pendingTooltip = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
@@ -506,6 +570,7 @@ public final class KonfigConfigScreen extends Screen {
     @Override
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
+        this.renderedDropdownRow = null;
         this.hoveredEntry = null;
         this.pendingTooltip = null;
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
@@ -531,9 +596,34 @@ public final class KonfigConfigScreen extends Screen {
         if (this.entries.isEmpty()) {
             drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
+        // Painter order matters here: side panels first, floating controls next, queued tooltips last.
+        guiGraphics.nextStratum();
         if (this.renderedRegistryRow != null) {
             this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
         }
+        if (this.renderedDropdownRow != null) {
+            this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
+        }
+        guiGraphics.nextStratum();
+        this.renderPendingTooltip(guiGraphics);
+    }
+//?} elif >=1.21.6 {
+    private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
+        fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
+        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
+        if (this.entries.isEmpty()) {
+            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
+        }
+        // Painter order matters here: side panels first, floating controls next, queued tooltips last.
+        guiGraphics.nextStratum();
+        if (this.renderedRegistryRow != null) {
+            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+        }
+        if (this.renderedDropdownRow != null) {
+            this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
+        }
+        guiGraphics.nextStratum();
         this.renderPendingTooltip(guiGraphics);
     }
 //?} elif >=1.20 {
@@ -544,10 +634,21 @@ public final class KonfigConfigScreen extends Screen {
         if (this.entries.isEmpty()) {
             drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
-        if (this.renderedRegistryRow != null) {
-            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+        // Painter order matters here: side panels first, floating controls next, queued tooltips last.
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(0.0F, 0.0F, 300.0F);
+        try {
+            if (this.renderedRegistryRow != null) {
+                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+            }
+            if (this.renderedDropdownRow != null) {
+                this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
+            }
+            guiGraphics.pose().translate(0.0F, 0.0F, 100.0F);
+            this.renderPendingTooltip(guiGraphics);
+        } finally {
+            guiGraphics.pose().popPose();
         }
-        this.renderPendingTooltip(guiGraphics);
     }
 //?} else {
     private void renderMainScreenChrome(PoseStack guiGraphics, int mouseX, int mouseY) {
@@ -557,10 +658,21 @@ public final class KonfigConfigScreen extends Screen {
         if (this.entries.isEmpty()) {
             drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
-        if (this.renderedRegistryRow != null) {
-            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+        // Painter order matters here: side panels first, floating controls next, queued tooltips last.
+        guiGraphics.pushPose();
+        guiGraphics.translate(0.0D, 0.0D, 300.0D);
+        try {
+            if (this.renderedRegistryRow != null) {
+                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
+            }
+            if (this.renderedDropdownRow != null) {
+                this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
+            }
+            guiGraphics.translate(0.0D, 0.0D, 100.0D);
+            this.renderPendingTooltip(guiGraphics);
+        } finally {
+            guiGraphics.popPose();
         }
-        this.renderPendingTooltip(guiGraphics);
     }
 //?}
 
@@ -586,6 +698,8 @@ public final class KonfigConfigScreen extends Screen {
 
     private void rebuildScreenWidgets() {
         this.clearWidgets();
+        this.activeDropdownRow = null;
+        this.renderedDropdownRow = null;
 
         int listHeight = Math.max(48, this.height - LIST_TOP - LIST_BOTTOM_MARGIN);
 //? if <=1.19.3 {
@@ -630,6 +744,9 @@ public final class KonfigConfigScreen extends Screen {
         }
         if (entry.value.kind() == EntryKind.STRING_LIST) {
             return new StringListRow(entry);
+        }
+        if (entry.value.kind() == EntryKind.DROPDOWN) {
+            return new DropdownRow(entry);
         }
         if (entry.value.kind() == EntryKind.INTEGER && entry.value.hasNumericRange()) {
             return new IntegerSliderRow(entry);
@@ -715,11 +832,19 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private List<InfoPanelItem> activeInfoItems() {
+        if (this.activeDropdownOptionEntry != null && !this.activeDropdownOptionInfo.isEmpty()) {
+            return this.activeDropdownOptionInfo;
+        }
+
         EntryRef hovered = this.hoveredEntry;
         if (hovered == null && (this.mouseOverInfoPanel || this.mouseOverInfoPanelBridge)) {
             hovered = this.activeInfoEntry;
         }
         if (hovered != null) {
+            List<InfoPanelItem> selectedDropdownInfo = this.selectedDropdownOptionInfo(hovered);
+            if (!selectedDropdownInfo.isEmpty()) {
+                return selectedDropdownInfo;
+            }
             List<InfoPanelItem> entryInfo = hovered.handle.entryInfo(hovered.value.path());
             if (!entryInfo.isEmpty()) {
                 return entryInfo;
@@ -743,6 +868,34 @@ public final class KonfigConfigScreen extends Screen {
             }
         }
         return Collections.emptyList();
+    }
+
+    private void updateActiveDropdownOptionInfo(int mouseX, int mouseY) {
+        this.activeDropdownOptionEntry = null;
+        this.activeDropdownOptionInfo = Collections.emptyList();
+        if (this.activeDropdownRow == null) {
+            return;
+        }
+
+        DropdownOptionMetadata option = this.activeDropdownRow.activeInfoOption(mouseX, mouseY);
+        if (option == null || option.info().isEmpty()) {
+            return;
+        }
+
+        this.activeDropdownOptionEntry = this.activeDropdownRow.entry;
+        this.activeDropdownOptionInfo = option.info();
+    }
+
+    private List<InfoPanelItem> selectedDropdownOptionInfo(EntryRef entry) {
+        if (entry.value.kind() != EntryKind.DROPDOWN) {
+            return Collections.emptyList();
+        }
+        if (this.activeDropdownRow != null && this.activeDropdownRow.entry == entry) {
+            return Collections.emptyList();
+        }
+
+        DropdownOptionMetadata option = entry.value.dropdownOption(this.currentDropdownValue(entry.value));
+        return option == null ? Collections.emptyList() : option.info();
     }
 
     private boolean isPointInInfoPanel(double mouseX, double mouseY) {
@@ -789,6 +942,7 @@ public final class KonfigConfigScreen extends Screen {
         int bottom = this.height;
         fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
 
+        this.updateActiveDropdownOptionInfo(mouseX, mouseY);
         List<InfoPanelItem> items = this.activeInfoItems();
         if (items.isEmpty()) {
             this.setRenderedInfoPanelItems(Collections.emptyList());
@@ -893,6 +1047,7 @@ public final class KonfigConfigScreen extends Screen {
         int bottom = this.height;
         fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
 
+        this.updateActiveDropdownOptionInfo(mouseX, mouseY);
         List<InfoPanelItem> items = this.activeInfoItems();
         if (items.isEmpty()) {
             this.setRenderedInfoPanelItems(Collections.emptyList());
@@ -997,6 +1152,7 @@ public final class KonfigConfigScreen extends Screen {
         int bottom = this.height;
         fillRect(guiGraphics, left, top, right, bottom, 0x22000000);
 
+        this.updateActiveDropdownOptionInfo(mouseX, mouseY);
         List<InfoPanelItem> items = this.activeInfoItems();
         if (items.isEmpty()) {
             this.setRenderedInfoPanelItems(Collections.emptyList());
@@ -1282,6 +1438,35 @@ public final class KonfigConfigScreen extends Screen {
         return StringListValueHelper.mutableCopy(stringListValue(value.get(), value.path()));
     }
 
+    private String currentDropdownValue(ConfigValueImpl<?> value) {
+        List<String> options = value.dropdownOptions();
+        Object current = this.drafts.get(value);
+        if (current instanceof String) {
+            String normalized = ((String) current).trim();
+            if (options.contains(normalized)) {
+                return normalized;
+            }
+        }
+
+        Object stored = value.get();
+        if (stored instanceof String) {
+            String normalized = ((String) stored).trim();
+            if (options.contains(normalized)) {
+                return normalized;
+            }
+        }
+
+        Object defaultValue = value.defaultValue();
+        if (defaultValue instanceof String) {
+            String normalized = ((String) defaultValue).trim();
+            if (options.contains(normalized)) {
+                return normalized;
+            }
+        }
+
+        return options.isEmpty() ? "" : options.get(0);
+    }
+
     private Component booleanText(ConfigValueImpl<?> value) {
         return CommonComponents.optionStatus(readBoolean(value));
     }
@@ -1312,6 +1497,11 @@ public final class KonfigConfigScreen extends Screen {
         return translate("konfig.screen.list.summary", values.get(0), Integer.valueOf(values.size() - 1));
     }
 
+    private Component dropdownText(EntryRef entry, String option) {
+        DropdownOptionMetadata metadata = entry.value.dropdownOption(option);
+        return metadata == null ? translatedDropdownValue(entry, option) : translatedDropdownOption(entry, metadata);
+    }
+
     private String currentStringValue(ConfigValueImpl<?> value) {
         Object current = this.drafts.get(value);
         if (current instanceof String) {
@@ -1332,7 +1522,22 @@ public final class KonfigConfigScreen extends Screen {
         return null;
     }
 
+    private DropdownRow findFocusedDropdownRow() {
+        if (this.list == null || this.activeDropdownRow != null) {
+            return null;
+        }
+        for (ConfigRow row : this.list.children()) {
+            if (row instanceof DropdownRow dropdownRow && dropdownRow.isButtonFocused()) {
+                return dropdownRow;
+            }
+        }
+        return null;
+    }
+
     private void setActiveRegistryRow(RegistryTextInputRow row) {
+        if (this.activeDropdownRow != null) {
+            this.activeDropdownRow.closeDropdown();
+        }
         if (this.activeRegistryRow == row) {
             return;
         }
@@ -1340,6 +1545,19 @@ public final class KonfigConfigScreen extends Screen {
             this.activeRegistryRow.closeSuggestions();
         }
         this.activeRegistryRow = row;
+    }
+
+    private void setActiveDropdownRow(DropdownRow row) {
+        if (this.activeDropdownRow == row) {
+            return;
+        }
+        if (this.activeRegistryRow != null) {
+            this.activeRegistryRow.closeSuggestions();
+        }
+        if (this.activeDropdownRow != null) {
+            this.activeDropdownRow.closeDropdown();
+        }
+        this.activeDropdownRow = row;
     }
 
     private List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
@@ -1447,6 +1665,10 @@ public final class KonfigConfigScreen extends Screen {
             return "";
         }
 
+        protected String rowTooltip() {
+            return this.entry.tooltip;
+        }
+
         protected final RowLayout rowLayout(int x, int y, int width, int height) {
             int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
             return new RowLayout(x, y, width, height, controlWidth, x + width - controlWidth, y + (height - CONTROL_HEIGHT) / 2);
@@ -1459,7 +1681,7 @@ public final class KonfigConfigScreen extends Screen {
                 fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
             }
 
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
             layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
@@ -1480,7 +1702,7 @@ public final class KonfigConfigScreen extends Screen {
                 fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
             }
 
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
             layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
@@ -1501,7 +1723,7 @@ public final class KonfigConfigScreen extends Screen {
                 fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
             }
 
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
             layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
             drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
@@ -2008,6 +2230,616 @@ public final class KonfigConfigScreen extends Screen {
         protected void syncFromDraft() {
             this.button.setMessage(enumText(this.entry, KonfigConfigScreen.this.currentEnum(this.entry.value)));
         }
+    }
+
+    private final class DropdownRow extends ConfigRow {
+        private final Button button;
+        private boolean open;
+        private int selectedIndex;
+        private int scrollOffset;
+        private int lastButtonX;
+        private int lastButtonY;
+        private int lastButtonWidth = CONTROL_MIN_WIDTH;
+        private int lastDropdownX;
+        private int lastDropdownY;
+        private int lastDropdownWidth;
+        private int lastDropdownHeight;
+        private final StringBuilder typeSelectBuffer = new StringBuilder();
+        private long lastTypeSelectMillis;
+
+        private DropdownRow(EntryRef entry) {
+            super(entry);
+            this.button = button(
+                    0,
+                    0,
+                    CONTROL_MIN_WIDTH,
+                    CONTROL_HEIGHT,
+                    text(""),
+                    ignored -> this.toggleDropdown()
+            );
+        }
+
+        @Override
+        protected AbstractWidget control() {
+            return this.button;
+        }
+
+        @Override
+        protected void syncFromDraft() {
+            this.button.setMessage(text(""));
+        }
+
+        @Override
+        protected String rowTooltip() {
+            if (this.open) {
+                return this.entry.tooltip;
+            }
+            String optionTooltip = translatedDropdownTooltip(this.currentOption());
+            return isBlank(optionTooltip) ? this.entry.tooltip : optionTooltip;
+        }
+
+//? if >=26.1 {
+        @Override
+        public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.extractContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
+            this.captureButtonBounds();
+            this.renderButtonLabel(guiGraphics);
+            if (this.open) {
+                KonfigConfigScreen.this.renderedDropdownRow = this;
+            }
+        }
+//?} elif >=1.21.9 {
+        @Override
+        public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.renderContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
+            this.captureButtonBounds();
+            this.renderButtonLabel(guiGraphics);
+            if (this.open) {
+                KonfigConfigScreen.this.renderedDropdownRow = this;
+            }
+        }
+//?} elif >=1.20 {
+        @Override
+        protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
+            this.captureButtonBounds();
+            this.renderButtonLabel(guiGraphics);
+            if (this.open) {
+                KonfigConfigScreen.this.renderedDropdownRow = this;
+            }
+        }
+//?} else {
+        @Override
+        protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
+//? if >=1.19.3 {
+            this.captureButtonBounds();
+//?} else {
+            this.lastButtonX = this.button.x;
+            this.lastButtonY = this.button.y;
+            this.lastButtonWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
+//?}
+            this.renderButtonLabel(guiGraphics);
+            if (this.open) {
+                KonfigConfigScreen.this.renderedDropdownRow = this;
+            }
+        }
+//?}
+
+        private void toggleDropdown() {
+            if (this.open) {
+                this.closeDropdown();
+            } else {
+                this.openDropdown();
+            }
+        }
+
+        private void openDropdown() {
+            if (this.options().isEmpty()) {
+                return;
+            }
+            this.open = true;
+            this.selectedIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
+            this.ensureSelectedVisible();
+            this.typeSelectBuffer.setLength(0);
+            this.lastTypeSelectMillis = 0L;
+            KonfigConfigScreen.this.setActiveDropdownRow(this);
+        }
+
+        private void closeDropdown() {
+            this.open = false;
+            this.typeSelectBuffer.setLength(0);
+            if (KonfigConfigScreen.this.activeDropdownRow == this) {
+                KonfigConfigScreen.this.activeDropdownRow = null;
+            }
+            if (KonfigConfigScreen.this.renderedDropdownRow == this) {
+                KonfigConfigScreen.this.renderedDropdownRow = null;
+            }
+        }
+
+        private List<String> options() {
+            return this.entry.value.dropdownOptions();
+        }
+
+        private DropdownOptionMetadata option(int index) {
+            List<DropdownOptionMetadata> options = this.entry.value.dropdownOptionMetadata();
+            return index >= 0 && index < options.size() ? options.get(index) : null;
+        }
+
+        private DropdownOptionMetadata currentOption() {
+            return this.entry.value.dropdownOption(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
+        }
+
+        private boolean isButtonFocused() {
+            return this.button.isFocused();
+        }
+
+        private DropdownOptionMetadata activeInfoOption(int mouseX, int mouseY) {
+            if (!this.open) {
+                return null;
+            }
+
+            this.layoutDropdown();
+            int hovered = this.hoveredOptionIndex(mouseX, mouseY);
+            if (hovered >= 0) {
+                return this.option(hovered);
+            }
+            return this.option(this.selectedIndex);
+        }
+
+        private int optionIndex(String option) {
+            List<String> options = this.options();
+            for (int index = 0; index < options.size(); index++) {
+                if (sameValue(options.get(index), option)) {
+                    return index;
+                }
+            }
+            return 0;
+        }
+
+        private int visibleOptionCount() {
+            return Math.min(SUGGESTION_LIMIT, this.options().size());
+        }
+
+        private int maxScrollOffset() {
+            return Math.max(0, this.options().size() - this.visibleOptionCount());
+        }
+
+        private void ensureSelectedVisible() {
+            int visibleCount = this.visibleOptionCount();
+            if (visibleCount <= 0) {
+                this.scrollOffset = 0;
+                return;
+            }
+            if (this.selectedIndex < this.scrollOffset) {
+                this.scrollOffset = this.selectedIndex;
+            } else if (this.selectedIndex >= this.scrollOffset + visibleCount) {
+                this.scrollOffset = this.selectedIndex - visibleCount + 1;
+            }
+            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
+        }
+
+        private void selectOption(int optionIndex) {
+            List<String> options = this.options();
+            if (optionIndex < 0 || optionIndex >= options.size()) {
+                return;
+            }
+
+            Object previousDraft = KonfigConfigScreen.this.drafts.get(this.entry.value);
+            KonfigConfigScreen.this.drafts.put(this.entry.value, options.get(optionIndex));
+            this.commitOrRevert(previousDraft);
+            this.syncFromDraft();
+            this.closeDropdown();
+        }
+
+//? if >=1.21.9 {
+        private boolean handleDropdownClick(MouseButtonEvent event) {
+            return this.handleDropdownClick(event.x(), event.y());
+        }
+
+        private boolean handleDropdownKey(KeyEvent event) {
+            return this.handleDropdownKey(event.key());
+        }
+//?}
+
+        private boolean handleDropdownClick(double mouseX, double mouseY) {
+            if (!this.open) {
+                return false;
+            }
+            this.layoutDropdown();
+            if (!this.isPointInsideDropdown(mouseX, mouseY)) {
+                return false;
+            }
+
+            int hovered = this.hoveredOptionIndex((int) mouseX, (int) mouseY);
+            if (hovered >= 0) {
+                this.selectOption(hovered);
+            }
+            return true;
+        }
+
+        private boolean handleDropdownKey(int keyCode) {
+            List<String> options = this.options();
+            if (!this.open || options.isEmpty()) {
+                return false;
+            }
+
+            if (keyCode == InputConstants.KEY_ESCAPE) {
+                this.closeDropdown();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_RETURN
+                    || keyCode == InputConstants.KEY_NUMPADENTER
+                    || keyCode == InputConstants.KEY_SPACE
+                    || keyCode == InputConstants.KEY_TAB) {
+                this.selectOption(this.selectedIndex);
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_DOWN) {
+                this.selectedIndex = (this.selectedIndex + 1) % options.size();
+                this.ensureSelectedVisible();
+                return true;
+            }
+            if (keyCode == InputConstants.KEY_UP) {
+                this.selectedIndex = (this.selectedIndex + options.size() - 1) % options.size();
+                this.ensureSelectedVisible();
+                return true;
+            }
+            return false;
+        }
+
+        private boolean handleClosedDropdownKey(int keyCode) {
+            if (this.open || this.options().isEmpty()) {
+                return false;
+            }
+            if (keyCode == InputConstants.KEY_RETURN
+                    || keyCode == InputConstants.KEY_NUMPADENTER
+                    || keyCode == InputConstants.KEY_SPACE) {
+                this.openDropdown();
+                return true;
+            }
+            return false;
+        }
+
+        private boolean handleDropdownChar(int codePoint) {
+            if (!this.open
+                    || this.options().isEmpty()
+                    || !Character.isValidCodePoint(codePoint)
+                    || Character.isISOControl(codePoint)) {
+                return false;
+            }
+
+            long now = System.currentTimeMillis();
+            if (now - this.lastTypeSelectMillis > DROPDOWN_TYPE_SELECT_RESET_MS) {
+                this.typeSelectBuffer.setLength(0);
+            }
+            this.lastTypeSelectMillis = now;
+            int normalizedCodePoint = Character.toLowerCase(codePoint);
+            this.typeSelectBuffer.appendCodePoint(normalizedCodePoint);
+
+            if (!this.focusFirstTypeMatch(this.typeSelectBuffer.toString())) {
+                this.typeSelectBuffer.setLength(0);
+                this.typeSelectBuffer.appendCodePoint(normalizedCodePoint);
+                this.focusFirstTypeMatch(this.typeSelectBuffer.toString());
+            }
+            return true;
+        }
+
+        private boolean focusFirstTypeMatch(String query) {
+            if (isBlank(query)) {
+                return false;
+            }
+
+            String normalizedQuery = query.toLowerCase(Locale.ROOT);
+            List<String> options = this.options();
+            int start = Math.max(0, this.selectedIndex + 1);
+            for (int offset = 0; offset < options.size(); offset++) {
+                int index = (start + offset) % options.size();
+                if (this.optionSearchText(index).startsWith(normalizedQuery)) {
+                    this.selectedIndex = index;
+                    this.ensureSelectedVisible();
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private String optionSearchText(int index) {
+            DropdownOptionMetadata option = this.option(index);
+            if (option == null) {
+                return "";
+            }
+
+            String label = translatedDropdownOption(this.entry, option).getString();
+            return (label + " " + option.value()).toLowerCase(Locale.ROOT);
+        }
+
+        private boolean handleDropdownScroll(double mouseX, double mouseY, double scrollY) {
+            if (!this.open) {
+                return false;
+            }
+            this.layoutDropdown();
+            if (!this.isPointInsideDropdown(mouseX, mouseY)) {
+                return false;
+            }
+
+            int previousOffset = this.scrollOffset;
+            if (scrollY > 0.0D) {
+                this.scrollOffset--;
+            } else if (scrollY < 0.0D) {
+                this.scrollOffset++;
+            }
+            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
+            if (this.scrollOffset != previousOffset && this.visibleOptionCount() > 0) {
+                this.selectedIndex = Mth.clamp(this.selectedIndex, this.scrollOffset, this.scrollOffset + this.visibleOptionCount() - 1);
+            }
+            return true;
+        }
+
+        private boolean isPointInsideButton(double mouseX, double mouseY) {
+            return mouseX >= this.lastButtonX
+                    && mouseX <= this.lastButtonX + this.lastButtonWidth
+                    && mouseY >= this.lastButtonY
+                    && mouseY <= this.lastButtonY + CONTROL_HEIGHT;
+        }
+
+        private boolean isPointInsideDropdown(double mouseX, double mouseY) {
+            if (!this.open) {
+                return false;
+            }
+            this.layoutDropdown();
+            return mouseX >= this.lastDropdownX
+                    && mouseX <= this.lastDropdownX + this.lastDropdownWidth
+                    && mouseY >= this.lastDropdownY
+                    && mouseY <= this.lastDropdownY + this.lastDropdownHeight;
+        }
+
+        private void layoutDropdown() {
+            int visibleCount = this.visibleOptionCount();
+            this.lastDropdownWidth = Math.max(CONTROL_MIN_WIDTH, this.lastButtonWidth);
+            this.lastDropdownHeight = (visibleCount * SUGGESTION_ROW_HEIGHT) + 4;
+            this.lastDropdownX = this.lastButtonX;
+
+            int belowY = this.lastButtonY + CONTROL_HEIGHT + 2;
+            int aboveY = this.lastButtonY - this.lastDropdownHeight - 2;
+            boolean openAbove = belowY + this.lastDropdownHeight > KonfigConfigScreen.this.height - 32 && aboveY >= LIST_TOP;
+            this.lastDropdownY = openAbove ? aboveY : belowY;
+            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
+        }
+
+//? if >=1.19.3 {
+        private void captureButtonBounds() {
+            this.lastButtonX = this.button.getX();
+            this.lastButtonY = this.button.getY();
+            this.lastButtonWidth = this.button.getWidth();
+        }
+//?}
+
+//? if >=26.1 {
+        private void renderButtonLabel(GuiGraphicsExtractor guiGraphics) {
+            int textX = this.lastButtonX + 6;
+            int chevronLeft = this.lastButtonX + this.lastButtonWidth - DROPDOWN_CHEVRON_WIDTH;
+            int textMaxWidth = Math.max(0, chevronLeft - textX - 4);
+            int textY = this.lastButtonY + ((CONTROL_HEIGHT - KonfigConfigScreen.this.font.lineHeight) / 2) + 1;
+            Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
+
+            Component chevron = text(this.open ? "\u25B4" : "\u25BE");
+            int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
+        }
+//?} elif >=1.20 {
+        private void renderButtonLabel(GuiGraphics guiGraphics) {
+            int textX = this.lastButtonX + 6;
+            int chevronLeft = this.lastButtonX + this.lastButtonWidth - DROPDOWN_CHEVRON_WIDTH;
+            int textMaxWidth = Math.max(0, chevronLeft - textX - 4);
+            int textY = this.lastButtonY + ((CONTROL_HEIGHT - KonfigConfigScreen.this.font.lineHeight) / 2) + 1;
+            Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
+
+            Component chevron = text(this.open ? "\u25B4" : "\u25BE");
+            int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
+        }
+//?} else {
+        private void renderButtonLabel(PoseStack guiGraphics) {
+            int textX = this.lastButtonX + 6;
+            int chevronLeft = this.lastButtonX + this.lastButtonWidth - DROPDOWN_CHEVRON_WIDTH;
+            int textMaxWidth = Math.max(0, chevronLeft - textX - 4);
+            int textY = this.lastButtonY + ((CONTROL_HEIGHT - KonfigConfigScreen.this.font.lineHeight) / 2) + 1;
+            Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
+
+            Component chevron = text(this.open ? "\u25B4" : "\u25BE");
+            int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
+            drawText(guiGraphics, KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
+        }
+//?}
+
+        private Component fitDropdownText(Component value, int maxWidth) {
+            if (maxWidth <= 0) {
+                return text("");
+            }
+            if (KonfigConfigScreen.this.font.width(value) <= maxWidth) {
+                return value;
+            }
+
+            String ellipsis = "...";
+            int available = Math.max(0, maxWidth - KonfigConfigScreen.this.font.width(ellipsis));
+            String trimmed = KonfigConfigScreen.this.font.plainSubstrByWidth(value.getString(), available).trim();
+            return text(trimmed + ellipsis);
+        }
+
+        private int hoveredOptionIndex(int mouseX, int mouseY) {
+            if (mouseX < this.lastDropdownX
+                    || mouseX > this.lastDropdownX + this.lastDropdownWidth
+                    || mouseY < this.lastDropdownY + 2
+                    || mouseY > this.lastDropdownY + this.lastDropdownHeight - 2) {
+                return -1;
+            }
+
+            int visibleIndex = (mouseY - this.lastDropdownY - 2) / SUGGESTION_ROW_HEIGHT;
+            int index = this.scrollOffset + visibleIndex;
+            return index >= 0 && index < this.options().size() && visibleIndex < this.visibleOptionCount() ? index : -1;
+        }
+
+//? if >=26.1 {
+        private void renderDropdown(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+            List<String> options = this.options();
+            if (!this.open || options.isEmpty()) {
+                return;
+            }
+
+            this.layoutDropdown();
+            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
+
+            int hovered = this.hoveredOptionIndex(mouseX, mouseY);
+            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
+            String tooltip = translatedDropdownTooltip(tooltipOption);
+            if (!isBlank(tooltip)) {
+                KonfigConfigScreen.this.queueTooltip(tooltip, mouseX, mouseY);
+            }
+            int visibleCount = this.visibleOptionCount();
+            int currentIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
+            for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
+                int optionIndex = this.scrollOffset + visibleIndex;
+                if (optionIndex >= options.size()) {
+                    break;
+                }
+
+                int rowY = this.lastDropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
+                int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
+                boolean rowHovered = optionIndex == hovered;
+                boolean focused = optionIndex == this.selectedIndex;
+                boolean current = optionIndex == currentIndex;
+                if (rowHovered || focused || current) {
+                    int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
+                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
+                }
+                if (current) {
+                    fillRect(guiGraphics, this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
+                }
+                int textX = this.lastDropdownX + 8;
+                int textRight = this.maxScrollOffset() > 0 ? this.lastDropdownX + this.lastDropdownWidth - 8 : this.lastDropdownX + this.lastDropdownWidth - 4;
+                drawText(guiGraphics, KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
+            }
+
+            if (this.maxScrollOffset() > 0) {
+                int trackTop = this.lastDropdownY + 2;
+                int trackBottom = this.lastDropdownY + this.lastDropdownHeight - 2;
+                int trackHeight = Math.max(1, trackBottom - trackTop);
+                int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
+                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
+                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
+                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
+            }
+        }
+//?} elif >=1.20 {
+        private void renderDropdown(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+            List<String> options = this.options();
+            if (!this.open || options.isEmpty()) {
+                return;
+            }
+
+            this.layoutDropdown();
+            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
+
+            int hovered = this.hoveredOptionIndex(mouseX, mouseY);
+            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
+            String tooltip = translatedDropdownTooltip(tooltipOption);
+            if (!isBlank(tooltip)) {
+                KonfigConfigScreen.this.queueTooltip(tooltip, mouseX, mouseY);
+            }
+            int visibleCount = this.visibleOptionCount();
+            int currentIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
+            for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
+                int optionIndex = this.scrollOffset + visibleIndex;
+                if (optionIndex >= options.size()) {
+                    break;
+                }
+
+                int rowY = this.lastDropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
+                int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
+                boolean rowHovered = optionIndex == hovered;
+                boolean focused = optionIndex == this.selectedIndex;
+                boolean current = optionIndex == currentIndex;
+                if (rowHovered || focused || current) {
+                    int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
+                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
+                }
+                if (current) {
+                    fillRect(guiGraphics, this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
+                }
+                int textX = this.lastDropdownX + 8;
+                int textRight = this.maxScrollOffset() > 0 ? this.lastDropdownX + this.lastDropdownWidth - 8 : this.lastDropdownX + this.lastDropdownWidth - 4;
+                drawText(guiGraphics, KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
+            }
+
+            if (this.maxScrollOffset() > 0) {
+                int trackTop = this.lastDropdownY + 2;
+                int trackBottom = this.lastDropdownY + this.lastDropdownHeight - 2;
+                int trackHeight = Math.max(1, trackBottom - trackTop);
+                int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
+                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
+                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
+                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
+            }
+        }
+//?} else {
+        private void renderDropdown(PoseStack guiGraphics, int mouseX, int mouseY) {
+            List<String> options = this.options();
+            if (!this.open || options.isEmpty()) {
+                return;
+            }
+
+            this.layoutDropdown();
+            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
+
+            int hovered = this.hoveredOptionIndex(mouseX, mouseY);
+            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
+            String tooltip = translatedDropdownTooltip(tooltipOption);
+            if (!isBlank(tooltip)) {
+                KonfigConfigScreen.this.queueTooltip(tooltip, mouseX, mouseY);
+            }
+            int visibleCount = this.visibleOptionCount();
+            int currentIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
+            for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
+                int optionIndex = this.scrollOffset + visibleIndex;
+                if (optionIndex >= options.size()) {
+                    break;
+                }
+
+                int rowY = this.lastDropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
+                int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
+                boolean rowHovered = optionIndex == hovered;
+                boolean focused = optionIndex == this.selectedIndex;
+                boolean current = optionIndex == currentIndex;
+                if (rowHovered || focused || current) {
+                    int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
+                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
+                }
+                if (current) {
+                    fillRect(guiGraphics, this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
+                }
+                int textX = this.lastDropdownX + 8;
+                int textRight = this.maxScrollOffset() > 0 ? this.lastDropdownX + this.lastDropdownWidth - 8 : this.lastDropdownX + this.lastDropdownWidth - 4;
+                drawText(guiGraphics, KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
+            }
+
+            if (this.maxScrollOffset() > 0) {
+                int trackTop = this.lastDropdownY + 2;
+                int trackBottom = this.lastDropdownY + this.lastDropdownHeight - 2;
+                int trackHeight = Math.max(1, trackBottom - trackTop);
+                int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
+                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
+                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
+                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
+            }
+        }
+//?}
     }
 
     private final class ColorRow extends ConfigRow {
@@ -2767,7 +3599,7 @@ public final class KonfigConfigScreen extends Screen {
 
             this.layoutSuggestionBox();
             fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
+            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
             for (int index = 0; index < this.visibleSuggestions.size(); index++) {
                 int rowY = this.lastDropdownY + 2 + (index * SUGGESTION_ROW_HEIGHT);
@@ -4017,7 +4849,7 @@ public final class KonfigConfigScreen extends Screen {
 
                 this.layoutSuggestionBox();
                 fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-                fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xF0101010);
+            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
                 for (int suggestionIndex = 0; suggestionIndex < this.visibleSuggestions.size(); suggestionIndex++) {
                     int rowY = this.lastDropdownY + 2 + (suggestionIndex * SUGGESTION_ROW_HEIGHT);

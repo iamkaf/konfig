@@ -1,7 +1,8 @@
 plugins {
     id("dev.kikugie.stonecutter")
+    id("fabric-loom") apply false
+    id("net.fabricmc.fabric-loom") apply false
     id("com.iamkaf.multiloader.root")
-    id("fabric-loom") version "1.17-SNAPSHOT" apply false
 }
 
-stonecutter active "26.2"
+stonecutter active "26.2".let { multiloaderStonecutter.active(it) }

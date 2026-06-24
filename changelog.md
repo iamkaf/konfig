@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.5.0
+
+### Added
+
+- Added dropdown config values with `ConfigBuilder.dropdown(...)` for settings with a fixed list of string options.
+  - Dropdown option labels can be translated with `konfig.value.<modid>.<config>.<path>.<option>` language keys.
+  - Dropdown menus support mouse selection, Escape/Enter/Tab, arrow-key navigation, and scrolling for long option lists.
+
+### Fixed
+
+- Legacy Forge config screens now preserve each config's declared setting order instead of sorting settings by path.
+
 ## 0.4.0
 
 ### Added

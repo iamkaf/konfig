@@ -9,6 +9,8 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -29,6 +31,8 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
+    private final List<DropdownOptionMetadata> dropdownOptions;
+    private final List<String> dropdownOptionValues;
     private final boolean persistent;
     private final String inlineLabel;
     private final boolean inlineLabelTranslationKey;
@@ -58,6 +62,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             RestartRequirement restartRequirement,
             Number rangeMin,
             Number rangeMax,
+            List<DropdownOptionMetadata> dropdownOptions,
             boolean persistent,
             String inlineLabel,
             boolean inlineLabelTranslationKey,
@@ -83,6 +88,10 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
+        this.dropdownOptions = dropdownOptions == null || dropdownOptions.isEmpty()
+                ? Collections.emptyList()
+                : Collections.unmodifiableList(new java.util.ArrayList<DropdownOptionMetadata>(dropdownOptions));
+        this.dropdownOptionValues = dropdownOptionValues(this.dropdownOptions);
         this.persistent = persistent;
         this.inlineLabel = inlineLabel;
         this.inlineLabelTranslationKey = inlineLabelTranslationKey;
@@ -111,6 +120,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
             RestartRequirement restartRequirement,
             Number rangeMin,
             Number rangeMax,
+            List<DropdownOptionMetadata> dropdownOptions,
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -132,6 +142,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 restartRequirement,
                 rangeMin,
                 rangeMax,
+                dropdownOptions,
                 true,
                 null,
                 false,
@@ -165,6 +176,7 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
                 RestartRequirement.NONE,
                 null,
                 null,
+                Collections.emptyList(),
                 false,
                 label,
                 labelTranslationKey,
@@ -260,6 +272,23 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
         return this.rangeMax;
     }
 
+    public List<String> dropdownOptions() {
+        return this.dropdownOptionValues;
+    }
+
+    public List<DropdownOptionMetadata> dropdownOptionMetadata() {
+        return this.dropdownOptions;
+    }
+
+    public DropdownOptionMetadata dropdownOption(String value) {
+        for (DropdownOptionMetadata option : this.dropdownOptions) {
+            if (Objects.equals(option.value(), value)) {
+                return option;
+            }
+        }
+        return null;
+    }
+
     public EntryKind kind() {
         return this.kind;
     }
@@ -298,6 +327,17 @@ public final class ConfigValueImpl<T> implements ConfigValue<T> {
 //?} else {
         return this.boundRegistryKey != null;
 //?}
+    }
+
+    private static List<String> dropdownOptionValues(List<DropdownOptionMetadata> options) {
+        if (options == null || options.isEmpty()) {
+            return Collections.emptyList();
+        }
+        java.util.ArrayList<String> values = new java.util.ArrayList<String>();
+        for (DropdownOptionMetadata option : options) {
+            values.add(option.value());
+        }
+        return Collections.unmodifiableList(values);
     }
 
 //? if <=1.16.5 {

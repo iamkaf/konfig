@@ -17,6 +17,7 @@ import java.util.Collection;
 public final class KonfigDebugConfig {
     private static boolean initialized;
     private static ConfigValue<Boolean> debugEnabled;
+    private static ConfigValue<String> debugMode;
 
     private KonfigDebugConfig() {
     }
@@ -54,6 +55,28 @@ public final class KonfigDebugConfig {
                 .header("About Konfig Debug Settings")
                 .inlineText("These settings control Konfig's debug logging and diagnostics.")
                 .url("Konfig Documentation", "https://github.com/iamkaf/konfig"));
+        debugMode = builder.dropdown("mode", "standard", options -> options
+                        .option("quiet", "Quiet", option -> option
+                                .tooltip("Only critical Konfig diagnostics.")
+                                .info(info -> info
+                                        .header("Quiet")
+                                        .inlineText("Keeps Konfig quiet unless something needs attention.")))
+                        .option("standard", "Standard", option -> option
+                                .tooltip("Balanced Konfig diagnostics.")
+                                .info(info -> info
+                                        .header("Standard")
+                                        .inlineText("Shows the normal amount of diagnostic context while testing generated screens.")))
+                        .option("verbose", "Verbose", option -> option
+                                .tooltip("Detailed Konfig lifecycle and screen diagnostics.")
+                                .info(info -> info
+                                        .header("Verbose")
+                                        .inlineText("Adds detailed lifecycle and generated-screen diagnostics for development."))))
+                .comment("Controls the amount of Konfig diagnostic detail shown in generated debug surfaces.")
+                .info(info -> info
+                        .header("Debug Mode")
+                        .inlineText("Changes how much diagnostic context Konfig exposes while testing generated screens.")
+                        .inlineText("Default: Standard"))
+                .build();
         debugEnabled = builder.bool("enabled", false)
                 .comment("Enable verbose Konfig internal logs")
                 .info(info -> info
