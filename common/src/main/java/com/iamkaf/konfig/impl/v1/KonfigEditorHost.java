@@ -8,9 +8,11 @@ import java.util.List;
 
 final class KonfigEditorHost {
     private final KonfigConfigScreen screen;
+    private final KonfigScreenCoordinator coordinator;
 
-    KonfigEditorHost(KonfigConfigScreen screen) {
+    KonfigEditorHost(KonfigConfigScreen screen, KonfigScreenCoordinator coordinator) {
         this.screen = screen;
+        this.coordinator = coordinator;
     }
 
     void returnToMainScreen() {
@@ -18,35 +20,35 @@ final class KonfigEditorHost {
     }
 
     boolean persistEditedValue(EntryRef entry, Object previousValue) {
-        if (!this.screen.persistEntry(entry)) {
-            this.screen.setDraft(entry.value, previousValue);
+        if (!this.coordinator.persistEntry(entry)) {
+            this.coordinator.setDraft(entry.value, previousValue);
             return false;
         }
         return true;
     }
 
     boolean resetToSessionStart(EntryRef entry) {
-        return this.screen.resetEntry(entry);
+        return this.coordinator.resetEntry(entry);
     }
 
     Object storedSnapshot(ConfigValueImpl<?> value) {
-        return this.screen.storedSnapshot(value);
+        return this.coordinator.storedSnapshot(value);
     }
 
     void setDraft(ConfigValueImpl<?> value, Object draft) {
-        this.screen.setDraft(value, draft);
+        this.coordinator.setDraft(value, draft);
     }
 
     int currentColor(ConfigValueImpl<?> value) {
-        return this.screen.currentColor(value);
+        return this.coordinator.currentColor(value);
     }
 
     List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
-        return this.screen.registrySuggestions(registryKey);
+        return this.coordinator.registrySuggestions(registryKey);
     }
 
     KonfigStringListEditorState stringListEditorState(EntryRef entry, KonfigStringListEditorState.PersistAction persistAction) {
-        return this.screen.stringListEditorState(entry, persistAction);
+        return this.coordinator.stringListEditorState(entry, persistAction);
     }
 }
 //?}

@@ -11,9 +11,11 @@ import java.util.List;
 
 final class KonfigRowHost {
     private final KonfigConfigScreen screen;
+    private final KonfigScreenCoordinator coordinator;
 
-    KonfigRowHost(KonfigConfigScreen screen) {
+    KonfigRowHost(KonfigConfigScreen screen, KonfigScreenCoordinator coordinator) {
         this.screen = screen;
+        this.coordinator = coordinator;
     }
 
     Screen screen() {
@@ -73,87 +75,87 @@ final class KonfigRowHost {
     }
 
     Object draft(ConfigValueImpl<?> value) {
-        return this.screen.draft(value);
+        return this.coordinator.draft(value);
     }
 
     boolean readBoolean(ConfigValueImpl<?> value) {
-        return this.screen.readBoolean(value);
+        return this.coordinator.readBoolean(value);
     }
 
     Enum<?> currentEnum(ConfigValueImpl<?> value) {
-        return this.screen.currentEnum(value);
+        return this.coordinator.currentEnum(value);
     }
 
     Enum<?> cycleEnum(ConfigValueImpl<?> value) {
-        return this.screen.cycleEnum(value);
+        return this.coordinator.cycleEnum(value);
     }
 
     int currentColor(ConfigValueImpl<?> value) {
-        return this.screen.currentColor(value);
+        return this.coordinator.currentColor(value);
     }
 
     List<String> currentStringList(ConfigValueImpl<?> value) {
-        return this.screen.currentStringList(value);
+        return this.coordinator.currentStringList(value);
     }
 
     String currentDropdownValue(ConfigValueImpl<?> value) {
-        return this.screen.currentDropdownValue(value);
+        return this.coordinator.currentDropdownValue(value);
     }
 
     String currentStringValue(ConfigValueImpl<?> value) {
-        return this.screen.currentStringValue(value);
+        return this.coordinator.currentStringValue(value);
     }
 
     int currentInt(ConfigValueImpl<?> value) {
-        return this.screen.currentInt(value);
+        return this.coordinator.currentInt(value);
     }
 
     long currentLong(ConfigValueImpl<?> value) {
-        return this.screen.currentLong(value);
+        return this.coordinator.currentLong(value);
     }
 
     double currentDouble(ConfigValueImpl<?> value) {
-        return this.screen.currentDouble(value);
+        return this.coordinator.currentDouble(value);
     }
 
     Component booleanText(ConfigValueImpl<?> value) {
-        return this.screen.booleanText(value);
+        return this.coordinator.booleanText(value);
     }
 
     Component enumText(EntryRef entry, Enum<?> value) {
-        return this.screen.enumText(entry, value);
+        return this.coordinator.enumText(entry, value);
     }
 
     Component colorText(ConfigValueImpl<?> value) {
-        return this.screen.colorText(value);
+        return this.coordinator.colorText(value);
     }
 
     Component stringListText(ConfigValueImpl<?> value) {
-        return this.screen.stringListText(value);
+        return this.coordinator.stringListText(value);
     }
 
     Component dropdownText(EntryRef entry, String option) {
-        return this.screen.dropdownText(entry, option);
+        return this.coordinator.dropdownText(entry, option);
     }
 
     List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
-        return this.screen.registrySuggestions(registryKey);
+        return this.coordinator.registrySuggestions(registryKey);
     }
 
     void queueTooltip(String tooltip, int mouseX, int mouseY) {
-        this.screen.queueTooltip(tooltip, mouseX, mouseY);
+        this.coordinator.queueTooltip(tooltip, mouseX, mouseY);
     }
 
     void updateHoveredEntry(EntryRef entry, boolean hovered) {
-        this.screen.updateHoveredEntry(entry, hovered);
+        this.coordinator.updateHoveredEntry(entry, hovered);
     }
 
     void setDraft(ConfigValueImpl<?> value, Object draft) {
-        this.screen.setDraft(value, draft);
+        this.coordinator.setDraft(value, draft);
     }
 
     boolean persistEntry(EntryRef entry) {
-        return this.screen.persistEntry(entry);
+        return this.coordinator.persistEntry(entry);
     }
 
     void openInlineUrl(EntryRef entry) {
@@ -169,35 +171,35 @@ final class KonfigRowHost {
     }
 
     void setActiveRegistryRow(RegistryTextInputRow row) {
-        this.screen.setActiveRegistryRow(row);
+        this.coordinator.setActiveRegistryRow(row);
     }
 
     boolean isActiveRegistryRow(RegistryTextInputRow row) {
-        return this.screen.isActiveRegistryRow(row);
+        return this.coordinator.isActiveRegistryRow(row);
     }
 
     void clearActiveRegistryRow(RegistryTextInputRow row) {
-        this.screen.clearActiveRegistryRow(row);
+        this.coordinator.clearActiveRegistryRow(row);
     }
 
     void markRenderedRegistryRow(RegistryTextInputRow row) {
-        this.screen.markRenderedRegistryRow(row);
+        this.coordinator.markRenderedRegistryRow(row);
     }
 
     void setActiveDropdownRow(DropdownRow row) {
-        this.screen.setActiveDropdownRow(row);
+        this.coordinator.setActiveDropdownRow(row);
     }
 
     void clearActiveDropdownRow(DropdownRow row) {
-        this.screen.clearActiveDropdownRow(row);
+        this.coordinator.clearActiveDropdownRow(row);
     }
 
     void clearRenderedDropdownRow(DropdownRow row) {
-        this.screen.clearRenderedDropdownRow(row);
+        this.coordinator.clearRenderedDropdownRow(row);
     }
 
     void markRenderedDropdownRow(DropdownRow row) {
-        this.screen.markRenderedDropdownRow(row);
+        this.coordinator.markRenderedDropdownRow(row);
     }
 }
 //?}
