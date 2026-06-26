@@ -1,5 +1,8 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
+@ApiStatus.Internal
 public enum EntryKind {
     HEADER,
     IMAGE,

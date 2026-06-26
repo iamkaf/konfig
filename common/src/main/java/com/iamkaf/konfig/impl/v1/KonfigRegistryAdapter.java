@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.17 {
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -39,6 +41,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
+@ApiStatus.Internal
 final class KonfigRegistryAdapter {
     static final int SUGGESTION_LIMIT = 7;
 

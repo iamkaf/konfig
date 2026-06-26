@@ -1,9 +1,12 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.mojang.blaze3d.matrix.MatrixStack;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.util.text.StringTextComponent;
 
+@ApiStatus.Internal
 public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
     private final String screenTitle;

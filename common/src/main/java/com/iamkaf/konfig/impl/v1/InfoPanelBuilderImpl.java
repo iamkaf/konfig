@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.InfoPanelBuilder;
 //? if >=1.21.11 {
@@ -13,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+@ApiStatus.Internal
 final class InfoPanelBuilderImpl implements InfoPanelBuilder {
     private final List<InfoPanelItem> items = new ArrayList<InfoPanelItem>();
 

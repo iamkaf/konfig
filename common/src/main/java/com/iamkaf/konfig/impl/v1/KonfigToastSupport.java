@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=26.1 {
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -67,6 +69,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;*/
 //?}
 
+@ApiStatus.Internal
 public final class KonfigToastSupport {
     private static final Object FAILURE_TOKEN = new Object();
     private static final long DISPLAY_TIME_MS = 5000L;

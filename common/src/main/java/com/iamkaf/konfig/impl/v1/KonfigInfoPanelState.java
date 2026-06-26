@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import net.minecraft.util.Mth;
 
@@ -9,6 +13,7 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
+@ApiStatus.Internal
 final class KonfigInfoPanelState {
     static final int SCROLL_STEP = 18;
 

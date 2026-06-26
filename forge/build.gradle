@@ -18,6 +18,7 @@ def useTeaKit = providers.systemProperty('konfig.withTeaKit')
     .get()
 
 dependencies {
+    compileOnly 'org.jetbrains:annotations:24.1.0'
     implementation('net.sf.jopt-simple:jopt-simple:5.0.4') { version { strictly '5.0.4' } }
     if (useTeaKit && hasTeaKit && !useLegacy1165ForgeSources && !useLegacy1171To1182ForgeRunHack) {
         runtimeOnly teaKit.get()

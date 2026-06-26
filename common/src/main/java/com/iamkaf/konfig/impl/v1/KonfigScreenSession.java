@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.17 {
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.copyDraftValue;
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.parseDraft;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+@ApiStatus.Internal
 final class KonfigScreenSession {
     private final List<EntryRef> entries;
     private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();

@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.neoforge;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigCommon;
 import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
@@ -14,6 +16,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
 @Mod(Constants.MOD_ID)
+@ApiStatus.Internal
 public final class KonfigNeoForge {
     public KonfigNeoForge(IEventBus eventBus) {
 //? if >=1.21.9 {

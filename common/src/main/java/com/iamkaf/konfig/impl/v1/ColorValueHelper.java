@@ -1,7 +1,10 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import java.util.Locale;
 
+@ApiStatus.Internal
 public final class ColorValueHelper {
     private ColorValueHelper() {
     }

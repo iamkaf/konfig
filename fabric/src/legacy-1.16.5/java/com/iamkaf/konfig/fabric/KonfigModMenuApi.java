@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.fabric;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.api.v1.ConfigHandle;
 import com.iamkaf.konfig.api.v1.Konfig;
@@ -10,6 +12,7 @@ import com.terraformersmc.modmenu.api.ModMenuApi;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@ApiStatus.Internal
 public final class KonfigModMenuApi implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {

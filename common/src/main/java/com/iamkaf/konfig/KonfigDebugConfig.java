@@ -1,5 +1,7 @@
 package com.iamkaf.konfig;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.api.v1.ConfigBuilder;
 import com.iamkaf.konfig.api.v1.ConfigScope;
 import com.iamkaf.konfig.api.v1.ConfigValue;
@@ -14,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
 
+@ApiStatus.Internal
 public final class KonfigDebugConfig {
     private static boolean initialized;
     private static ConfigValue<Boolean> debugEnabled;

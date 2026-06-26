@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
 
@@ -12,6 +16,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 //?}
 import net.minecraft.util.Mth;
 
+@ApiStatus.Internal
 abstract class BaseSliderWidget extends AbstractSliderButton {
     BaseSliderWidget(double initialProgress) {
         super(0, 0, KonfigScreenMetrics.CONTROL_MIN_WIDTH, KonfigScreenMetrics.CONTROL_HEIGHT, text(""), initialProgress);
@@ -23,6 +28,7 @@ abstract class BaseSliderWidget extends AbstractSliderButton {
     }
 }
 
+@ApiStatus.Internal
 final class IntegerSliderRow extends KonfigConfigRow {
     private final int min;
     private final int max;
@@ -107,6 +113,7 @@ final class IntegerSliderRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 final class LongSliderRow extends KonfigConfigRow {
     private final long min;
     private final long max;
@@ -191,6 +198,7 @@ final class LongSliderRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 final class DoubleSliderRow extends KonfigConfigRow {
     private final double min;
     private final double max;

@@ -1,8 +1,11 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+@ApiStatus.Internal
 final class PathJson {
     private PathJson() {
     }

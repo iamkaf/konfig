@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
@@ -8,6 +10,7 @@ import com.iamkaf.konfig.api.v1.KonfigNode;
 
 import java.util.Objects;
 
+@ApiStatus.Internal
 final class ConfigMigrationContextImpl implements ConfigMigrationContext {
     private final String modId;
     private final String name;

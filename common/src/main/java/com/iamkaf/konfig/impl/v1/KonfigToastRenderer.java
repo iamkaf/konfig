@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -41,6 +45,7 @@ import net.minecraft.util.FormattedCharSequence;
 
 import java.util.List;
 
+@ApiStatus.Internal
 final class KonfigToastRenderer {
     private static final int TITLE_COLOR = 0xFFFFFF00;
     private static final int MESSAGE_COLOR = 0xFFFFFFFF;

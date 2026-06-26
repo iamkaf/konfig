@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.fabric;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
 import com.iamkaf.konfig.sync.v1.KonfigSync;
 import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
@@ -14,6 +16,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 
+@ApiStatus.Internal
 public final class KonfigFabricClient implements ClientModInitializer {
 //? if <=1.20.4 {
 //? if <=1.16.5 {

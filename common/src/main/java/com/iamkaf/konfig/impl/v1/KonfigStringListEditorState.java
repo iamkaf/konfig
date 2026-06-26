@@ -1,9 +1,12 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.17 {
 import java.util.Collections;
 import java.util.List;
 
+@ApiStatus.Internal
 final class KonfigStringListEditorState {
     interface PersistAction {
         boolean persist(Object previousValue);

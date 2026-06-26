@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.fabric;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.KonfigCommon;
 import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
 import com.iamkaf.konfig.sync.v1.KonfigSync;
@@ -22,6 +24,7 @@ import net.minecraft.resources.ResourceLocation;
 //?}
 //?}
 
+@ApiStatus.Internal
 public final class KonfigFabric implements ModInitializer {
 //? if <=1.20.4 {
 //? if <=1.16.5 {

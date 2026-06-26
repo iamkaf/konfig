@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.ImageOptions;
@@ -16,6 +18,7 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
+@ApiStatus.Internal
 public final class ConfigValueImpl<T> implements ConfigValue<T> {
     private final String path;
     private final T defaultValue;

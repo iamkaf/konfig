@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.text;
 
@@ -18,6 +22,7 @@ import net.minecraft.client.gui.narration.NarratableEntry;
 import java.util.Collections;
 import java.util.List;
 
+@ApiStatus.Internal
 abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<KonfigConfigRow> {
     protected final KonfigRowHost host;
     protected final EntryRef entry;

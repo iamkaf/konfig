@@ -1,11 +1,14 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.17 {
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.sameValue;
 
 import java.util.List;
 import java.util.Locale;
 
+@ApiStatus.Internal
 final class KonfigDropdownState {
     interface OptionSearch {
         boolean matches(int index, String query);

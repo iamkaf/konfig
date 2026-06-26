@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.forge;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigCommon;
 import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
@@ -52,6 +54,7 @@ import java.util.function.Supplier;
 //?}
 
 @Mod(Constants.MOD_ID)
+@ApiStatus.Internal
 public final class KonfigForge {
 //? if >=1.20.2 {
     private static final int PROTOCOL = 1;

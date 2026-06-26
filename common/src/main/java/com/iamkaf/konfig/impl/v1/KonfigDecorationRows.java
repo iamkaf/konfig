@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.button;
@@ -14,6 +18,7 @@ import net.minecraft.util.FormattedCharSequence;
 import java.util.Collections;
 import java.util.List;
 
+@ApiStatus.Internal
 final class UnsupportedRow extends KonfigConfigRow {
     private final Button button;
 
@@ -30,6 +35,7 @@ final class UnsupportedRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 abstract class DecorationRow extends KonfigConfigRow {
     private final Button spacer;
 
@@ -56,6 +62,7 @@ abstract class DecorationRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 final class HeaderRow extends DecorationRow {
     HeaderRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
@@ -74,6 +81,7 @@ final class HeaderRow extends DecorationRow {
     }
 }
 
+@ApiStatus.Internal
 final class ImageRow extends DecorationRow {
     ImageRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
@@ -158,6 +166,7 @@ final class ImageRow extends DecorationRow {
     }
 }
 
+@ApiStatus.Internal
 final class InlineTextRow extends DecorationRow {
     InlineTextRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
@@ -190,6 +199,7 @@ final class InlineTextRow extends DecorationRow {
     }
 }
 
+@ApiStatus.Internal
 final class UrlRow extends KonfigConfigRow {
     private final Button button;
 

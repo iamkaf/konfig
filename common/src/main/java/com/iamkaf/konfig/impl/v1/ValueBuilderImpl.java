@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
@@ -14,6 +16,7 @@ import java.util.function.Predicate;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
+@ApiStatus.Internal
 class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private final ConfigBuilderImpl owner;
     private final String path;

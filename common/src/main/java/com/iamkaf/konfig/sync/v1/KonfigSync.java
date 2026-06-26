@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.sync.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigScope;
@@ -15,6 +17,7 @@ import java.util.Collections;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+@ApiStatus.Internal
 public final class KonfigSync {
     private static SyncSender sender;
 //? if <=1.16.5 {

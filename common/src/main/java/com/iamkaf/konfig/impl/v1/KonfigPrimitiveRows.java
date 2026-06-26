@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.supportsRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
@@ -11,6 +15,7 @@ import net.minecraft.client.gui.components.EditBox;
 
 import java.util.List;
 
+@ApiStatus.Internal
 final class BooleanRow extends KonfigConfigRow {
     private final Button button;
 
@@ -35,6 +40,7 @@ final class BooleanRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 final class EnumRow extends KonfigConfigRow {
     private final Button button;
 
@@ -59,6 +65,7 @@ final class EnumRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 final class ColorRow extends KonfigConfigRow {
     private static final int PREVIEW_SIZE = 16;
     private static final int PREVIEW_GAP = 6;
@@ -88,6 +95,7 @@ final class ColorRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 final class StringListRow extends KonfigConfigRow {
     private static final int PREVIEW_SIZE = 16;
     private static final int PREVIEW_GAP = 6;
@@ -136,6 +144,7 @@ final class StringListRow extends KonfigConfigRow {
     }
 }
 
+@ApiStatus.Internal
 final class TextInputRow extends KonfigConfigRow {
     private final EditBox input;
     private String validationMessage = "";

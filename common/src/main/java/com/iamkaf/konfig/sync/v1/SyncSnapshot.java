@@ -1,5 +1,8 @@
 package com.iamkaf.konfig.sync.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
+@ApiStatus.Internal
 public final class SyncSnapshot {
     private final String configId;
     private final String jsonPayload;

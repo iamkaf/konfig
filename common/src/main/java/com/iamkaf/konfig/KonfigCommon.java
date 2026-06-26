@@ -1,5 +1,8 @@
 package com.iamkaf.konfig;
 
+import org.jetbrains.annotations.ApiStatus;
+
+@ApiStatus.Internal
 public final class KonfigCommon {
     private static boolean initialized;
 

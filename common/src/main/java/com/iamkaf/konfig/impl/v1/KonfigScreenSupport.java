@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.17 {
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import net.minecraft.network.chat.Component;
@@ -15,6 +17,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+@ApiStatus.Internal
 final class KonfigScreenSupport {
     private KonfigScreenSupport() {
     }

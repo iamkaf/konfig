@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import net.minecraft.client.gui.Font;
@@ -9,6 +13,7 @@ import net.minecraft.util.Mth;
 
 import java.util.List;
 
+@ApiStatus.Internal
 final class KonfigInfoPanelRenderer {
     private static final int MIN_WIDTH = 170;
     private static final int MAX_WIDTH = 310;

@@ -1,5 +1,9 @@
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1;
+
+import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.supportsRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
@@ -28,6 +32,7 @@ import net.minecraft.resources.ResourceKey;
 
 import java.util.List;
 
+@ApiStatus.Internal
 abstract class KonfigEntryEditorScreen extends Screen {
     protected static final int EDITOR_TITLE_Y = 8;
     protected static final int EDITOR_CONTEXT_Y = 24;
@@ -95,6 +100,7 @@ abstract class KonfigEntryEditorScreen extends Screen {
     }
 }
 
+@ApiStatus.Internal
 enum ColorChannel {
     RED("konfig.screen.color.red"),
     GREEN("konfig.screen.color.green"),
@@ -108,6 +114,7 @@ enum ColorChannel {
     }
 }
 
+@ApiStatus.Internal
 final class ColorEditorScreen extends KonfigEntryEditorScreen {
     private static final int PREVIEW_SIZE = 32;
     private static final int PREVIEW_Y = EDITOR_CONTENT_TOP;
@@ -375,6 +382,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
     }
 }
 
+@ApiStatus.Internal
 final class StringListEditorScreen extends KonfigEntryEditorScreen {
     private static final int ITEM_ROW_HEIGHT = 28;
 

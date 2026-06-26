@@ -5,6 +5,7 @@ plugins {
 def nightConfigVersion = requiredProp(project, 'nightconfig_version')
 
 dependencies {
+    compileOnly 'org.jetbrains:annotations:24.1.0'
     implementation "com.electronwill.night-config:core:${nightConfigVersion}"
     implementation "com.electronwill.night-config:toml:${nightConfigVersion}"
 }

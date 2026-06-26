@@ -1,9 +1,12 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.electronwill.nightconfig.core.CommentedConfig;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 
+@ApiStatus.Internal
 final class ConfigMigrationSupport {
     static final String METADATA_ROOT = "__konfig";
     static final String VERSION_PATH = METADATA_ROOT + ".version";

@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.StringListValueBuilder;
 //? if >=1.17 {
@@ -12,6 +14,7 @@ import java.util.function.Predicate;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
+@ApiStatus.Internal
 final class StringListValueBuilderImpl extends ValueBuilderImpl<List<String>> implements StringListValueBuilder {
     StringListValueBuilderImpl(
             ConfigBuilderImpl owner,

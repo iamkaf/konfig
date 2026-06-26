@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.fabric;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigValue;
@@ -57,6 +59,7 @@ import java.util.Map;
 import java.util.Set;
 import java.net.URI;
 
+@ApiStatus.Internal
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
     private static final int LIST_BOTTOM_MARGIN = 52;

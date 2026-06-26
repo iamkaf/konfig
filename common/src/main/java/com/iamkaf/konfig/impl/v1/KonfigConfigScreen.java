@@ -1,9 +1,12 @@
 //? if <=1.15.2 {
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.TextComponent;
 
+@ApiStatus.Internal
 public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
     private final String screenTitle;
@@ -90,10 +93,13 @@ public final class KonfigConfigScreen extends Screen {
 //?} elif <=1.16.5 {
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.TextComponent;
 
+@ApiStatus.Internal
 public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
     private final String screenTitle;
@@ -180,6 +186,8 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.KonfigScreenMetrics.*;
 import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.*;
@@ -211,6 +219,7 @@ import net.minecraft.Util;
 import java.util.List;
 import java.net.URI;
 
+@ApiStatus.Internal
 public final class KonfigConfigScreen extends Screen {
     private final Screen parent;
     private final String modIdFilter;

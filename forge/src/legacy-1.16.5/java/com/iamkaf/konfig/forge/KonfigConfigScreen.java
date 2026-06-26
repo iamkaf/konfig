@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.forge;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ConfigValue;
@@ -51,6 +53,7 @@ import java.util.Map;
 import java.net.URI;
 import java.util.Set;
 
+@ApiStatus.Internal
 public final class KonfigConfigScreen extends Screen {
     private static final int KEY_ESCAPE = 256;
     private static final int KEY_ENTER = 257;

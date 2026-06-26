@@ -52,6 +52,7 @@ if (useLegacyTeaKitJvm) {
 }
 
 dependencies {
+    compileOnly 'org.jetbrains:annotations:24.1.0'
     if (isModernLine) {
         implementation(include("com.electronwill.night-config:core:${nightConfigVersion}"))
         implementation(include("com.electronwill.night-config:toml:${nightConfigVersion}"))

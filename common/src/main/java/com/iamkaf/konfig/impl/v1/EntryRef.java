@@ -1,8 +1,11 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.17 {
 import net.minecraft.network.chat.Component;
 
+@ApiStatus.Internal
 final class EntryRef {
     final ConfigHandleImpl handle;
     final ConfigValueImpl<?> value;

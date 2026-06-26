@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.sync.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.20.5 {
 import com.iamkaf.konfig.Constants;
 import net.minecraft.network.FriendlyByteBuf;
@@ -15,6 +17,7 @@ import net.minecraft.network.FriendlyByteBuf;
 //?}
 
 //? if >=1.20.5 {
+@ApiStatus.Internal
 public record KonfigSyncPayload(String configId, String jsonPayload) implements CustomPacketPayload {
 //? if >=1.21.11 {
     public static final Identifier ID = Constants.resource("sync_snapshot");
@@ -36,6 +39,7 @@ public record KonfigSyncPayload(String configId, String jsonPayload) implements 
     }
 }
 //?} else {
+@ApiStatus.Internal
 public final class KonfigSyncPayload {
     private final String configId;
     private final String jsonPayload;

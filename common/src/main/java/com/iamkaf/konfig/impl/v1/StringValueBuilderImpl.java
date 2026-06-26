@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonPrimitive;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
@@ -12,6 +14,7 @@ import net.minecraft.resources.ResourceKey;
 import java.util.function.Predicate;
 import java.util.function.Consumer;
 
+@ApiStatus.Internal
 final class StringValueBuilderImpl extends ValueBuilderImpl<String> implements StringValueBuilder {
     StringValueBuilderImpl(
             ConfigBuilderImpl owner,

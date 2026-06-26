@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.impl.v1;
 
+import org.jetbrains.annotations.ApiStatus;
+
 //? if >=1.17 {
 import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.filterRegistrySuggestions;
 import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.suggestionSuffix;
@@ -8,6 +10,7 @@ import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.sameValue;
 import java.util.ArrayList;
 import java.util.List;
 
+@ApiStatus.Internal
 final class KonfigSuggestionState {
     private final List<String> visibleSuggestions = new ArrayList<String>();
     private boolean suggestionsDismissed;
