@@ -199,10 +199,9 @@ import com.iamkaf.konfig.impl.v1.client.editor.KonfigEditorScreens;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelRenderer;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
-import com.iamkaf.konfig.impl.v1.client.row.DropdownRow;
-import com.iamkaf.konfig.impl.v1.client.row.KonfigConfigRow;
-import com.iamkaf.konfig.impl.v1.client.row.KonfigRowFactory;
-import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRow;
+import com.iamkaf.konfig.impl.v1.client.row.DropdownRowHandle;
+import com.iamkaf.konfig.impl.v1.client.row.KonfigEntryList;
+import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRowHandle;
 import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -235,7 +234,6 @@ public final class KonfigConfigScreen extends Screen {
     private final String screenTitle;
     private final KonfigScreenCoordinator coordinator;
     private final KonfigRowHost rowHost;
-    private final KonfigRowFactory rowFactory;
     private final KonfigEditorHost editorHost;
     private final KonfigInfoPanelRenderer infoPanelRenderer = new KonfigInfoPanelRenderer();
 
@@ -257,7 +255,6 @@ public final class KonfigConfigScreen extends Screen {
         List<EntryRef> entries = collectEntries(modIdFilter);
         this.coordinator = new KonfigScreenCoordinator(entries);
         this.rowHost = new KonfigRowHost(this, this.coordinator);
-        this.rowFactory = new KonfigRowFactory(this.rowHost);
         this.editorHost = new KonfigEditorHost(this, this.coordinator);
         if (KonfigDebugConfig.enabled()) {
             Constants.LOG.info(
@@ -306,9 +303,7 @@ public final class KonfigConfigScreen extends Screen {
         if (this.list == null) {
             return;
         }
-        for (KonfigConfigRow row : this.list.children()) {
-            row.tick();
-        }
+        this.list.tickRows();
     }
 
     @Override
@@ -362,14 +357,14 @@ public final class KonfigConfigScreen extends Screen {
 //? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownClick(event)) {
             return true;
         }
         if (event.button() == 0 && this.handleInfoPanelClick(event.x(), event.y())) {
             return true;
         }
-        RegistryTextInputRow activeRegistry = this.coordinator.activeRegistryRow();
+        RegistryTextInputRowHandle activeRegistry = this.coordinator.activeRegistryRow();
         if (activeRegistry != null && activeRegistry.handleSuggestionClick(event)) {
             return true;
         }
@@ -381,7 +376,7 @@ public final class KonfigConfigScreen extends Screen {
                 && !activeDropdown.isPointInsideDropdown(event.x(), event.y())) {
             activeDropdown.closeDropdown();
         }
-        RegistryTextInputRow focusedRow = this.findFocusedRegistryRow();
+        RegistryTextInputRowHandle focusedRow = this.findFocusedRegistryRow();
         if (focusedRow != null) {
             this.coordinator.setActiveRegistryRow(focusedRow);
             focusedRow.activateSuggestions();
@@ -397,15 +392,15 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownKey(event)) {
             return true;
         }
-        DropdownRow focusedDropdown = this.findFocusedDropdownRow();
+        DropdownRowHandle focusedDropdown = this.findFocusedDropdownRow();
         if (focusedDropdown != null && focusedDropdown.handleClosedDropdownKey(event.key())) {
             return true;
         }
-        RegistryTextInputRow activeRegistry = this.coordinator.activeRegistryRow();
+        RegistryTextInputRowHandle activeRegistry = this.coordinator.activeRegistryRow();
         if (activeRegistry != null && activeRegistry.handleSuggestionKey(event)) {
             return true;
         }
@@ -419,7 +414,7 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownChar(event.codepoint())) {
             return true;
         }
@@ -428,7 +423,7 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownScroll(mouseX, mouseY, scrollY)) {
             return true;
         }
@@ -440,14 +435,14 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownClick(mouseX, mouseY)) {
             return true;
         }
         if (button == 0 && this.handleInfoPanelClick(mouseX, mouseY)) {
             return true;
         }
-        RegistryTextInputRow activeRegistry = this.coordinator.activeRegistryRow();
+        RegistryTextInputRowHandle activeRegistry = this.coordinator.activeRegistryRow();
         if (activeRegistry != null && activeRegistry.handleSuggestionClick(mouseX, mouseY)) {
             return true;
         }
@@ -459,7 +454,7 @@ public final class KonfigConfigScreen extends Screen {
                 && !activeDropdown.isPointInsideDropdown(mouseX, mouseY)) {
             activeDropdown.closeDropdown();
         }
-        RegistryTextInputRow focusedRow = this.findFocusedRegistryRow();
+        RegistryTextInputRowHandle focusedRow = this.findFocusedRegistryRow();
         if (focusedRow != null) {
             this.coordinator.setActiveRegistryRow(focusedRow);
             focusedRow.activateSuggestions();
@@ -475,15 +470,15 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownKey(keyCode)) {
             return true;
         }
-        DropdownRow focusedDropdown = this.findFocusedDropdownRow();
+        DropdownRowHandle focusedDropdown = this.findFocusedDropdownRow();
         if (focusedDropdown != null && focusedDropdown.handleClosedDropdownKey(keyCode)) {
             return true;
         }
-        RegistryTextInputRow activeRegistry = this.coordinator.activeRegistryRow();
+        RegistryTextInputRowHandle activeRegistry = this.coordinator.activeRegistryRow();
         if (activeRegistry != null && activeRegistry.handleSuggestionKey(keyCode)) {
             return true;
         }
@@ -497,7 +492,7 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownChar(codePoint)) {
             return true;
         }
@@ -507,7 +502,7 @@ public final class KonfigConfigScreen extends Screen {
 //? if >=1.20.2 {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownScroll(mouseX, mouseY, scrollY)) {
             return true;
         }
@@ -519,7 +514,7 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        DropdownRow activeDropdown = this.coordinator.activeDropdownRow();
+        DropdownRowHandle activeDropdown = this.coordinator.activeDropdownRow();
         if (activeDropdown != null && activeDropdown.handleDropdownScroll(mouseX, mouseY, delta)) {
             return true;
         }
@@ -602,12 +597,12 @@ public final class KonfigConfigScreen extends Screen {
 
         int listHeight = Math.max(48, this.height - LIST_TOP - LIST_BOTTOM_MARGIN);
 //? if <=1.19.3 {
-        this.list = this.addWidget(new KonfigEntryList(this.minecraft, this.mainPanelRight(), this.height, listHeight, LIST_TOP, this.mainPanelRight() - 28));
+        this.list = this.addWidget(new KonfigEntryList(this.minecraft, this.rowHost, this.mainPanelRight(), this.height, listHeight, LIST_TOP, this.mainPanelRight() - 28));
 //?} else {
-        this.list = this.addRenderableWidget(new KonfigEntryList(this.minecraft, this.mainPanelRight(), this.height, listHeight, LIST_TOP, this.mainPanelRight() - 28));
+        this.list = this.addRenderableWidget(new KonfigEntryList(this.minecraft, this.rowHost, this.mainPanelRight(), this.height, listHeight, LIST_TOP, this.mainPanelRight() - 28));
 //?}
         for (EntryRef entry : this.coordinator.entries()) {
-            this.list.addKonfigEntry(this.rowFactory.create(entry));
+            this.list.addKonfigEntry(entry);
         }
 
         int footerY = this.height - 26;
@@ -675,28 +670,18 @@ public final class KonfigConfigScreen extends Screen {
         return value == null || value.trim().isEmpty();
     }
 
-    private RegistryTextInputRow findFocusedRegistryRow() {
+    private RegistryTextInputRowHandle findFocusedRegistryRow() {
         if (this.list == null) {
             return null;
         }
-        for (KonfigConfigRow row : this.list.children()) {
-            if (row instanceof RegistryTextInputRow registryRow && registryRow.isFocused()) {
-                return registryRow;
-            }
-        }
-        return null;
+        return this.list.focusedRegistryRow();
     }
 
-    private DropdownRow findFocusedDropdownRow() {
+    private DropdownRowHandle findFocusedDropdownRow() {
         if (this.list == null || this.coordinator.activeDropdownRow() != null) {
             return null;
         }
-        for (KonfigConfigRow row : this.list.children()) {
-            if (row instanceof DropdownRow dropdownRow && dropdownRow.isButtonFocused()) {
-                return dropdownRow;
-            }
-        }
-        return null;
+        return this.list.focusedDropdownRow();
     }
 
 }

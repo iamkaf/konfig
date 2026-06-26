@@ -7,6 +7,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.supportsRegistryIcon;
 
+import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
@@ -23,7 +24,7 @@ import net.minecraft.resources.ResourceKey;
 import java.util.List;
 
 @ApiStatus.Internal
-public final class RegistryTextInputRow extends KonfigConfigRow {
+final class RegistryTextInputRow extends KonfigConfigRow implements RegistryTextInputRowHandle {
     private static final int ICON_SIZE = 16;
     private static final int ICON_GAP = 6;
 
@@ -31,7 +32,7 @@ public final class RegistryTextInputRow extends KonfigConfigRow {
     private final KonfigRegistrySuggestionController suggestions;
     private boolean suppressResponder;
 
-    public RegistryTextInputRow(KonfigRowHost host, EntryRef entry) {
+    RegistryTextInputRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
         this.input = new EditBox(host.font(), 0, 0, host.controlMinWidth(), host.controlHeight(), entry.label);
         this.input.setMaxLength(256);

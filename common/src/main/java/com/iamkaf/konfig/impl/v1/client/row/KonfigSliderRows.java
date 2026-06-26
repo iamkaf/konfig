@@ -7,6 +7,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.*;
 
+import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
 import com.mojang.blaze3d.platform.InputConstants;

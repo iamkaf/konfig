@@ -26,14 +26,14 @@ import java.util.List;
 import java.util.Locale;
 
 @ApiStatus.Internal
-public final class DropdownRow extends KonfigConfigRow {
+final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
     private final Button button;
     private final KonfigDropdownState dropdown = new KonfigDropdownState();
     private int lastButtonX;
     private int lastButtonY;
     private int lastButtonWidth;
 
-    public DropdownRow(KonfigRowHost host, EntryRef entry) {
+    DropdownRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
         this.lastButtonWidth = host.controlMinWidth();
         this.button = button(
@@ -44,6 +44,11 @@ public final class DropdownRow extends KonfigConfigRow {
                 text(""),
                 ignored -> this.toggleDropdown()
         );
+    }
+
+    @Override
+    public EntryRef entry() {
+        return this.entry;
     }
 
     @Override

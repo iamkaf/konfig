@@ -12,8 +12,8 @@ import com.iamkaf.konfig.impl.v1.client.editor.KonfigStringListEditorState;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelState;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
-import com.iamkaf.konfig.impl.v1.client.row.DropdownRow;
-import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRow;
+import com.iamkaf.konfig.impl.v1.client.row.DropdownRowHandle;
+import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRowHandle;
 import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
 import com.iamkaf.konfig.impl.v1.config.model.ColorValueHelper;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
@@ -40,10 +40,10 @@ final class KonfigScreenCoordinator {
     private final KonfigInfoPanelState infoPanel;
     private final Map<ResourceKey<? extends Registry<?>>, List<String>> registrySuggestionCache = new LinkedHashMap<ResourceKey<? extends Registry<?>>, List<String>>();
 
-    private RegistryTextInputRow activeRegistryRow;
-    private RegistryTextInputRow renderedRegistryRow;
-    private DropdownRow activeDropdownRow;
-    private DropdownRow renderedDropdownRow;
+    private RegistryTextInputRowHandle activeRegistryRow;
+    private RegistryTextInputRowHandle renderedRegistryRow;
+    private DropdownRowHandle activeDropdownRow;
+    private DropdownRowHandle renderedDropdownRow;
     private String pendingTooltip;
     private int pendingTooltipMouseX;
     private int pendingTooltipMouseY;
@@ -229,14 +229,14 @@ final class KonfigScreenCoordinator {
             return;
         }
 
-        this.infoPanel.setActiveDropdownOptionInfo(this.activeDropdownRow.entry, option.info());
+        this.infoPanel.setActiveDropdownOptionInfo(this.activeDropdownRow.entry(), option.info());
     }
 
     List<InfoPanelItem> selectedDropdownOptionInfo(EntryRef entry) {
         if (entry.value.kind() != EntryKind.DROPDOWN) {
             return Collections.emptyList();
         }
-        if (this.activeDropdownRow != null && this.activeDropdownRow.entry == entry) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.entry() == entry) {
             return Collections.emptyList();
         }
 
@@ -252,15 +252,15 @@ final class KonfigScreenCoordinator {
         return this.infoPanel.handleScroll(infoPanelBounds, mouseX, mouseY, scrollY);
     }
 
-    DropdownRow activeDropdownRow() {
+    DropdownRowHandle activeDropdownRow() {
         return this.activeDropdownRow;
     }
 
-    RegistryTextInputRow activeRegistryRow() {
+    RegistryTextInputRowHandle activeRegistryRow() {
         return this.activeRegistryRow;
     }
 
-    void setActiveRegistryRow(RegistryTextInputRow row) {
+    void setActiveRegistryRow(RegistryTextInputRowHandle row) {
         if (this.activeDropdownRow != null) {
             this.activeDropdownRow.closeDropdown();
         }
@@ -273,21 +273,21 @@ final class KonfigScreenCoordinator {
         this.activeRegistryRow = row;
     }
 
-    boolean isActiveRegistryRow(RegistryTextInputRow row) {
+    boolean isActiveRegistryRow(RegistryTextInputRowHandle row) {
         return this.activeRegistryRow == row;
     }
 
-    void clearActiveRegistryRow(RegistryTextInputRow row) {
+    void clearActiveRegistryRow(RegistryTextInputRowHandle row) {
         if (this.activeRegistryRow == row) {
             this.activeRegistryRow = null;
         }
     }
 
-    void markRenderedRegistryRow(RegistryTextInputRow row) {
+    void markRenderedRegistryRow(RegistryTextInputRowHandle row) {
         this.renderedRegistryRow = row;
     }
 
-    void setActiveDropdownRow(DropdownRow row) {
+    void setActiveDropdownRow(DropdownRowHandle row) {
         if (this.activeDropdownRow == row) {
             return;
         }
@@ -300,19 +300,19 @@ final class KonfigScreenCoordinator {
         this.activeDropdownRow = row;
     }
 
-    void clearActiveDropdownRow(DropdownRow row) {
+    void clearActiveDropdownRow(DropdownRowHandle row) {
         if (this.activeDropdownRow == row) {
             this.activeDropdownRow = null;
         }
     }
 
-    void clearRenderedDropdownRow(DropdownRow row) {
+    void clearRenderedDropdownRow(DropdownRowHandle row) {
         if (this.renderedDropdownRow == row) {
             this.renderedDropdownRow = null;
         }
     }
 
-    void markRenderedDropdownRow(DropdownRow row) {
+    void markRenderedDropdownRow(DropdownRowHandle row) {
         this.renderedDropdownRow = row;
     }
 

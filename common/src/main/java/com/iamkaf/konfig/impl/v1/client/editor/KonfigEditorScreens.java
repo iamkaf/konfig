@@ -9,9 +9,9 @@ import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.supp
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
 
+import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
+import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
-import com.iamkaf.konfig.impl.v1.client.row.BaseSliderWidget;
-import com.iamkaf.konfig.impl.v1.client.row.KonfigRegistrySuggestionController;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigEditorHost;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenMetrics;

@@ -10,14 +10,14 @@ import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 
 @ApiStatus.Internal
-public final class KonfigRowFactory {
+final class KonfigRowFactory {
     private final KonfigRowHost host;
 
-    public KonfigRowFactory(KonfigRowHost host) {
+    KonfigRowFactory(KonfigRowHost host) {
         this.host = host;
     }
 
-    public KonfigConfigRow create(EntryRef entry) {
+    KonfigConfigRow create(EntryRef entry) {
         if (entry.value.kind() == EntryKind.HEADER) {
             return new HeaderRow(this.host, entry);
         }

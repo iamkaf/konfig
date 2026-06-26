@@ -1,12 +1,14 @@
 //? if >=1.17 {
 // Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
 // so these shared UI internals begin at the 1.17 client API baseline.
-package com.iamkaf.konfig.impl.v1.client.screen;
+package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
-import com.iamkaf.konfig.impl.v1.client.row.KonfigConfigRow;
+import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
+import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
+import com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenMetrics;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 //? if >=26.1 {
@@ -18,15 +20,17 @@ import com.mojang.blaze3d.vertex.PoseStack;
 //?}
 
 @ApiStatus.Internal
-final class KonfigEntryList extends ContainerObjectSelectionList<KonfigConfigRow> {
+public final class KonfigEntryList extends ContainerObjectSelectionList<KonfigConfigRow> {
+    private final KonfigRowFactory rowFactory;
     private final int rowWidth;
 
-    KonfigEntryList(Minecraft minecraft, int width, int screenHeight, int height, int y, int rowWidth) {
+    public KonfigEntryList(Minecraft minecraft, KonfigRowHost host, int width, int screenHeight, int height, int y, int rowWidth) {
 //? if >=1.20.3 {
         super(minecraft, width, height, y, KonfigScreenMetrics.ROW_HEIGHT);
 //?} else {
         super(minecraft, width, screenHeight, y, y + height, KonfigScreenMetrics.ROW_HEIGHT);
 //?}
+        this.rowFactory = new KonfigRowFactory(host);
         this.rowWidth = rowWidth;
 //? if <=1.16.3 {
         this.setRenderHeader(false, 0);
@@ -35,12 +39,37 @@ final class KonfigEntryList extends ContainerObjectSelectionList<KonfigConfigRow
 //?}
     }
 
-    void addKonfigEntry(KonfigConfigRow row) {
+    public void addKonfigEntry(EntryRef entry) {
+        KonfigConfigRow row = this.rowFactory.create(entry);
 //? if >=26.1 {
         super.addEntry(row, row.preferredHeight(this.getRowWidth()));
 //?} else {
         super.addEntry(row);
 //?}
+    }
+
+    public void tickRows() {
+        for (KonfigConfigRow row : this.children()) {
+            row.tick();
+        }
+    }
+
+    public RegistryTextInputRowHandle focusedRegistryRow() {
+        for (KonfigConfigRow row : this.children()) {
+            if (row instanceof RegistryTextInputRowHandle registryRow && registryRow.isFocused()) {
+                return registryRow;
+            }
+        }
+        return null;
+    }
+
+    public DropdownRowHandle focusedDropdownRow() {
+        for (KonfigConfigRow row : this.children()) {
+            if (row instanceof DropdownRowHandle dropdownRow && dropdownRow.isButtonFocused()) {
+                return dropdownRow;
+            }
+        }
+        return null;
     }
 
     @Override

@@ -5,8 +5,8 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.impl.v1.client.row.DropdownRow;
-import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRow;
+import com.iamkaf.konfig.impl.v1.client.row.DropdownRowHandle;
+import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRowHandle;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
@@ -178,35 +178,35 @@ public final class KonfigRowHost {
         this.screen.openStringListEditor(entry);
     }
 
-    public void setActiveRegistryRow(RegistryTextInputRow row) {
+    public void setActiveRegistryRow(RegistryTextInputRowHandle row) {
         this.coordinator.setActiveRegistryRow(row);
     }
 
-    public boolean isActiveRegistryRow(RegistryTextInputRow row) {
+    public boolean isActiveRegistryRow(RegistryTextInputRowHandle row) {
         return this.coordinator.isActiveRegistryRow(row);
     }
 
-    public void clearActiveRegistryRow(RegistryTextInputRow row) {
+    public void clearActiveRegistryRow(RegistryTextInputRowHandle row) {
         this.coordinator.clearActiveRegistryRow(row);
     }
 
-    public void markRenderedRegistryRow(RegistryTextInputRow row) {
+    public void markRenderedRegistryRow(RegistryTextInputRowHandle row) {
         this.coordinator.markRenderedRegistryRow(row);
     }
 
-    public void setActiveDropdownRow(DropdownRow row) {
+    public void setActiveDropdownRow(DropdownRowHandle row) {
         this.coordinator.setActiveDropdownRow(row);
     }
 
-    public void clearActiveDropdownRow(DropdownRow row) {
+    public void clearActiveDropdownRow(DropdownRowHandle row) {
         this.coordinator.clearActiveDropdownRow(row);
     }
 
-    public void clearRenderedDropdownRow(DropdownRow row) {
+    public void clearRenderedDropdownRow(DropdownRowHandle row) {
         this.coordinator.clearRenderedDropdownRow(row);
     }
 
-    public void markRenderedDropdownRow(DropdownRow row) {
+    public void markRenderedDropdownRow(DropdownRowHandle row) {
         this.coordinator.markRenderedDropdownRow(row);
     }
 }

@@ -1,7 +1,7 @@
 //? if >=1.17 {
 // Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
 // so these shared UI internals begin at the 1.17 client API baseline.
-package com.iamkaf.konfig.impl.v1.client.row;
+package com.iamkaf.konfig.impl.v1.client.control;
 
 import org.jetbrains.annotations.ApiStatus;
 
@@ -17,7 +17,7 @@ public abstract class BaseSliderWidget extends AbstractSliderButton {
         super(0, 0, KonfigScreenMetrics.CONTROL_MIN_WIDTH, KonfigScreenMetrics.CONTROL_HEIGHT, text(""), initialProgress);
     }
 
-    protected final void syncToProgress(double progress) {
+    public final void syncToProgress(double progress) {
         this.value = Mth.clamp(progress, 0.0D, 1.0D);
         this.updateMessage();
     }

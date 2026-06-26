@@ -26,9 +26,9 @@ import java.util.Collections;
 import java.util.List;
 
 @ApiStatus.Internal
-public abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<KonfigConfigRow> {
+abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<KonfigConfigRow> {
     protected final KonfigRowHost host;
-    public final EntryRef entry;
+    protected final EntryRef entry;
 
     KonfigConfigRow(KonfigRowHost host, EntryRef entry) {
         this.host = host;
