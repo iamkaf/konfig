@@ -2931,11 +2931,8 @@ public final class KonfigConfigScreen extends Screen {
         private static final int ICON_GAP = 6;
 
         private final EditBox input;
-        private final List<String> visibleSuggestions = new ArrayList<String>();
+        private final KonfigSuggestionState suggestions = new KonfigSuggestionState();
         private boolean suppressResponder;
-        private boolean suggestionsDismissed;
-        private String dismissedValue = "";
-        private int selectedSuggestionIndex;
         private int lastInputX;
         private int lastInputY;
         private int lastInputWidth;
@@ -2953,8 +2950,6 @@ public final class KonfigConfigScreen extends Screen {
                 if (this.suppressResponder) {
                     return;
                 }
-                this.suggestionsDismissed = false;
-                this.dismissedValue = "";
                 KonfigConfigScreen.this.session.setDraft(entry.value, value);
                 KonfigConfigScreen.this.persistEntry(entry);
                 this.refreshSuggestions();
@@ -2979,9 +2974,7 @@ public final class KonfigConfigScreen extends Screen {
             this.suppressResponder = true;
             this.input.setValue(KonfigConfigScreen.this.currentStringValue(this.entry.value));
             this.suppressResponder = false;
-            this.suggestionsDismissed = false;
-            this.dismissedValue = "";
-            this.refreshSuggestions();
+            this.activateSuggestions();
         }
 
 //? if >=26.1 {
@@ -3048,7 +3041,7 @@ public final class KonfigConfigScreen extends Screen {
                 KonfigConfigScreen.this.setActiveRegistryRow(this);
                 this.refreshSuggestions();
             }
-            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.suggestions.isEmpty()) {
                 KonfigConfigScreen.this.renderedRegistryRow = this;
             }
         }
@@ -3070,60 +3063,41 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
-            if (this.suggestionsDismissed) {
-                if (sameValue(this.input.getValue(), this.dismissedValue)) {
-                    this.visibleSuggestions.clear();
-                    this.selectedSuggestionIndex = 0;
-                    this.input.setSuggestion("");
-                    return;
-                }
-                this.suggestionsDismissed = false;
-                this.dismissedValue = "";
-            }
-
-            this.visibleSuggestions.clear();
-            this.visibleSuggestions.addAll(filterRegistrySuggestions(
+            this.suggestions.refresh(
                     KonfigConfigScreen.this.registrySuggestions(this.entry.value.boundRegistryKey()),
                     this.input.getValue()
-            ));
-
-            if (this.visibleSuggestions.isEmpty()) {
-                this.selectedSuggestionIndex = 0;
-                this.input.setSuggestion("");
-                return;
-            }
-
-            this.selectedSuggestionIndex = Mth.clamp(this.selectedSuggestionIndex, 0, this.visibleSuggestions.size() - 1);
+            );
             this.updateInlineSuggestion();
         }
 
         private void activateSuggestions() {
-            this.suggestionsDismissed = false;
-            this.dismissedValue = "";
-            this.refreshSuggestions();
+            if (this.entry.value.boundRegistryKey() == null) {
+                this.closeSuggestions();
+                return;
+            }
+
+            this.suggestions.activate(
+                    KonfigConfigScreen.this.registrySuggestions(this.entry.value.boundRegistryKey()),
+                    this.input.getValue()
+            );
+            this.updateInlineSuggestion();
         }
 
         private void dismissSuggestions() {
-            this.suggestionsDismissed = true;
-            this.dismissedValue = this.input.getValue();
-            this.visibleSuggestions.clear();
-            this.selectedSuggestionIndex = 0;
-            this.input.setSuggestion("");
+            this.suggestions.dismiss(this.input.getValue());
+            this.updateInlineSuggestion();
         }
 
         private void closeSuggestions() {
-            this.suggestionsDismissed = false;
-            this.dismissedValue = "";
-            this.visibleSuggestions.clear();
-            this.selectedSuggestionIndex = 0;
-            this.input.setSuggestion("");
+            this.suggestions.close();
+            this.updateInlineSuggestion();
             if (KonfigConfigScreen.this.activeRegistryRow == this) {
                 KonfigConfigScreen.this.activeRegistryRow = null;
             }
         }
 
         private void renderSuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
-            if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
                 return;
             }
 
@@ -3131,25 +3105,25 @@ public final class KonfigConfigScreen extends Screen {
             context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
             context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
-            for (int index = 0; index < this.visibleSuggestions.size(); index++) {
+            for (int index = 0; index < this.suggestions.size(); index++) {
                 int rowY = this.lastDropdownY + 2 + (index * SUGGESTION_ROW_HEIGHT);
                 int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                 boolean hovered = index == this.hoveredSuggestionIndex(mouseX, mouseY);
-                if (hovered || index == this.selectedSuggestionIndex) {
+                if (hovered || index == this.suggestions.selectedIndex()) {
                     context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, hovered ? 0x80406080 : 0x50303030);
                 }
                 int textX = this.lastDropdownX + 4;
                 if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
-                    context.renderRegistryIcon(this.entry.value.boundRegistryKey(), this.visibleSuggestions.get(index), this.lastDropdownX + 2, rowY - 1);
+                    context.renderRegistryIcon(this.entry.value.boundRegistryKey(), this.suggestions.suggestion(index), this.lastDropdownX + 2, rowY - 1);
                     textX += 18;
                 }
-                context.drawText(KonfigConfigScreen.this.font, text(this.visibleSuggestions.get(index)), textX, rowY + 3, 0xFFFFFFFF);
+                context.drawText(KonfigConfigScreen.this.font, text(this.suggestions.suggestion(index)), textX, rowY + 3, 0xFFFFFFFF);
             }
         }
 
 //? if >=1.21.9 {
         private boolean handleSuggestionClick(MouseButtonEvent event) {
-            if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
                 return false;
             }
 
@@ -3158,7 +3132,7 @@ public final class KonfigConfigScreen extends Screen {
                 return false;
             }
 
-            this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+            this.acceptSuggestion(this.suggestions.suggestion(hovered));
             return true;
         }
 
@@ -3176,28 +3150,28 @@ public final class KonfigConfigScreen extends Screen {
                 this.dismissSuggestions();
                 return true;
             }
-            if (this.visibleSuggestions.isEmpty()) {
+            if (this.suggestions.isEmpty()) {
                 return false;
             }
             if (keyCode == InputConstants.KEY_DOWN) {
-                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                this.suggestions.selectNext();
                 this.updateInlineSuggestion();
                 return true;
             }
             if (keyCode == InputConstants.KEY_UP) {
-                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                this.suggestions.selectPrevious();
                 this.updateInlineSuggestion();
                 return true;
             }
             if (keyCode == InputConstants.KEY_TAB) {
-                this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                this.acceptSuggestion(this.suggestions.selectedSuggestion());
                 return true;
             }
             return false;
         }
 //?} else {
         private boolean handleSuggestionClick(double mouseX, double mouseY) {
-            if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+            if (KonfigConfigScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
                 return false;
             }
 
@@ -3206,7 +3180,7 @@ public final class KonfigConfigScreen extends Screen {
                 return false;
             }
 
-            this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+            this.acceptSuggestion(this.suggestions.suggestion(hovered));
             return true;
         }
 
@@ -3223,21 +3197,21 @@ public final class KonfigConfigScreen extends Screen {
                 this.dismissSuggestions();
                 return true;
             }
-            if (this.visibleSuggestions.isEmpty()) {
+            if (this.suggestions.isEmpty()) {
                 return false;
             }
             if (keyCode == InputConstants.KEY_DOWN) {
-                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                this.suggestions.selectNext();
                 this.updateInlineSuggestion();
                 return true;
             }
             if (keyCode == InputConstants.KEY_UP) {
-                this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                this.suggestions.selectPrevious();
                 this.updateInlineSuggestion();
                 return true;
             }
             if (keyCode == InputConstants.KEY_TAB) {
-                this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                this.acceptSuggestion(this.suggestions.selectedSuggestion());
                 return true;
             }
             return false;
@@ -3259,17 +3233,13 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void updateInlineSuggestion() {
-            if (this.visibleSuggestions.isEmpty()) {
-                this.input.setSuggestion("");
-                return;
-            }
-            this.input.setSuggestion(suggestionSuffix(this.input.getValue(), this.visibleSuggestions.get(this.selectedSuggestionIndex)));
+            this.input.setSuggestion(this.suggestions.inlineSuggestion(this.input.getValue()));
         }
 
         private void layoutSuggestionBox() {
             this.lastDropdownX = this.lastInputX;
             this.lastDropdownWidth = this.lastInputWidth;
-            this.lastDropdownHeight = (this.visibleSuggestions.size() * SUGGESTION_ROW_HEIGHT) + 4;
+            this.lastDropdownHeight = (this.suggestions.size() * SUGGESTION_ROW_HEIGHT) + 4;
 
             int belowY = this.lastInputY + CONTROL_HEIGHT + 2;
             int aboveY = this.lastInputY - this.lastDropdownHeight - 2;
@@ -3278,15 +3248,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private int hoveredSuggestionIndex(int mouseX, int mouseY) {
-            if (mouseX < this.lastDropdownX
-                    || mouseX > this.lastDropdownX + this.lastDropdownWidth
-                    || mouseY < this.lastDropdownY + 2
-                    || mouseY > this.lastDropdownY + this.lastDropdownHeight - 2) {
-                return -1;
-            }
-
-            int index = (mouseY - this.lastDropdownY - 2) / SUGGESTION_ROW_HEIGHT;
-            return index >= 0 && index < this.visibleSuggestions.size() ? index : -1;
+            return this.suggestions.hoveredIndex(mouseX, mouseY, this.lastDropdownX, this.lastDropdownY, this.lastDropdownWidth, this.lastDropdownHeight, SUGGESTION_ROW_HEIGHT);
         }
     }
 
@@ -3941,11 +3903,8 @@ public final class KonfigConfigScreen extends Screen {
             private final Button moveUpButton;
             private final Button moveDownButton;
             private final Button removeButton;
-            private final List<String> visibleSuggestions = new ArrayList<String>();
+            private final KonfigSuggestionState suggestions = new KonfigSuggestionState();
             private boolean suppressResponder;
-            private boolean suggestionsDismissed;
-            private String dismissedValue = "";
-            private int selectedSuggestionIndex;
             private int lastInputX;
             private int lastInputY;
             private int lastInputWidth;
@@ -3978,8 +3937,6 @@ public final class KonfigConfigScreen extends Screen {
                     return;
                 }
 
-                this.suggestionsDismissed = false;
-                this.dismissedValue = "";
                 this.persistListValue(value);
             }
 
@@ -4108,7 +4065,7 @@ public final class KonfigConfigScreen extends Screen {
                     StringListEditorScreen.this.setActiveRegistryRow(this);
                     this.refreshSuggestions();
                 }
-                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
+                if (StringListEditorScreen.this.activeRegistryRow == this && !this.suggestions.isEmpty()) {
                     StringListEditorScreen.this.renderedRegistryRow = this;
                 }
             }
@@ -4142,59 +4099,41 @@ public final class KonfigConfigScreen extends Screen {
                     return;
                 }
 
-                if (this.suggestionsDismissed) {
-                    if (sameValue(this.input.getValue(), this.dismissedValue)) {
-                        this.visibleSuggestions.clear();
-                        this.selectedSuggestionIndex = 0;
-                        this.input.setSuggestion("");
-                        return;
-                    }
-                    this.suggestionsDismissed = false;
-                    this.dismissedValue = "";
-                }
-
-                this.visibleSuggestions.clear();
-                this.visibleSuggestions.addAll(filterRegistrySuggestions(
+                this.suggestions.refresh(
                         KonfigConfigScreen.this.registrySuggestions(this.registryKey()),
                         this.input.getValue()
-                ));
-                if (this.visibleSuggestions.isEmpty()) {
-                    this.selectedSuggestionIndex = 0;
-                    this.input.setSuggestion("");
-                    return;
-                }
-
-                this.selectedSuggestionIndex = Mth.clamp(this.selectedSuggestionIndex, 0, this.visibleSuggestions.size() - 1);
+                );
                 this.updateInlineSuggestion();
             }
 
             private void activateSuggestions() {
-                this.suggestionsDismissed = false;
-                this.dismissedValue = "";
-                this.refreshSuggestions();
+                if (!this.hasRegistryBinding()) {
+                    this.closeSuggestions();
+                    return;
+                }
+
+                this.suggestions.activate(
+                        KonfigConfigScreen.this.registrySuggestions(this.registryKey()),
+                        this.input.getValue()
+                );
+                this.updateInlineSuggestion();
             }
 
             private void dismissSuggestions() {
-                this.suggestionsDismissed = true;
-                this.dismissedValue = this.input.getValue();
-                this.visibleSuggestions.clear();
-                this.selectedSuggestionIndex = 0;
-                this.input.setSuggestion("");
+                this.suggestions.dismiss(this.input.getValue());
+                this.updateInlineSuggestion();
             }
 
             private void closeSuggestions() {
-                this.suggestionsDismissed = false;
-                this.dismissedValue = "";
-                this.visibleSuggestions.clear();
-                this.selectedSuggestionIndex = 0;
-                this.input.setSuggestion("");
+                this.suggestions.close();
+                this.updateInlineSuggestion();
                 if (StringListEditorScreen.this.activeRegistryRow == this) {
                     StringListEditorScreen.this.activeRegistryRow = null;
                 }
             }
 
             private void renderSuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
-                if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                if (StringListEditorScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
                     return;
                 }
 
@@ -4202,25 +4141,25 @@ public final class KonfigConfigScreen extends Screen {
                 context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
                 context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
-                for (int suggestionIndex = 0; suggestionIndex < this.visibleSuggestions.size(); suggestionIndex++) {
+                for (int suggestionIndex = 0; suggestionIndex < this.suggestions.size(); suggestionIndex++) {
                     int rowY = this.lastDropdownY + 2 + (suggestionIndex * SUGGESTION_ROW_HEIGHT);
                     int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                     boolean suggestionHovered = suggestionIndex == this.hoveredSuggestionIndex(mouseX, mouseY);
-                    if (suggestionHovered || suggestionIndex == this.selectedSuggestionIndex) {
+                    if (suggestionHovered || suggestionIndex == this.suggestions.selectedIndex()) {
                         context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
                     }
                     int textX = this.lastDropdownX + 4;
                     if (supportsRegistryIcon(this.registryKey())) {
-                        context.renderRegistryIcon(this.registryKey(), this.visibleSuggestions.get(suggestionIndex), this.lastDropdownX + 2, rowY - 1);
+                        context.renderRegistryIcon(this.registryKey(), this.suggestions.suggestion(suggestionIndex), this.lastDropdownX + 2, rowY - 1);
                         textX += 18;
                     }
-                    context.drawText(StringListEditorScreen.this.font, text(this.visibleSuggestions.get(suggestionIndex)), textX, rowY + 3, 0xFFFFFFFF);
+                    context.drawText(StringListEditorScreen.this.font, text(this.suggestions.suggestion(suggestionIndex)), textX, rowY + 3, 0xFFFFFFFF);
                 }
             }
 
 //? if >=1.21.9 {
             private boolean handleSuggestionClick(MouseButtonEvent event) {
-                if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                if (StringListEditorScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
                     return false;
                 }
 
@@ -4229,7 +4168,7 @@ public final class KonfigConfigScreen extends Screen {
                     return false;
                 }
 
-                this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+                this.acceptSuggestion(this.suggestions.suggestion(hovered));
                 return true;
             }
 
@@ -4246,28 +4185,28 @@ public final class KonfigConfigScreen extends Screen {
                     this.dismissSuggestions();
                     return true;
                 }
-                if (this.visibleSuggestions.isEmpty()) {
+                if (this.suggestions.isEmpty()) {
                     return false;
                 }
                 if (keyCode == InputConstants.KEY_DOWN) {
-                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                    this.suggestions.selectNext();
                     this.updateInlineSuggestion();
                     return true;
                 }
                 if (keyCode == InputConstants.KEY_UP) {
-                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                    this.suggestions.selectPrevious();
                     this.updateInlineSuggestion();
                     return true;
                 }
                 if (keyCode == InputConstants.KEY_TAB) {
-                    this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                    this.acceptSuggestion(this.suggestions.selectedSuggestion());
                     return true;
                 }
                 return false;
             }
 //?} else {
             private boolean handleSuggestionClick(double mouseX, double mouseY) {
-                if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
+                if (StringListEditorScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
                     return false;
                 }
 
@@ -4276,7 +4215,7 @@ public final class KonfigConfigScreen extends Screen {
                     return false;
                 }
 
-                this.acceptSuggestion(this.visibleSuggestions.get(hovered));
+                this.acceptSuggestion(this.suggestions.suggestion(hovered));
                 return true;
             }
 
@@ -4292,21 +4231,21 @@ public final class KonfigConfigScreen extends Screen {
                     this.dismissSuggestions();
                     return true;
                 }
-                if (this.visibleSuggestions.isEmpty()) {
+                if (this.suggestions.isEmpty()) {
                     return false;
                 }
                 if (keyCode == InputConstants.KEY_DOWN) {
-                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + 1) % this.visibleSuggestions.size();
+                    this.suggestions.selectNext();
                     this.updateInlineSuggestion();
                     return true;
                 }
                 if (keyCode == InputConstants.KEY_UP) {
-                    this.selectedSuggestionIndex = (this.selectedSuggestionIndex + this.visibleSuggestions.size() - 1) % this.visibleSuggestions.size();
+                    this.suggestions.selectPrevious();
                     this.updateInlineSuggestion();
                     return true;
                 }
                 if (keyCode == InputConstants.KEY_TAB) {
-                    this.acceptSuggestion(this.visibleSuggestions.get(this.selectedSuggestionIndex));
+                    this.acceptSuggestion(this.suggestions.selectedSuggestion());
                     return true;
                 }
                 return false;
@@ -4328,17 +4267,13 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             private void updateInlineSuggestion() {
-                if (this.visibleSuggestions.isEmpty()) {
-                    this.input.setSuggestion("");
-                    return;
-                }
-                this.input.setSuggestion(suggestionSuffix(this.input.getValue(), this.visibleSuggestions.get(this.selectedSuggestionIndex)));
+                this.input.setSuggestion(this.suggestions.inlineSuggestion(this.input.getValue()));
             }
 
             private void layoutSuggestionBox() {
                 this.lastDropdownX = this.lastInputX;
                 this.lastDropdownWidth = this.lastInputWidth;
-                this.lastDropdownHeight = (this.visibleSuggestions.size() * SUGGESTION_ROW_HEIGHT) + 4;
+                this.lastDropdownHeight = (this.suggestions.size() * SUGGESTION_ROW_HEIGHT) + 4;
                 int belowY = this.lastInputY + CONTROL_HEIGHT + 2;
                 int aboveY = this.lastInputY - this.lastDropdownHeight - 2;
                 boolean openAbove = belowY + this.lastDropdownHeight > StringListEditorScreen.this.height - 32 && aboveY >= LIST_TOP;
@@ -4346,14 +4281,7 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             private int hoveredSuggestionIndex(int mouseX, int mouseY) {
-                if (mouseX < this.lastDropdownX
-                        || mouseX > this.lastDropdownX + this.lastDropdownWidth
-                        || mouseY < this.lastDropdownY + 2
-                        || mouseY > this.lastDropdownY + this.lastDropdownHeight - 2) {
-                    return -1;
-                }
-                int suggestionIndex = (mouseY - this.lastDropdownY - 2) / SUGGESTION_ROW_HEIGHT;
-                return suggestionIndex >= 0 && suggestionIndex < this.visibleSuggestions.size() ? suggestionIndex : -1;
+                return this.suggestions.hoveredIndex(mouseX, mouseY, this.lastDropdownX, this.lastDropdownY, this.lastDropdownWidth, this.lastDropdownHeight, SUGGESTION_ROW_HEIGHT);
             }
 
             @Override
