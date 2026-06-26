@@ -2,11 +2,11 @@ package com.iamkaf.konfig.fabric;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
-import com.iamkaf.konfig.sync.v1.KonfigSync;
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
+import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
 //? if <=1.20.4 {
-import com.iamkaf.konfig.Constants;
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 //? if <=1.16.5 {
 import net.minecraft.resources.ResourceLocation;
 //?}

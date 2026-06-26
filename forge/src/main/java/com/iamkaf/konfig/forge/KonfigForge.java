@@ -2,10 +2,10 @@ package com.iamkaf.konfig.forge;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.Constants;
-import com.iamkaf.konfig.KonfigCommon;
-import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
-import com.iamkaf.konfig.sync.v1.KonfigSync;
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
+import com.iamkaf.konfig.impl.v1.bootstrap.KonfigCommon;
+import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 //? if >=1.17 {
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -20,21 +20,21 @@ import net.minecraftforge.network.ChannelBuilder;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 //?} elif >=1.18 {
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 //?} elif >=1.17 {
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import net.minecraftforge.fmllegacy.network.NetworkRegistry;
 import net.minecraftforge.fmllegacy.network.PacketDistributor;
 import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
 //?} else {
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.ResourceLocation;

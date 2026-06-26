@@ -1,6 +1,6 @@
 package com.iamkaf.konfig.api.v1;
 
-import com.iamkaf.konfig.impl.v1.KonfigConfigScreen;
+import com.iamkaf.konfig.impl.v1.client.screen.KonfigConfigScreen;
 import net.minecraft.client.gui.screens.Screen;
 
 /**

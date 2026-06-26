@@ -2,11 +2,11 @@ package com.iamkaf.konfig.neoforge;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.Constants;
-import com.iamkaf.konfig.KonfigCommon;
-import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
-import com.iamkaf.konfig.sync.v1.KonfigSync;
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
+import com.iamkaf.konfig.impl.v1.bootstrap.KonfigCommon;
+import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;

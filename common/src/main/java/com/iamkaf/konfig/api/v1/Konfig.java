@@ -1,7 +1,7 @@
 package com.iamkaf.konfig.api.v1;
 
-import com.iamkaf.konfig.impl.v1.ConfigBuilderImpl;
-import com.iamkaf.konfig.impl.v1.KonfigManager;
+import com.iamkaf.konfig.impl.v1.config.builder.ConfigBuilderImpl;
+import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 
 import java.util.Collection;
 

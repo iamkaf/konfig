@@ -2,7 +2,7 @@ package com.iamkaf.konfig.fabric;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.Constants;
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.api.v1.ConfigHandle;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.fabric.api.v1.KonfigClientScreens;

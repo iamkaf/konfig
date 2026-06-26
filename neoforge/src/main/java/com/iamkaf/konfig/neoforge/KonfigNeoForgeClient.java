@@ -2,7 +2,7 @@ package com.iamkaf.konfig.neoforge;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.Constants;
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.neoforge.api.v1.KonfigNeoForgeClientScreens;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModContainer;

@@ -34,6 +34,7 @@ if (useLegacy1165ForgeSources && useTeaKit && hasTeaKit) {
 if (useLegacy1165ForgeSources) {
     tasks.named('stageMergedJavaSources').configure {
         from rootProject.file('forge/src/legacy-1.16.5/java')
+        exclude 'com/iamkaf/konfig/impl/v1/client/screen/KonfigConfigScreen.java'
     }
 }
 
