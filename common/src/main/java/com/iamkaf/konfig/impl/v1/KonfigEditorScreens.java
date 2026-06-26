@@ -5,7 +5,6 @@ import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.supportsRegistryIc
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.button;
 
-import com.mojang.blaze3d.platform.InputConstants;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} elif >=1.20 {
@@ -13,6 +12,7 @@ import net.minecraft.client.gui.GuiGraphics;
 //?} else {
 import com.mojang.blaze3d.vertex.PoseStack;
 //?}
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.EditBox;
@@ -618,15 +618,8 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
         private final Button moveUpButton;
         private final Button moveDownButton;
         private final Button removeButton;
-        private final KonfigSuggestionState suggestions = new KonfigSuggestionState();
+        private final KonfigRegistrySuggestionController suggestions;
         private boolean suppressResponder;
-        private int lastInputX;
-        private int lastInputY;
-        private int lastInputWidth;
-        private int lastDropdownX;
-        private int lastDropdownY;
-        private int lastDropdownWidth;
-        private int lastDropdownHeight;
 
         private ListEntryRow(int index, String value) {
             this.index = index;
@@ -638,6 +631,74 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
             this.moveUpButton = button(0, 0, 20, 20, text("^"), ignored -> this.move(-1));
             this.moveDownButton = button(0, 0, 20, 20, text("v"), ignored -> this.move(1));
             this.removeButton = button(0, 0, 20, 20, text("-"), ignored -> this.remove());
+            this.suggestions = new KonfigRegistrySuggestionController(new KonfigRegistrySuggestionController.Owner() {
+                @Override
+                public boolean hasRegistryBinding() {
+                    return ListEntryRow.this.hasRegistryBinding();
+                }
+
+                @Override
+                public ResourceKey<? extends Registry<?>> registryKey() {
+                    return ListEntryRow.this.registryKey();
+                }
+
+                @Override
+                public List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+                    return StringListEditorScreen.this.host.registrySuggestions(registryKey);
+                }
+
+                @Override
+                public String inputValue() {
+                    return ListEntryRow.this.input.getValue();
+                }
+
+                @Override
+                public void setInlineSuggestion(String suggestion) {
+                    ListEntryRow.this.input.setSuggestion(suggestion);
+                }
+
+                @Override
+                public boolean applySuggestion(String suggestion) {
+                    ListEntryRow.this.suppressResponder = true;
+                    ListEntryRow.this.input.setValue(suggestion);
+                    ListEntryRow.this.suppressResponder = false;
+                    return ListEntryRow.this.persistListValue(suggestion);
+                }
+
+                @Override
+                public void focusInput() {
+//? if >=1.19.4 {
+                    ListEntryRow.this.input.setFocused(true);
+//?} else {
+                    ListEntryRow.this.input.setFocus(true);
+//?}
+                }
+
+                @Override
+                public Font font() {
+                    return StringListEditorScreen.this.font;
+                }
+
+                @Override
+                public int controlHeight() {
+                    return KonfigScreenMetrics.CONTROL_HEIGHT;
+                }
+
+                @Override
+                public int suggestionRowHeight() {
+                    return KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT;
+                }
+
+                @Override
+                public int screenHeight() {
+                    return StringListEditorScreen.this.height;
+                }
+
+                @Override
+                public int listTop() {
+                    return KonfigScreenMetrics.LIST_TOP;
+                }
+            });
         }
 
         private void tick() {
@@ -668,10 +729,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
         }
 
         private boolean isPointInsideInput(double mouseX, double mouseY) {
-            return mouseX >= this.lastInputX
-                    && mouseX <= this.lastInputX + this.lastInputWidth
-                    && mouseY >= this.lastInputY
-                    && mouseY <= this.lastInputY + KonfigScreenMetrics.CONTROL_HEIGHT;
+            return this.suggestions.isPointInsideInput(mouseX, mouseY);
         }
 
         private boolean persistListValue(String value) {
@@ -759,7 +817,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
                 StringListEditorScreen.this.setActiveRegistryRow(this);
                 this.refreshSuggestions();
             }
-            if (StringListEditorScreen.this.activeRegistryRow == this && !this.suggestions.isEmpty()) {
+            if (StringListEditorScreen.this.activeRegistryRow == this && this.suggestions.hasVisibleSuggestions()) {
                 StringListEditorScreen.this.renderedRegistryRow = this;
             }
         }
@@ -772,9 +830,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
             this.input.y = y;
 //?}
             this.input.setWidth(width);
-            this.lastInputX = x;
-            this.lastInputY = y;
-            this.lastInputWidth = width;
+            this.suggestions.updateInputBounds(x, y, width);
         }
 
         private void positionButton(Button button, int x, int y) {
@@ -788,195 +844,56 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
         }
 
         private void refreshSuggestions() {
-            if (!this.hasRegistryBinding()) {
-                this.closeSuggestions();
-                return;
-            }
-
-            this.suggestions.refresh(
-                    StringListEditorScreen.this.host.registrySuggestions(this.registryKey()),
-                    this.input.getValue()
-            );
-            this.updateInlineSuggestion();
+            this.suggestions.refresh();
         }
 
         private void activateSuggestions() {
-            if (!this.hasRegistryBinding()) {
-                this.closeSuggestions();
-                return;
-            }
-
-            this.suggestions.activate(
-                    StringListEditorScreen.this.host.registrySuggestions(this.registryKey()),
-                    this.input.getValue()
-            );
-            this.updateInlineSuggestion();
-        }
-
-        private void dismissSuggestions() {
-            this.suggestions.dismiss(this.input.getValue());
-            this.updateInlineSuggestion();
+            this.suggestions.activate();
         }
 
         private void closeSuggestions() {
             this.suggestions.close();
-            this.updateInlineSuggestion();
             if (StringListEditorScreen.this.activeRegistryRow == this) {
                 StringListEditorScreen.this.activeRegistryRow = null;
             }
         }
 
         private void renderSuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
-            if (StringListEditorScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
+            if (StringListEditorScreen.this.activeRegistryRow != this) {
                 return;
             }
-
-            this.layoutSuggestionBox();
-            context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
-
-            for (int suggestionIndex = 0; suggestionIndex < this.suggestions.size(); suggestionIndex++) {
-                int rowY = this.lastDropdownY + 2 + (suggestionIndex * KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT);
-                int rowBottom = rowY + KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT;
-                boolean suggestionHovered = suggestionIndex == this.hoveredSuggestionIndex(mouseX, mouseY);
-                if (suggestionHovered || suggestionIndex == this.suggestions.selectedIndex()) {
-                    context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
-                }
-                int textX = this.lastDropdownX + 4;
-                if (supportsRegistryIcon(this.registryKey())) {
-                    context.renderRegistryIcon(this.registryKey(), this.suggestions.suggestion(suggestionIndex), this.lastDropdownX + 2, rowY - 1);
-                    textX += 18;
-                }
-                context.drawText(StringListEditorScreen.this.font, text(this.suggestions.suggestion(suggestionIndex)), textX, rowY + 3, 0xFFFFFFFF);
-            }
+            this.suggestions.render(context, mouseX, mouseY);
         }
 
 //? if >=1.21.9 {
         private boolean handleSuggestionClick(MouseButtonEvent event) {
-            if (StringListEditorScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
+            if (StringListEditorScreen.this.activeRegistryRow != this) {
                 return false;
             }
-
-            int hovered = this.hoveredSuggestionIndex((int) event.x(), (int) event.y());
-            if (hovered < 0) {
-                return false;
-            }
-
-            this.acceptSuggestion(this.suggestions.suggestion(hovered));
-            return true;
+            return this.suggestions.handleClick(event.x(), event.y());
         }
 
         private boolean handleSuggestionKey(KeyEvent event) {
             if (StringListEditorScreen.this.activeRegistryRow != this) {
                 return false;
             }
-            int keyCode = event.key();
-            if (keyCode == InputConstants.KEY_ESCAPE) {
-                this.dismissSuggestions();
-                return true;
-            }
-            if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
-                this.dismissSuggestions();
-                return true;
-            }
-            if (this.suggestions.isEmpty()) {
-                return false;
-            }
-            if (keyCode == InputConstants.KEY_DOWN) {
-                this.suggestions.selectNext();
-                this.updateInlineSuggestion();
-                return true;
-            }
-            if (keyCode == InputConstants.KEY_UP) {
-                this.suggestions.selectPrevious();
-                this.updateInlineSuggestion();
-                return true;
-            }
-            if (keyCode == InputConstants.KEY_TAB) {
-                this.acceptSuggestion(this.suggestions.selectedSuggestion());
-                return true;
-            }
-            return false;
+            return this.suggestions.handleKey(event.key());
         }
 //?} else {
         private boolean handleSuggestionClick(double mouseX, double mouseY) {
-            if (StringListEditorScreen.this.activeRegistryRow != this || this.suggestions.isEmpty()) {
+            if (StringListEditorScreen.this.activeRegistryRow != this) {
                 return false;
             }
-
-            int hovered = this.hoveredSuggestionIndex((int) mouseX, (int) mouseY);
-            if (hovered < 0) {
-                return false;
-            }
-
-            this.acceptSuggestion(this.suggestions.suggestion(hovered));
-            return true;
+            return this.suggestions.handleClick(mouseX, mouseY);
         }
 
         private boolean handleSuggestionKey(int keyCode) {
             if (StringListEditorScreen.this.activeRegistryRow != this) {
                 return false;
             }
-            if (keyCode == InputConstants.KEY_ESCAPE) {
-                this.dismissSuggestions();
-                return true;
-            }
-            if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
-                this.dismissSuggestions();
-                return true;
-            }
-            if (this.suggestions.isEmpty()) {
-                return false;
-            }
-            if (keyCode == InputConstants.KEY_DOWN) {
-                this.suggestions.selectNext();
-                this.updateInlineSuggestion();
-                return true;
-            }
-            if (keyCode == InputConstants.KEY_UP) {
-                this.suggestions.selectPrevious();
-                this.updateInlineSuggestion();
-                return true;
-            }
-            if (keyCode == InputConstants.KEY_TAB) {
-                this.acceptSuggestion(this.suggestions.selectedSuggestion());
-                return true;
-            }
-            return false;
+            return this.suggestions.handleKey(keyCode);
         }
 //?}
-
-        private void acceptSuggestion(String suggestion) {
-            this.suppressResponder = true;
-            this.input.setValue(suggestion);
-            this.suppressResponder = false;
-            if (this.persistListValue(suggestion)) {
-                this.dismissSuggestions();
-//? if >=1.19.4 {
-                this.input.setFocused(true);
-//?} else {
-                this.input.setFocus(true);
-//?}
-            }
-        }
-
-        private void updateInlineSuggestion() {
-            this.input.setSuggestion(this.suggestions.inlineSuggestion(this.input.getValue()));
-        }
-
-        private void layoutSuggestionBox() {
-            this.lastDropdownX = this.lastInputX;
-            this.lastDropdownWidth = this.lastInputWidth;
-            this.lastDropdownHeight = (this.suggestions.size() * KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT) + 4;
-            int belowY = this.lastInputY + KonfigScreenMetrics.CONTROL_HEIGHT + 2;
-            int aboveY = this.lastInputY - this.lastDropdownHeight - 2;
-            boolean openAbove = belowY + this.lastDropdownHeight > StringListEditorScreen.this.height - 32 && aboveY >= KonfigScreenMetrics.LIST_TOP;
-            this.lastDropdownY = openAbove ? aboveY : belowY;
-        }
-
-        private int hoveredSuggestionIndex(int mouseX, int mouseY) {
-            return this.suggestions.hoveredIndex(mouseX, mouseY, this.lastDropdownX, this.lastDropdownY, this.lastDropdownWidth, this.lastDropdownHeight, KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT);
-        }
 
         @Override
         public List<? extends GuiEventListener> children() {

@@ -6,87 +6,61 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastManager;
-import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.FormattedCharSequence;
 //?} elif >=1.21.11 {
 /*import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastManager;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.Identifier;
-import net.minecraft.util.FormattedCharSequence;*/
+import net.minecraft.network.chat.Component;*/
 //?} elif >=1.21.8 {
 /*import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastManager;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;*/
+import net.minecraft.network.chat.Component;*/
 //?} elif >=1.21.6 {
 /*import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastManager;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;*/
+import net.minecraft.network.chat.Component;*/
 //?} elif >=1.21.2 {
 /*import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastManager;
-import net.minecraft.client.renderer.RenderType;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;*/
+import net.minecraft.network.chat.Component;*/
 //?} elif >=1.20 {
 /*import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FormattedCharSequence;*/
+import net.minecraft.network.chat.Component;*/
 //?} elif >=1.19 {
-/*import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
+/*import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;*/
+import net.minecraft.network.chat.Component;*/
 //?} elif >=1.17 {
-/*import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
+/*import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.toasts.Toast;
 import net.minecraft.client.gui.components.toasts.ToastComponent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.TextComponent;
-import net.minecraft.network.chat.TranslatableComponent;
-import net.minecraft.util.FormattedCharSequence;*/
+import net.minecraft.network.chat.TranslatableComponent;*/
 //?} elif >=1.16 {
 /*// Pre-1.17 toast APIs use different names on Fabric and Forge; reflection imports live below.*/
 //?} else {
 /*// Pre-1.17 toast APIs use different names on Fabric and Forge; reflection imports live below.*/
 //?}
 
-//? if >=1.16 {
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Stream;
-//?}
 //? if <=1.16.5 {
 /*import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -140,56 +114,27 @@ public final class KonfigToastSupport {
     }
 
     private static final class KonfigFailureToast implements Toast {
-//? if >=26.1 {
-        private static final Identifier BACKGROUND_SPRITE = Identifier.withDefaultNamespace("toast/system");
-//?} elif >=1.21.11 {
-/*        private static final Identifier BACKGROUND_SPRITE = Identifier.withDefaultNamespace("toast/system");*/
-//?} else {
-/*        private static final ResourceLocation BACKGROUND_SPRITE = ResourceLocation.withDefaultNamespace("toast/system");*/
-//?}
-        private List<FormattedCharSequence> titleLines;
-        private List<FormattedCharSequence> messageLines;
-        private long lastChanged;
-        private boolean changed;
-        private int width;
+        private final KonfigToastContent content = new KonfigToastContent();
+        private final KonfigToastTimer timer = new KonfigToastTimer(DISPLAY_TIME_MS);
         private Toast.Visibility wantedVisibility = Toast.Visibility.HIDE;
 
         private KonfigFailureToast(Component title, Component message) {
             this.reset(title, message);
         }
 
-        private static List<FormattedCharSequence> split(Component text) {
-            if (text == null) {
-                return Collections.emptyList();
-            }
-            return Minecraft.getInstance().font.split(text, 200);
-        }
-
         private void reset(Component title, Component message) {
-            this.titleLines = split(title);
-            this.messageLines = split(message);
-            this.recalculateWidth();
-            this.changed = true;
-        }
-
-        private void recalculateWidth() {
-            int contentWidth = Stream.concat(this.titleLines.stream(), this.messageLines.stream())
-                    .mapToInt(Minecraft.getInstance().font::width)
-                    .max()
-                    .orElse(130);
-            this.width = Math.max(WIDTH, contentWidth + 30);
+            this.content.reset(title, message);
+            this.timer.markChanged();
         }
 
         @Override
         public int width() {
-            return this.width;
+            return this.content.width(WIDTH);
         }
 
         @Override
         public int height() {
-            int titleHeight = Math.max(1, this.titleLines.size()) * 12;
-            int messageHeight = this.messageLines.isEmpty() ? 0 : this.messageLines.size() * 12;
-            return 16 + titleHeight + messageHeight;
+            return this.content.dynamicHeight();
         }
 
         @Override
@@ -199,68 +144,23 @@ public final class KonfigToastSupport {
 
         @Override
         public void update(ToastManager manager, long fullyVisibleForMs) {
-            if (this.changed) {
-                this.lastChanged = fullyVisibleForMs;
-                this.changed = false;
-            }
-
-            double displayTime = DISPLAY_TIME_MS * manager.getNotificationDisplayTimeMultiplier();
-            this.wantedVisibility = fullyVisibleForMs - this.lastChanged < displayTime ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
+            this.wantedVisibility = this.timer.isVisible(fullyVisibleForMs, manager.getNotificationDisplayTimeMultiplier()) ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
         }
 
 //? if >=26.1 {
         @Override
         public void extractRenderState(GuiGraphicsExtractor graphics, Font font, long fullyVisibleForMs) {
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BACKGROUND_SPRITE, 0, 0, this.width(), this.height());
-            this.renderText(graphics, font);
-        }
-
-        private void renderText(GuiGraphicsExtractor graphics, Font font) {
-            int y = this.messageLines.isEmpty() ? 12 : 7;
-            for (FormattedCharSequence line : this.titleLines) {
-                graphics.text(font, line, 18, y, TITLE_COLOR, false);
-                y += 12;
-            }
-            for (FormattedCharSequence line : this.messageLines) {
-                graphics.text(font, line, 18, y, MESSAGE_COLOR, false);
-                y += 12;
-            }
+            KonfigToastRenderer.render(this.content, this.width(), this.height(), graphics, font);
         }
 //?} elif >=1.21.6 {
 /*        @Override
         public void render(GuiGraphics graphics, Font font, long fullyVisibleForMs) {
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, BACKGROUND_SPRITE, 0, 0, this.width(), this.height());
-            this.renderText(graphics, font);
-        }
-
-        private void renderText(GuiGraphics graphics, Font font) {
-            int y = this.messageLines.isEmpty() ? 12 : 7;
-            for (FormattedCharSequence line : this.titleLines) {
-                graphics.drawString(font, line, 18, y, TITLE_COLOR, false);
-                y += 12;
-            }
-            for (FormattedCharSequence line : this.messageLines) {
-                graphics.drawString(font, line, 18, y, MESSAGE_COLOR, false);
-                y += 12;
-            }
+            KonfigToastRenderer.render(this.content, this.width(), this.height(), graphics, font);
         }*/
 //?} else {
 /*        @Override
         public void render(GuiGraphics graphics, Font font, long fullyVisibleForMs) {
-            graphics.blitSprite(RenderType::guiTextured, BACKGROUND_SPRITE, 0, 0, this.width(), this.height());
-            this.renderText(graphics, font);
-        }
-
-        private void renderText(GuiGraphics graphics, Font font) {
-            int y = this.messageLines.isEmpty() ? 12 : 7;
-            for (FormattedCharSequence line : this.titleLines) {
-                graphics.drawString(font, line, 18, y, TITLE_COLOR, false);
-                y += 12;
-            }
-            for (FormattedCharSequence line : this.messageLines) {
-                graphics.drawString(font, line, 18, y, MESSAGE_COLOR, false);
-                y += 12;
-            }
+            KonfigToastRenderer.render(this.content, this.width(), this.height(), graphics, font);
         }*/
 //?}
 
@@ -286,127 +186,34 @@ public final class KonfigToastSupport {
     }
 
     private static final class KonfigFailureToast implements Toast {
-//? if >=1.21 {
-        private static final ResourceLocation BACKGROUND_SPRITE = ResourceLocation.withDefaultNamespace("toast/system");
-//?} elif >=1.20.2 {
-        private static final ResourceLocation BACKGROUND_SPRITE = new ResourceLocation("toast/system");
-//?}
-        private Component title;
-        private Component message;
-        private long lastChanged;
-        private boolean changed;
+        private final KonfigToastContent content = new KonfigToastContent();
+        private final KonfigToastTimer timer = new KonfigToastTimer(DISPLAY_TIME_MS);
 
         private KonfigFailureToast(Component title, Component message) {
             this.reset(title, message);
         }
 
         private void reset(Component title, Component message) {
-            this.title = title;
-            this.message = message;
-            this.changed = true;
+            this.content.reset(title, message);
+            this.timer.markChanged();
         }
 
-//? if >=1.16 {
         @Override
         public int width() {
             return WIDTH;
         }
-//?}
 
 //? if >=1.20 {
         @Override
         public Toast.Visibility render(GuiGraphics graphics, ToastComponent toastComponent, long visibleForMs) {
-            if (this.changed) {
-                this.lastChanged = visibleForMs;
-                this.changed = false;
-            }
-//? if >=1.20.2 {
-            graphics.blitSprite(BACKGROUND_SPRITE, 0, 0, WIDTH, this.height());
-//?} else {
-            graphics.blit(Toast.TEXTURE, 0, 0, 0, 64, WIDTH, this.height());
-//?}
-            this.renderText(graphics, toastComponent);
-            return visibleForMs - this.lastChanged < DISPLAY_TIME_MS * toastComponent.getNotificationDisplayTimeMultiplier() ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
-        }
-
-        private void renderText(GuiGraphics graphics, ToastComponent toastComponent) {
-            List<FormattedCharSequence> detailLines = this.message == null
-                    ? Collections.emptyList()
-                    : toastComponent.getMinecraft().font.split(this.message, 124);
-            if (detailLines.isEmpty()) {
-                graphics.drawString(toastComponent.getMinecraft().font, this.title, 18, 12, TITLE_COLOR, false);
-            } else {
-                graphics.drawString(toastComponent.getMinecraft().font, this.title, 18, 7, TITLE_COLOR, false);
-                graphics.drawString(toastComponent.getMinecraft().font, detailLines.get(0), 18, 18, MESSAGE_COLOR, false);
-            }
-        }
-//?} elif >=1.17 {
-        @Override
-        public Toast.Visibility render(PoseStack graphics, ToastComponent toastComponent, long visibleForMs) {
-            if (this.changed) {
-                this.lastChanged = visibleForMs;
-                this.changed = false;
-            }
-            RenderSystem.setShaderTexture(0, Toast.TEXTURE);
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-            toastComponent.blit(graphics, 0, 0, 0, 64, WIDTH, this.height());
-            this.renderText(graphics, toastComponent);
-            return visibleForMs - this.lastChanged < DISPLAY_TIME_MS ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
-        }
-
-        private void renderText(PoseStack graphics, ToastComponent toastComponent) {
-            List<FormattedCharSequence> detailLines = this.message == null
-                    ? Collections.emptyList()
-                    : toastComponent.getMinecraft().font.split(this.message, 124);
-            if (detailLines.isEmpty()) {
-                toastComponent.getMinecraft().font.draw(graphics, this.title, 18.0F, 12.0F, TITLE_COLOR);
-            } else {
-                toastComponent.getMinecraft().font.draw(graphics, this.title, 18.0F, 7.0F, TITLE_COLOR);
-                toastComponent.getMinecraft().font.draw(graphics, detailLines.get(0), 18.0F, 18.0F, MESSAGE_COLOR);
-            }
-        }
-//?} elif >=1.16 {
-        @Override
-        public Toast.Visibility render(PoseStack graphics, ToastComponent toastComponent, long visibleForMs) {
-            if (this.changed) {
-                this.lastChanged = visibleForMs;
-                this.changed = false;
-            }
-            toastComponent.getMinecraft().getTextureManager().bind(Toast.TEXTURE);
-            RenderSystem.color3f(1.0F, 1.0F, 1.0F);
-            toastComponent.blit(graphics, 0, 0, 0, 64, WIDTH, this.height());
-            this.renderText(graphics, toastComponent);
-            return visibleForMs - this.lastChanged < DISPLAY_TIME_MS ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
-        }
-
-        private void renderText(PoseStack graphics, ToastComponent toastComponent) {
-            List<FormattedCharSequence> detailLines = this.message == null
-                    ? Collections.emptyList()
-                    : toastComponent.getMinecraft().font.split(this.message, 124);
-            if (detailLines.isEmpty()) {
-                toastComponent.getMinecraft().font.draw(graphics, this.title, 18.0F, 12.0F, TITLE_COLOR);
-            } else {
-                toastComponent.getMinecraft().font.draw(graphics, this.title, 18.0F, 7.0F, TITLE_COLOR);
-                toastComponent.getMinecraft().font.draw(graphics, detailLines.get(0), 18.0F, 18.0F, MESSAGE_COLOR);
-            }
+            KonfigToastRenderer.render(this.content, WIDTH, this.height(), graphics, toastComponent);
+            return this.timer.isVisible(visibleForMs, toastComponent.getNotificationDisplayTimeMultiplier()) ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
         }
 //?} else {
         @Override
-        public Toast.Visibility render(ToastComponent toastComponent, long visibleForMs) {
-            if (this.changed) {
-                this.lastChanged = visibleForMs;
-                this.changed = false;
-            }
-            toastComponent.getMinecraft().getTextureManager().bind(Toast.TEXTURE);
-            GlStateManager.color3f(1.0F, 1.0F, 1.0F);
-            toastComponent.blit(0, 0, 0, 64, WIDTH, 32);
-            if (this.message == null) {
-                toastComponent.getMinecraft().font.draw(this.title.getString(), 18.0F, 12.0F, TITLE_COLOR);
-            } else {
-                toastComponent.getMinecraft().font.draw(this.title.getString(), 18.0F, 7.0F, TITLE_COLOR);
-                toastComponent.getMinecraft().font.draw(this.message.getString(), 18.0F, 18.0F, MESSAGE_COLOR);
-            }
-            return visibleForMs - this.lastChanged < DISPLAY_TIME_MS ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
+        public Toast.Visibility render(PoseStack graphics, ToastComponent toastComponent, long visibleForMs) {
+            KonfigToastRenderer.render(this.content, WIDTH, this.height(), graphics, toastComponent);
+            return this.timer.isVisible(visibleForMs, 1.0D) ? Toast.Visibility.SHOW : Toast.Visibility.HIDE;
         }
 //?}
 
@@ -461,10 +268,9 @@ public final class KonfigToastSupport {
 
     private static final class LegacyToastInvocationHandler implements InvocationHandler {
         private final Class<?> toastInterface;
+        private final KonfigToastTimer timer = new KonfigToastTimer(DISPLAY_TIME_MS);
         private String title;
         private String message;
-        private long lastChanged;
-        private boolean changed;
 
         private LegacyToastInvocationHandler(String title, String message, Class<?> toastInterface) {
             this.toastInterface = toastInterface;
@@ -474,7 +280,7 @@ public final class KonfigToastSupport {
         private void reset(String title, String message) {
             this.title = title;
             this.message = message;
-            this.changed = true;
+            this.timer.markChanged();
         }
 
         @Override
@@ -502,15 +308,11 @@ public final class KonfigToastSupport {
             Object graphics = args.length == 3 ? args[0] : null;
             Object toastComponent = args.length == 3 ? args[1] : args[0];
             long visibleForMs = ((Long) args[args.length - 1]).longValue();
-            if (this.changed) {
-                this.lastChanged = visibleForMs;
-                this.changed = false;
-            }
 
             this.bindToastTexture(toastComponent);
             this.blitBackground(graphics, toastComponent);
             this.renderText(graphics, toastComponent);
-            boolean visible = visibleForMs - this.lastChanged < DISPLAY_TIME_MS;
+            boolean visible = this.timer.isVisible(visibleForMs, 1.0D);
             return visibility(method.getReturnType(), visible);
         }
 

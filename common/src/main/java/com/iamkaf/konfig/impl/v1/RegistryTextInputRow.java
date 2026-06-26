@@ -2,30 +2,26 @@
 package com.iamkaf.konfig.impl.v1;
 
 import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.supportsRegistryIcon;
-import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.text;
 
-import com.mojang.blaze3d.platform.InputConstants;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 //? if >=1.21.9 {
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 //?}
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceKey;
+
+import java.util.List;
 
 final class RegistryTextInputRow extends KonfigConfigRow {
     private static final int ICON_SIZE = 16;
     private static final int ICON_GAP = 6;
 
     private final EditBox input;
-    private final KonfigSuggestionState suggestions = new KonfigSuggestionState();
+    private final KonfigRegistrySuggestionController suggestions;
     private boolean suppressResponder;
-    private int lastInputX;
-    private int lastInputY;
-    private int lastInputWidth;
-    private int lastDropdownX;
-    private int lastDropdownY;
-    private int lastDropdownWidth;
-    private int lastDropdownHeight;
 
     RegistryTextInputRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
@@ -39,6 +35,76 @@ final class RegistryTextInputRow extends KonfigConfigRow {
             this.host.setDraft(entry.value, value);
             this.host.persistEntry(entry);
             this.refreshSuggestions();
+        });
+        this.suggestions = new KonfigRegistrySuggestionController(new KonfigRegistrySuggestionController.Owner() {
+            @Override
+            public boolean hasRegistryBinding() {
+                return RegistryTextInputRow.this.entry.value.boundRegistryKey() != null;
+            }
+
+            @Override
+            public ResourceKey<? extends Registry<?>> registryKey() {
+                return RegistryTextInputRow.this.entry.value.boundRegistryKey();
+            }
+
+            @Override
+            public List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+                return RegistryTextInputRow.this.host.registrySuggestions(registryKey);
+            }
+
+            @Override
+            public String inputValue() {
+                return RegistryTextInputRow.this.input.getValue();
+            }
+
+            @Override
+            public void setInlineSuggestion(String suggestion) {
+                RegistryTextInputRow.this.input.setSuggestion(suggestion);
+            }
+
+            @Override
+            public boolean applySuggestion(String suggestion) {
+                RegistryTextInputRow.this.suppressResponder = true;
+                RegistryTextInputRow.this.input.setValue(suggestion);
+                RegistryTextInputRow.this.suppressResponder = false;
+                RegistryTextInputRow.this.host.setDraft(RegistryTextInputRow.this.entry.value, suggestion);
+                RegistryTextInputRow.this.host.persistEntry(RegistryTextInputRow.this.entry);
+                return true;
+            }
+
+            @Override
+            public void focusInput() {
+//? if >=1.19.4 {
+                RegistryTextInputRow.this.input.setFocused(true);
+//?} else {
+                RegistryTextInputRow.this.input.setFocus(true);
+//?}
+            }
+
+            @Override
+            public Font font() {
+                return RegistryTextInputRow.this.host.font();
+            }
+
+            @Override
+            public int controlHeight() {
+                return RegistryTextInputRow.this.host.controlHeight();
+            }
+
+            @Override
+            public int suggestionRowHeight() {
+                return RegistryTextInputRow.this.host.suggestionRowHeight();
+            }
+
+            @Override
+            public int screenHeight() {
+                return RegistryTextInputRow.this.host.screenHeight();
+            }
+
+            @Override
+            public int listTop() {
+                return RegistryTextInputRow.this.host.listTop();
+            }
         });
     }
 
@@ -85,9 +151,7 @@ final class RegistryTextInputRow extends KonfigConfigRow {
         int controlX = x + width - controlWidth;
         int controlY = y + (height - this.host.controlHeight()) / 2;
         layoutControl(this.control(), controlX, controlY, controlWidth);
-        this.lastInputX = controlX;
-        this.lastInputY = controlY;
-        this.lastInputWidth = controlWidth;
+        this.suggestions.updateInputBounds(controlX, controlY, controlWidth);
 
         context.drawText(this.host.font(), this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
         context.drawText(this.host.font(), this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
@@ -105,7 +169,7 @@ final class RegistryTextInputRow extends KonfigConfigRow {
             this.host.setActiveRegistryRow(this);
             this.refreshSuggestions();
         }
-        if (this.host.isActiveRegistryRow(this) && !this.suggestions.isEmpty()) {
+        if (this.host.isActiveRegistryRow(this) && this.suggestions.hasVisibleSuggestions()) {
             this.host.markRenderedRegistryRow(this);
         }
     }
@@ -115,202 +179,57 @@ final class RegistryTextInputRow extends KonfigConfigRow {
     }
 
     boolean isPointInsideInput(double mouseX, double mouseY) {
-        return mouseX >= this.lastInputX
-                && mouseX <= this.lastInputX + this.lastInputWidth
-                && mouseY >= this.lastInputY
-                && mouseY <= this.lastInputY + this.host.controlHeight();
+        return this.suggestions.isPointInsideInput(mouseX, mouseY);
     }
 
     void refreshSuggestions() {
-        if (this.entry.value.boundRegistryKey() == null) {
-            this.closeSuggestions();
-            return;
-        }
-
-        this.suggestions.refresh(
-                this.host.registrySuggestions(this.entry.value.boundRegistryKey()),
-                this.input.getValue()
-        );
-        this.updateInlineSuggestion();
+        this.suggestions.refresh();
     }
 
     void activateSuggestions() {
-        if (this.entry.value.boundRegistryKey() == null) {
-            this.closeSuggestions();
-            return;
-        }
-
-        this.suggestions.activate(
-                this.host.registrySuggestions(this.entry.value.boundRegistryKey()),
-                this.input.getValue()
-        );
-        this.updateInlineSuggestion();
-    }
-
-    private void dismissSuggestions() {
-        this.suggestions.dismiss(this.input.getValue());
-        this.updateInlineSuggestion();
+        this.suggestions.activate();
     }
 
     void closeSuggestions() {
         this.suggestions.close();
-        this.updateInlineSuggestion();
         this.host.clearActiveRegistryRow(this);
     }
 
     void renderSuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
-        if (!this.host.isActiveRegistryRow(this) || this.suggestions.isEmpty()) {
+        if (!this.host.isActiveRegistryRow(this)) {
             return;
         }
-
-        this.layoutSuggestionBox();
-        context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-        context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
-
-        for (int index = 0; index < this.suggestions.size(); index++) {
-            int rowY = this.lastDropdownY + 2 + (index * this.host.suggestionRowHeight());
-            int rowBottom = rowY + this.host.suggestionRowHeight();
-            boolean hovered = index == this.hoveredSuggestionIndex(mouseX, mouseY);
-            if (hovered || index == this.suggestions.selectedIndex()) {
-                context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, hovered ? 0x80406080 : 0x50303030);
-            }
-            int textX = this.lastDropdownX + 4;
-            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
-                context.renderRegistryIcon(this.entry.value.boundRegistryKey(), this.suggestions.suggestion(index), this.lastDropdownX + 2, rowY - 1);
-                textX += 18;
-            }
-            context.drawText(this.host.font(), text(this.suggestions.suggestion(index)), textX, rowY + 3, 0xFFFFFFFF);
-        }
+        this.suggestions.render(context, mouseX, mouseY);
     }
 
 //? if >=1.21.9 {
     boolean handleSuggestionClick(MouseButtonEvent event) {
-        if (!this.host.isActiveRegistryRow(this) || this.suggestions.isEmpty()) {
+        if (!this.host.isActiveRegistryRow(this)) {
             return false;
         }
-
-        int hovered = this.hoveredSuggestionIndex((int) event.x(), (int) event.y());
-        if (hovered < 0) {
-            return false;
-        }
-
-        this.acceptSuggestion(this.suggestions.suggestion(hovered));
-        return true;
+        return this.suggestions.handleClick(event.x(), event.y());
     }
 
     boolean handleSuggestionKey(KeyEvent event) {
         if (!this.host.isActiveRegistryRow(this)) {
             return false;
         }
-
-        int keyCode = event.key();
-        if (keyCode == InputConstants.KEY_ESCAPE) {
-            this.dismissSuggestions();
-            return true;
-        }
-        if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
-            this.dismissSuggestions();
-            return true;
-        }
-        if (this.suggestions.isEmpty()) {
-            return false;
-        }
-        if (keyCode == InputConstants.KEY_DOWN) {
-            this.suggestions.selectNext();
-            this.updateInlineSuggestion();
-            return true;
-        }
-        if (keyCode == InputConstants.KEY_UP) {
-            this.suggestions.selectPrevious();
-            this.updateInlineSuggestion();
-            return true;
-        }
-        if (keyCode == InputConstants.KEY_TAB) {
-            this.acceptSuggestion(this.suggestions.selectedSuggestion());
-            return true;
-        }
-        return false;
+        return this.suggestions.handleKey(event.key());
     }
 //?} else {
     boolean handleSuggestionClick(double mouseX, double mouseY) {
-        if (!this.host.isActiveRegistryRow(this) || this.suggestions.isEmpty()) {
+        if (!this.host.isActiveRegistryRow(this)) {
             return false;
         }
-
-        int hovered = this.hoveredSuggestionIndex((int) mouseX, (int) mouseY);
-        if (hovered < 0) {
-            return false;
-        }
-
-        this.acceptSuggestion(this.suggestions.suggestion(hovered));
-        return true;
+        return this.suggestions.handleClick(mouseX, mouseY);
     }
 
     boolean handleSuggestionKey(int keyCode) {
         if (!this.host.isActiveRegistryRow(this)) {
             return false;
         }
-
-        if (keyCode == InputConstants.KEY_ESCAPE) {
-            this.dismissSuggestions();
-            return true;
-        }
-        if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
-            this.dismissSuggestions();
-            return true;
-        }
-        if (this.suggestions.isEmpty()) {
-            return false;
-        }
-        if (keyCode == InputConstants.KEY_DOWN) {
-            this.suggestions.selectNext();
-            this.updateInlineSuggestion();
-            return true;
-        }
-        if (keyCode == InputConstants.KEY_UP) {
-            this.suggestions.selectPrevious();
-            this.updateInlineSuggestion();
-            return true;
-        }
-        if (keyCode == InputConstants.KEY_TAB) {
-            this.acceptSuggestion(this.suggestions.selectedSuggestion());
-            return true;
-        }
-        return false;
+        return this.suggestions.handleKey(keyCode);
     }
 //?}
-
-    private void acceptSuggestion(String suggestion) {
-        this.suppressResponder = true;
-        this.input.setValue(suggestion);
-        this.suppressResponder = false;
-        this.host.setDraft(this.entry.value, suggestion);
-        this.host.persistEntry(this.entry);
-        this.dismissSuggestions();
-//? if >=1.19.4 {
-        this.input.setFocused(true);
-//?} else {
-        this.input.setFocus(true);
-//?}
-    }
-
-    private void updateInlineSuggestion() {
-        this.input.setSuggestion(this.suggestions.inlineSuggestion(this.input.getValue()));
-    }
-
-    private void layoutSuggestionBox() {
-        this.lastDropdownX = this.lastInputX;
-        this.lastDropdownWidth = this.lastInputWidth;
-        this.lastDropdownHeight = (this.suggestions.size() * this.host.suggestionRowHeight()) + 4;
-
-        int belowY = this.lastInputY + this.host.controlHeight() + 2;
-        int aboveY = this.lastInputY - this.lastDropdownHeight - 2;
-        boolean openAbove = belowY + this.lastDropdownHeight > this.host.screenHeight() - 32 && aboveY >= this.host.listTop();
-        this.lastDropdownY = openAbove ? aboveY : belowY;
-    }
-
-    private int hoveredSuggestionIndex(int mouseX, int mouseY) {
-        return this.suggestions.hoveredIndex(mouseX, mouseY, this.lastDropdownX, this.lastDropdownY, this.lastDropdownWidth, this.lastDropdownHeight, this.host.suggestionRowHeight());
-    }
 }
 //?}
