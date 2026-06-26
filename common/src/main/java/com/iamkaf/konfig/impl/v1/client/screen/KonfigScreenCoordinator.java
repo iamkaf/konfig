@@ -16,7 +16,7 @@ import com.iamkaf.konfig.impl.v1.client.row.DropdownRowHandle;
 import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRowHandle;
 import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
 import com.iamkaf.konfig.impl.v1.config.model.ColorValueHelper;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
@@ -122,15 +122,15 @@ final class KonfigScreenCoordinator {
         }
     }
 
-    Object draft(ConfigValueImpl<?> value) {
+    Object draft(ConfigScreenValue<?> value) {
         return this.session.draft(value);
     }
 
-    void setDraft(ConfigValueImpl<?> value, Object draft) {
+    void setDraft(ConfigScreenValue<?> value, Object draft) {
         this.session.setDraft(value, draft);
     }
 
-    Object storedSnapshot(ConfigValueImpl<?> value) {
+    Object storedSnapshot(ConfigScreenValue<?> value) {
         return this.session.storedSnapshot(value);
     }
 
@@ -138,47 +138,47 @@ final class KonfigScreenCoordinator {
         return new KonfigStringListEditorState(this.session, entry, persistAction);
     }
 
-    boolean readBoolean(ConfigValueImpl<?> value) {
+    boolean readBoolean(ConfigScreenValue<?> value) {
         return this.session.readBoolean(value);
     }
 
-    Enum<?> currentEnum(ConfigValueImpl<?> value) {
+    Enum<?> currentEnum(ConfigScreenValue<?> value) {
         return this.session.currentEnum(value);
     }
 
-    Enum<?> cycleEnum(ConfigValueImpl<?> value) {
+    Enum<?> cycleEnum(ConfigScreenValue<?> value) {
         return this.session.nextEnum(value);
     }
 
-    int currentColor(ConfigValueImpl<?> value) {
+    int currentColor(ConfigScreenValue<?> value) {
         return this.session.currentColor(value);
     }
 
-    List<String> currentStringList(ConfigValueImpl<?> value) {
+    List<String> currentStringList(ConfigScreenValue<?> value) {
         return this.session.currentStringList(value);
     }
 
-    String currentDropdownValue(ConfigValueImpl<?> value) {
+    String currentDropdownValue(ConfigScreenValue<?> value) {
         return this.session.currentDropdownValue(value);
     }
 
-    int currentInt(ConfigValueImpl<?> value) {
+    int currentInt(ConfigScreenValue<?> value) {
         return this.session.currentInt(value);
     }
 
-    long currentLong(ConfigValueImpl<?> value) {
+    long currentLong(ConfigScreenValue<?> value) {
         return this.session.currentLong(value);
     }
 
-    double currentDouble(ConfigValueImpl<?> value) {
+    double currentDouble(ConfigScreenValue<?> value) {
         return this.session.currentDouble(value);
     }
 
-    String currentStringValue(ConfigValueImpl<?> value) {
+    String currentStringValue(ConfigScreenValue<?> value) {
         return this.session.currentStringValue(value);
     }
 
-    Component booleanText(ConfigValueImpl<?> value) {
+    Component booleanText(ConfigScreenValue<?> value) {
         return CommonComponents.optionStatus(readBoolean(value));
     }
 
@@ -186,7 +186,7 @@ final class KonfigScreenCoordinator {
         return translatedEnumValue(entry, value);
     }
 
-    Component colorText(ConfigValueImpl<?> value) {
+    Component colorText(ConfigScreenValue<?> value) {
         int color = currentColor(value);
         if (value.kind() == EntryKind.COLOR_ARGB) {
             return text(ColorValueHelper.formatArgb(color));
@@ -194,7 +194,7 @@ final class KonfigScreenCoordinator {
         return text(ColorValueHelper.formatRgb(color));
     }
 
-    Component stringListText(ConfigValueImpl<?> value) {
+    Component stringListText(ConfigScreenValue<?> value) {
         List<String> values = currentStringList(value);
         if (values.isEmpty()) {
             return translate("konfig.screen.list.empty");

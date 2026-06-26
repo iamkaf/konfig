@@ -34,6 +34,12 @@ public final class KonfigManager {
         return Collections.unmodifiableCollection(this.handles.values());
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public Collection<ConfigScreenHandle> screenHandles() {
+        return (Collection) all();
+    }
+
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public Collection<ConfigHandle> allPublicHandles() {
         return (Collection) all();
     }

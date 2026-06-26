@@ -4,14 +4,14 @@ import org.jetbrains.annotations.ApiStatus;
 
 //? if >=1.17 {
 import com.iamkaf.konfig.api.v1.ConfigValue;
-import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.config.model.ColorValueHelper;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenHandle;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
+import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import net.minecraft.network.chat.Component;
 //? if <=1.18.2 {
 import net.minecraft.network.chat.TextComponent;
@@ -33,11 +33,11 @@ public final class KonfigScreenSupport {
     public static List<EntryRef> collectEntries(String modIdFilter) {
         List<EntryRef> result = new ArrayList<EntryRef>();
 
-        for (ConfigHandleImpl handle : KonfigManager.get().all()) {
+        for (ConfigScreenHandle handle : KonfigManager.get().screenHandles()) {
             if (modIdFilter != null && !modIdFilter.equals(handle.modId())) {
                 continue;
             }
-            for (ConfigValueImpl<?> impl : handle.screenValues()) {
+            for (ConfigScreenValue<?> impl : handle.screenEntries()) {
                 if (!isVisibleOnThisSide(impl)) {
                     continue;
                 }
@@ -51,17 +51,17 @@ public final class KonfigScreenSupport {
         return result;
     }
 
-    private static boolean isVisibleOnThisSide(ConfigValueImpl<?> value) {
-        if (value.clientOnly() && !RuntimeEnvironment.isClient()) {
+    private static boolean isVisibleOnThisSide(ConfigScreenValue<?> value) {
+        if (value.clientOnly() && !KonfigRuntime.isClient()) {
             return false;
         }
-        if (value.serverOnly() && RuntimeEnvironment.isClient()) {
+        if (value.serverOnly() && KonfigRuntime.isClient()) {
             return false;
         }
         return true;
     }
 
-    public static Object parseDraft(ConfigValueImpl<?> value, Object draft) {
+    public static Object parseDraft(ConfigScreenValue<?> value, Object draft) {
         try {
             switch (value.kind()) {
                 case BOOLEAN:
@@ -108,7 +108,7 @@ public final class KonfigScreenSupport {
         throw new IllegalArgumentException("Invalid boolean for '" + path + "' (expected true/false).");
     }
 
-    private static Object parseEnum(ConfigValueImpl<?> value, Object draft) {
+    private static Object parseEnum(ConfigScreenValue<?> value, Object draft) {
         Object defaultValue = value.defaultValue();
         if (!(defaultValue instanceof Enum<?>)) {
             return defaultValue;
@@ -138,7 +138,7 @@ public final class KonfigScreenSupport {
         throw new IllegalArgumentException("Invalid list for '" + path + "'.");
     }
 
-    public static int parseColor(ConfigValueImpl<?> value, Object draft) {
+    public static int parseColor(ConfigScreenValue<?> value, Object draft) {
         if (draft instanceof Number) {
             int encoded = ((Number) draft).intValue();
             if (value.kind() == EntryKind.COLOR_RGB) {
@@ -155,7 +155,7 @@ public final class KonfigScreenSupport {
     }
 
     @SuppressWarnings({"rawtypes", "unchecked"})
-    public static void setRawValue(ConfigValueImpl<?> value, Object parsed) {
+    public static void setRawValue(ConfigScreenValue<?> value, Object parsed) {
         ((ConfigValue) value).set(parsed);
     }
 
@@ -167,14 +167,14 @@ public final class KonfigScreenSupport {
         return left == right || (left != null && left.equals(right));
     }
 
-    public static Object snapshotValue(ConfigValueImpl<?> value, Object currentValue) {
+    public static Object snapshotValue(ConfigScreenValue<?> value, Object currentValue) {
         if (value.kind() == EntryKind.STRING_LIST) {
             return StringListValueHelper.immutableCopy(stringListValue(currentValue, value.path()), value.path());
         }
         return currentValue;
     }
 
-    public static Object copyDraftValue(ConfigValueImpl<?> value, Object currentValue) {
+    public static Object copyDraftValue(ConfigScreenValue<?> value, Object currentValue) {
         if (value.kind() == EntryKind.STRING_LIST) {
             return StringListValueHelper.mutableCopy(stringListValue(currentValue, value.path()));
         }
@@ -267,7 +267,7 @@ public final class KonfigScreenSupport {
 //?}
     }
 
-    public static Component translatedLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
+    public static Component translatedLabel(ConfigScreenHandle handle, ConfigScreenValue<?> value) {
         String key = "konfig.config." + handle.modId() + "." + handle.name() + "." + value.path();
         Component translated = translationOrNull(key);
         if (translated != null) {
@@ -340,7 +340,7 @@ public final class KonfigScreenSupport {
         return translated == null ? option.tooltip() : translated.getString();
     }
 
-    public static Component decorationLabel(ConfigValueImpl<?> value) {
+    public static Component decorationLabel(ConfigScreenValue<?> value) {
         if (!value.inlineLabelTranslationKey()) {
             return text(value.inlineLabel());
         }
@@ -362,7 +362,7 @@ public final class KonfigScreenSupport {
         return path.substring(lastSeparator + 1);
     }
 
-    public static Component contextLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
+    public static Component contextLabel(ConfigScreenHandle handle, ConfigScreenValue<?> value) {
         List<String> parts = new ArrayList<String>();
         parts.add(prettySegment(handle.name()));
         String[] pathParts = value.path().split("\\.");
@@ -372,7 +372,7 @@ public final class KonfigScreenSupport {
         return text(String.join(" / ", parts));
     }
 
-    public static String fallbackLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
+    public static String fallbackLabel(ConfigScreenHandle handle, ConfigScreenValue<?> value) {
 //? if >=26.1 {
         String[] pathParts = value.path().split("\\.");
         return prettySegment(pathParts[pathParts.length - 1]);

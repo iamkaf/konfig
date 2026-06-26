@@ -19,7 +19,7 @@ import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 @ApiStatus.Internal
-public final class ConfigValueImpl<T> implements ConfigValue<T> {
+public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     private final String path;
     private final T defaultValue;
     private final EntryKind kind;

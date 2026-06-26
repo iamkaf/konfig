@@ -22,7 +22,7 @@ import com.iamkaf.konfig.impl.v1.config.io.PathJson;
 import com.iamkaf.konfig.impl.v1.config.io.PathToml;
 import com.iamkaf.konfig.impl.v1.config.migration.ConfigMigrationContextImpl;
 import com.iamkaf.konfig.impl.v1.config.migration.ConfigMigrationSupport;
-import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -36,7 +36,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
 
 @ApiStatus.Internal
-public final class ConfigHandleImpl implements ConfigHandle {
+public final class ConfigHandleImpl implements ConfigScreenHandle {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private final String modId;
@@ -225,6 +225,12 @@ public final class ConfigHandleImpl implements ConfigHandle {
         return Collections.unmodifiableCollection(this.entries.values());
     }
 
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    @Override
+    public Collection<ConfigScreenValue<?>> screenEntries() {
+        return (Collection) screenValues();
+    }
+
     public List<InfoPanelItem> globalInfo() {
         return this.globalInfo;
     }
@@ -363,7 +369,7 @@ public final class ConfigHandleImpl implements ConfigHandle {
 
     private void notifyReload(ReloadCause cause) {
         this.listeners.forEach(listener -> listener.onReload(this, cause));
-        KonfigSync.onReload(this, cause);
+        KonfigRuntime.configReloaded(this, cause);
     }
 
     private static void appendComment(StringBuilder builder, String comment) {

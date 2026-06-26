@@ -65,6 +65,20 @@ public final class KonfigRenderContext {
         KonfigUiAdapter.drawText(this.graphics, font, text, x, y, color);
     }
 
+    public void drawText(Font font, Component text, int x, int y, int color, boolean shadow) {
+//? if >=26.1 {
+        this.graphics.text(font, text, x, y, color, shadow);
+//?} elif >=1.20 {
+        this.graphics.drawString(font, text, x, y, color, shadow);
+//?} else {
+        if (shadow) {
+            font.drawShadow(this.graphics, text, (float) x, (float) y, color);
+        } else {
+            font.draw(this.graphics, text, (float) x, (float) y, color);
+        }
+//?}
+    }
+
     public void drawText(Font font, FormattedCharSequence text, int x, int y, int color) {
 //? if >=26.1 {
         this.graphics.text(font, text, x, y, color);
@@ -72,6 +86,20 @@ public final class KonfigRenderContext {
         this.graphics.drawString(font, text, x, y, color);
 //?} else {
         font.draw(this.graphics, text, (float) x, (float) y, color);
+//?}
+    }
+
+    public void drawText(Font font, FormattedCharSequence text, int x, int y, int color, boolean shadow) {
+//? if >=26.1 {
+        this.graphics.text(font, text, x, y, color, shadow);
+//?} elif >=1.20 {
+        this.graphics.drawString(font, text, x, y, color, shadow);
+//?} else {
+        if (shadow) {
+            font.drawShadow(this.graphics, text, (float) x, (float) y, color);
+        } else {
+            font.draw(this.graphics, text, (float) x, (float) y, color);
+        }
 //?}
     }
 

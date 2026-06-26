@@ -6,7 +6,7 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.client.editor.KonfigStringListEditorState;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 
@@ -38,15 +38,15 @@ public final class KonfigEditorHost {
         return this.coordinator.resetEntry(entry);
     }
 
-    public Object storedSnapshot(ConfigValueImpl<?> value) {
+    public Object storedSnapshot(ConfigScreenValue<?> value) {
         return this.coordinator.storedSnapshot(value);
     }
 
-    public void setDraft(ConfigValueImpl<?> value, Object draft) {
+    public void setDraft(ConfigScreenValue<?> value, Object draft) {
         this.coordinator.setDraft(value, draft);
     }
 
-    public int currentColor(ConfigValueImpl<?> value) {
+    public int currentColor(ConfigScreenValue<?> value) {
         return this.coordinator.currentColor(value);
     }
 

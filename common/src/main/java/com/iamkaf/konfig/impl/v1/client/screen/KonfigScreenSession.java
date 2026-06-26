@@ -11,8 +11,8 @@ import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.snapsh
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.stringListValue;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.stringValue;
 
-import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenHandle;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
 
 import java.util.LinkedHashMap;
@@ -24,8 +24,8 @@ import java.util.Set;
 @ApiStatus.Internal
 public final class KonfigScreenSession {
     private final List<EntryRef> entries;
-    private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
-    private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
+    private final Map<ConfigScreenValue<?>, Object> drafts = new LinkedHashMap<ConfigScreenValue<?>, Object>();
+    private final Map<ConfigScreenValue<?>, Object> sessionStartValues = new LinkedHashMap<ConfigScreenValue<?>, Object>();
 
     KonfigScreenSession(List<EntryRef> entries) {
         this.entries = entries;
@@ -38,19 +38,19 @@ public final class KonfigScreenSession {
         }
     }
 
-    Object draft(ConfigValueImpl<?> value) {
+    Object draft(ConfigScreenValue<?> value) {
         return this.drafts.get(value);
     }
 
-    public void setDraft(ConfigValueImpl<?> value, Object draft) {
+    public void setDraft(ConfigScreenValue<?> value, Object draft) {
         this.drafts.put(value, copyDraftValue(value, draft));
     }
 
-    public Object storedSnapshot(ConfigValueImpl<?> value) {
+    public Object storedSnapshot(ConfigScreenValue<?> value) {
         return snapshotValue(value, value.get());
     }
 
-    boolean readBoolean(ConfigValueImpl<?> value) {
+    boolean readBoolean(ConfigScreenValue<?> value) {
         Object current = this.draft(value);
         if (current instanceof Boolean) {
             return ((Boolean) current).booleanValue();
@@ -58,7 +58,7 @@ public final class KonfigScreenSession {
         return ((Boolean) value.get()).booleanValue();
     }
 
-    Enum<?> currentEnum(ConfigValueImpl<?> value) {
+    Enum<?> currentEnum(ConfigScreenValue<?> value) {
         Object defaultValue = value.defaultValue();
         if (!(defaultValue instanceof Enum<?>)) {
             throw new IllegalStateException("Expected enum value for '" + value.path() + "'.");
@@ -72,7 +72,7 @@ public final class KonfigScreenSession {
         return (Enum<?>) defaultValue;
     }
 
-    Enum<?> nextEnum(ConfigValueImpl<?> value) {
+    Enum<?> nextEnum(ConfigScreenValue<?> value) {
         Enum<?> current = this.currentEnum(value);
         Object[] constants = current.getDeclaringClass().getEnumConstants();
 
@@ -87,7 +87,7 @@ public final class KonfigScreenSession {
         return (Enum<?>) constants[(index + 1) % constants.length];
     }
 
-    int currentColor(ConfigValueImpl<?> value) {
+    int currentColor(ConfigScreenValue<?> value) {
         Object current = this.draft(value);
         if (current instanceof Number) {
             return ((Number) current).intValue();
@@ -95,7 +95,7 @@ public final class KonfigScreenSession {
         return ((Number) value.get()).intValue();
     }
 
-    public List<String> currentStringList(ConfigValueImpl<?> value) {
+    public List<String> currentStringList(ConfigScreenValue<?> value) {
         Object current = this.draft(value);
         if (current instanceof List<?>) {
             return StringListValueHelper.mutableCopy(stringListValue(current, value.path()));
@@ -103,7 +103,7 @@ public final class KonfigScreenSession {
         return StringListValueHelper.mutableCopy(stringListValue(value.get(), value.path()));
     }
 
-    String currentDropdownValue(ConfigValueImpl<?> value) {
+    String currentDropdownValue(ConfigScreenValue<?> value) {
         List<String> options = value.dropdownOptions();
         Object current = this.draft(value);
         if (current instanceof String) {
@@ -132,7 +132,7 @@ public final class KonfigScreenSession {
         return options.isEmpty() ? "" : options.get(0);
     }
 
-    String currentStringValue(ConfigValueImpl<?> value) {
+    String currentStringValue(ConfigScreenValue<?> value) {
         Object current = this.draft(value);
         if (current instanceof String) {
             return (String) current;
@@ -140,7 +140,7 @@ public final class KonfigScreenSession {
         return stringValue(value.get());
     }
 
-    int currentInt(ConfigValueImpl<?> value) {
+    int currentInt(ConfigScreenValue<?> value) {
         Object current = this.draft(value);
         if (current instanceof Number) {
             return ((Number) current).intValue();
@@ -148,7 +148,7 @@ public final class KonfigScreenSession {
         return ((Number) value.get()).intValue();
     }
 
-    long currentLong(ConfigValueImpl<?> value) {
+    long currentLong(ConfigScreenValue<?> value) {
         Object current = this.draft(value);
         if (current instanceof Number) {
             return ((Number) current).longValue();
@@ -156,7 +156,7 @@ public final class KonfigScreenSession {
         return ((Number) value.get()).longValue();
     }
 
-    double currentDouble(ConfigValueImpl<?> value) {
+    double currentDouble(ConfigScreenValue<?> value) {
         Object current = this.draft(value);
         if (current instanceof Number) {
             return ((Number) current).doubleValue();
@@ -181,8 +181,8 @@ public final class KonfigScreenSession {
     }
 
     void resetAll() {
-        Map<ConfigValueImpl<?>, Object> previousValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
-        Set<ConfigHandleImpl> handles = new LinkedHashSet<ConfigHandleImpl>();
+        Map<ConfigScreenValue<?>, Object> previousValues = new LinkedHashMap<ConfigScreenValue<?>, Object>();
+        Set<ConfigScreenHandle> handles = new LinkedHashSet<ConfigScreenHandle>();
         try {
             for (EntryRef entry : this.entries) {
                 if (!entry.editable) {
@@ -195,11 +195,11 @@ public final class KonfigScreenSession {
                 handles.add(entry.handle);
             }
 
-            for (ConfigHandleImpl handle : handles) {
+            for (ConfigScreenHandle handle : handles) {
                 handle.save();
             }
         } catch (RuntimeException exception) {
-            for (Map.Entry<ConfigValueImpl<?>, Object> previousValue : previousValues.entrySet()) {
+            for (Map.Entry<ConfigScreenValue<?>, Object> previousValue : previousValues.entrySet()) {
                 setRawValue(previousValue.getKey(), previousValue.getValue());
                 this.setDraft(previousValue.getKey(), previousValue.getValue());
             }

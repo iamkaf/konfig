@@ -7,7 +7,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.client.row.DropdownRowHandle;
 import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRowHandle;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.Registry;
@@ -82,51 +82,51 @@ public final class KonfigRowHost {
         return this.screen.screenHeight();
     }
 
-    public Object draft(ConfigValueImpl<?> value) {
+    public Object draft(ConfigScreenValue<?> value) {
         return this.coordinator.draft(value);
     }
 
-    public boolean readBoolean(ConfigValueImpl<?> value) {
+    public boolean readBoolean(ConfigScreenValue<?> value) {
         return this.coordinator.readBoolean(value);
     }
 
-    public Enum<?> currentEnum(ConfigValueImpl<?> value) {
+    public Enum<?> currentEnum(ConfigScreenValue<?> value) {
         return this.coordinator.currentEnum(value);
     }
 
-    public Enum<?> cycleEnum(ConfigValueImpl<?> value) {
+    public Enum<?> cycleEnum(ConfigScreenValue<?> value) {
         return this.coordinator.cycleEnum(value);
     }
 
-    public int currentColor(ConfigValueImpl<?> value) {
+    public int currentColor(ConfigScreenValue<?> value) {
         return this.coordinator.currentColor(value);
     }
 
-    public List<String> currentStringList(ConfigValueImpl<?> value) {
+    public List<String> currentStringList(ConfigScreenValue<?> value) {
         return this.coordinator.currentStringList(value);
     }
 
-    public String currentDropdownValue(ConfigValueImpl<?> value) {
+    public String currentDropdownValue(ConfigScreenValue<?> value) {
         return this.coordinator.currentDropdownValue(value);
     }
 
-    public String currentStringValue(ConfigValueImpl<?> value) {
+    public String currentStringValue(ConfigScreenValue<?> value) {
         return this.coordinator.currentStringValue(value);
     }
 
-    public int currentInt(ConfigValueImpl<?> value) {
+    public int currentInt(ConfigScreenValue<?> value) {
         return this.coordinator.currentInt(value);
     }
 
-    public long currentLong(ConfigValueImpl<?> value) {
+    public long currentLong(ConfigScreenValue<?> value) {
         return this.coordinator.currentLong(value);
     }
 
-    public double currentDouble(ConfigValueImpl<?> value) {
+    public double currentDouble(ConfigScreenValue<?> value) {
         return this.coordinator.currentDouble(value);
     }
 
-    public Component booleanText(ConfigValueImpl<?> value) {
+    public Component booleanText(ConfigScreenValue<?> value) {
         return this.coordinator.booleanText(value);
     }
 
@@ -134,11 +134,11 @@ public final class KonfigRowHost {
         return this.coordinator.enumText(entry, value);
     }
 
-    public Component colorText(ConfigValueImpl<?> value) {
+    public Component colorText(ConfigScreenValue<?> value) {
         return this.coordinator.colorText(value);
     }
 
-    public Component stringListText(ConfigValueImpl<?> value) {
+    public Component stringListText(ConfigScreenValue<?> value) {
         return this.coordinator.stringListText(value);
     }
 
@@ -158,7 +158,7 @@ public final class KonfigRowHost {
         this.coordinator.updateHoveredEntry(entry, hovered);
     }
 
-    public void setDraft(ConfigValueImpl<?> value, Object draft) {
+    public void setDraft(ConfigScreenValue<?> value, Object draft) {
         this.coordinator.setDraft(value, draft);
     }
 

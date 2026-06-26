@@ -2,12 +2,9 @@ package com.iamkaf.konfig.fabric;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.impl.v1.bootstrap.KonfigCommon;
-import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
-import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
 //? if <=1.20.4 {
-import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import io.netty.buffer.Unpooled;
 //?}
 import net.fabricmc.api.ModInitializer;
@@ -28,19 +25,18 @@ import net.minecraft.resources.ResourceLocation;
 public final class KonfigFabric implements ModInitializer {
 //? if <=1.20.4 {
 //? if <=1.16.5 {
-    private static final ResourceLocation SYNC_CHANNEL = new ResourceLocation(Constants.MOD_ID, "sync_snapshot");
+    private static final ResourceLocation SYNC_CHANNEL = new ResourceLocation(KonfigRuntime.MOD_ID, "sync_snapshot");
 //?} else {
-    private static final net.minecraft.resources.ResourceLocation SYNC_CHANNEL = Constants.resource("sync_snapshot");
+    private static final net.minecraft.resources.ResourceLocation SYNC_CHANNEL = KonfigRuntime.resource("sync_snapshot");
 //?}
 //?}
 
     @Override
     public void onInitialize() {
-        RuntimeEnvironment.initialize(
+        KonfigRuntime.initialize(
                 FabricLoader.getInstance().getConfigDir(),
                 FabricLoader.getInstance().getEnvironmentType() == net.fabricmc.api.EnvType.CLIENT
         );
-        KonfigCommon.init();
 
 //? if >=26.1 {
         PayloadTypeRegistry.clientboundPlay().register(KonfigSyncPayload.TYPE, KonfigSyncPayload.STREAM_CODEC);
@@ -49,28 +45,28 @@ public final class KonfigFabric implements ModInitializer {
 //?}
 
 //? if >=1.20.5 {
-        KonfigSync.setSender((player, snapshot) ->
-                ServerPlayNetworking.send(player, new KonfigSyncPayload(snapshot.configId(), snapshot.jsonPayload()))
+        KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
+                ServerPlayNetworking.send(player, new KonfigSyncPayload(configId, jsonPayload))
         );
 //?} else {
-        KonfigSync.setSender((player, snapshot) -> {
+        KonfigRuntime.setSyncSender((player, configId, jsonPayload) -> {
             net.minecraft.server.level.ServerPlayer serverPlayer = (net.minecraft.server.level.ServerPlayer) player;
             FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
 //? if <=1.16.5 {
-            buffer.writeUtf(snapshot.configId(), 256);
-            buffer.writeUtf(snapshot.jsonPayload());
+            buffer.writeUtf(configId, 256);
+            buffer.writeUtf(jsonPayload);
 //?} else {
-            KonfigSyncPayload.encode(new KonfigSyncPayload(snapshot.configId(), snapshot.jsonPayload()), buffer);
+            KonfigSyncPayload.encode(new KonfigSyncPayload(configId, jsonPayload), buffer);
 //?}
             ServerPlayNetworking.send(serverPlayer, SYNC_CHANNEL, buffer);
         });
 //?}
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
-                KonfigSync.onPlayerJoin(handler.player)
+                KonfigRuntime.playerJoined(handler.player)
         );
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
-                KonfigSync.onPlayerLeave(handler.player)
+                KonfigRuntime.playerLeft(handler.player)
         );
     }
 }
