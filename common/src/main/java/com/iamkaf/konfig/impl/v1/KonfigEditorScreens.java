@@ -3,7 +3,7 @@ package com.iamkaf.konfig.impl.v1;
 
 import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.supportsRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
-import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.*;
+import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.button;
 
 import com.mojang.blaze3d.platform.InputConstants;
 //? if >=26.1 {
@@ -60,27 +60,39 @@ abstract class KonfigEntryEditorScreen extends Screen {
     }
 
 //? if >=26.1 {
-    protected final void renderEditorChrome(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+    protected final KonfigRenderContext renderEditorChrome(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
+        KonfigRenderContext context = KonfigRenderContext.of(guiGraphics);
+        this.renderEditorBackground(context);
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
-        drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
-        drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+        this.renderEditorTitle(context);
+        return context;
     }
 //?} elif >=1.20 {
-    protected final void renderEditorChrome(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+    protected final KonfigRenderContext renderEditorChrome(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        KonfigRenderContext context = KonfigRenderContext.of(guiGraphics);
+        this.renderEditorBackground(context);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-        drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
-        drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+        this.renderEditorTitle(context);
+        return context;
     }
 //?} else {
-    protected final void renderEditorChrome(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
-        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+    protected final KonfigRenderContext renderEditorChrome(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+        KonfigRenderContext context = KonfigRenderContext.of(guiGraphics);
+        this.renderEditorBackground(context);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-        drawCenteredText(guiGraphics, this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
-        drawText(guiGraphics, this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+        this.renderEditorTitle(context);
+        return context;
     }
 //?}
+
+    private void renderEditorBackground(KonfigRenderContext context) {
+        context.fill(0, 0, this.width, this.height, 0xC0101010);
+    }
+
+    private void renderEditorTitle(KonfigRenderContext context) {
+        context.drawCenteredText(this.font, this.title, this.width / 2, EDITOR_TITLE_Y, 0xFFFFFFFF);
+        context.drawText(this.font, this.entry.contextLabel, 12, EDITOR_CONTEXT_Y, 0xFFA0A0A0);
+    }
 }
 
 enum ColorChannel {
@@ -148,26 +160,17 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
 //? if >=26.1 {
     @Override
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-        int previewX = this.width / 2 - PREVIEW_SIZE / 2;
-        drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, this.host.currentColor(this.entry.value), this.entry.value.kind());
-        this.renderValidationMessage(guiGraphics);
+        this.renderColorEditorOverlay(this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick));
     }
 //?} elif >=1.20 {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-        int previewX = this.width / 2 - PREVIEW_SIZE / 2;
-        drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, this.host.currentColor(this.entry.value), this.entry.value.kind());
-        this.renderValidationMessage(guiGraphics);
+        this.renderColorEditorOverlay(this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick));
     }
 //?} else {
     @Override
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-        int previewX = this.width / 2 - PREVIEW_SIZE / 2;
-        drawColorSwatch(guiGraphics, previewX, PREVIEW_Y, PREVIEW_SIZE, this.host.currentColor(this.entry.value), this.entry.value.kind());
-        this.renderValidationMessage(guiGraphics);
+        this.renderColorEditorOverlay(this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick));
     }
 //?}
 
@@ -215,25 +218,17 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
         }
     }
 
-//? if >=26.1 {
-    private void renderValidationMessage(GuiGraphicsExtractor guiGraphics) {
+    private void renderColorEditorOverlay(KonfigRenderContext context) {
+        int previewX = this.width / 2 - PREVIEW_SIZE / 2;
+        context.drawColorSwatch(previewX, PREVIEW_Y, PREVIEW_SIZE, this.host.currentColor(this.entry.value), this.entry.value.kind());
+        this.renderValidationMessage(context);
+    }
+
+    private void renderValidationMessage(KonfigRenderContext context) {
         if (!this.validationMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigScreenMetrics.CONTROL_HEIGHT + 3, KonfigScreenMetrics.VALIDATION_COLOR);
+            context.drawCenteredText(this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigScreenMetrics.CONTROL_HEIGHT + 3, KonfigScreenMetrics.VALIDATION_COLOR);
         }
     }
-//?} elif >=1.20 {
-    private void renderValidationMessage(GuiGraphics guiGraphics) {
-        if (!this.validationMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigScreenMetrics.CONTROL_HEIGHT + 3, KonfigScreenMetrics.VALIDATION_COLOR);
-        }
-    }
-//?} else {
-    private void renderValidationMessage(PoseStack guiGraphics) {
-        if (!this.validationMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigScreenMetrics.CONTROL_HEIGHT + 3, KonfigScreenMetrics.VALIDATION_COLOR);
-        }
-    }
-//?}
 
     private String currentHex() {
         int color = this.host.currentColor(this.entry.value);
@@ -402,22 +397,19 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
-        this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-        this.renderStringListEditorOverlay(KonfigRenderContext.of(guiGraphics), mouseX, mouseY);
+        this.renderStringListEditorOverlay(this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick), mouseX, mouseY);
     }
 //?} elif >=1.20 {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
-        this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-        this.renderStringListEditorOverlay(KonfigRenderContext.of(guiGraphics), mouseX, mouseY);
+        this.renderStringListEditorOverlay(this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick), mouseX, mouseY);
     }
 //?} else {
     @Override
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
         this.renderedRegistryRow = null;
-        this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-        this.renderStringListEditorOverlay(KonfigRenderContext.of(guiGraphics), mouseX, mouseY);
+        this.renderStringListEditorOverlay(this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick), mouseX, mouseY);
     }
 //?}
 
@@ -590,27 +582,31 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
 //? if >=26.1 {
         @Override
         public void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-            fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+            this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.getX(), this.getY(), this.getRight(), this.getBottom());
             super.extractWidgetRenderState(guiGraphics, mouseX, mouseY, partialTick);
         }
 //?} elif >=1.20.3 {
         @Override
         public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+            this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.getX(), this.getY(), this.getRight(), this.getBottom());
             super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
         }
 //?} elif >=1.20 {
         @Override
         public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-            fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+            this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.x0, this.y0, this.x1, this.y1);
             super.render(guiGraphics, mouseX, mouseY, partialTick);
         }
 //?} else {
         @Override
         protected void renderBackground(PoseStack guiGraphics) {
-            fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+            this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.x0, this.y0, this.x1, this.y1);
         }
 //?}
+
+        private void renderListBackground(KonfigRenderContext context, int left, int top, int right, int bottom) {
+            context.fill(left, top, right, bottom, 0x66000000);
+        }
     }
 
     private final class ListEntryRow extends ContainerObjectSelectionList.Entry<ListEntryRow> {

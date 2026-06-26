@@ -70,37 +70,34 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
         context.drawColorSwatch(previewX, previewY, previewSize, this.host.currentColor(this.entry.value), this.entry.value.kind());
     }
 
+    protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
+        this.renderStandardRow(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+    }
+
+    private void renderRowContent(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
+        KonfigRowLayout layout = this.rowLayout(x, y, width, height);
+        this.renderRowContent(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+    }
+
 //? if >=26.1 {
     @Override
     public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
-        this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        this.renderRowContent(KonfigRenderContext.of(guiGraphics), this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight(), mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
     }
 //?} elif >=1.21.9 {
     @Override
     public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
-        this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        this.renderRowContent(KonfigRenderContext.of(guiGraphics), this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight(), mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
     }
 //?} elif >=1.20 {
     @Override
     public void render(GuiGraphics guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        this.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
-    }
-
-    protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(x, y, width, height);
-        this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        this.renderRowContent(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height);
     }
 //?} else {
     @Override
     public void render(PoseStack guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        this.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
-    }
-
-    protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(x, y, width, height);
-        this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        this.renderRowContent(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height);
     }
 //?}
 

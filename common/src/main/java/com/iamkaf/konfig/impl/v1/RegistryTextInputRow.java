@@ -5,13 +5,6 @@ import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.supportsRegistryIc
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.text;
 
 import com.mojang.blaze3d.platform.InputConstants;
-//? if >=26.1 {
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-//?} elif >=1.20 {
-import net.minecraft.client.gui.GuiGraphics;
-//?} else {
-import com.mojang.blaze3d.vertex.PoseStack;
-//?}
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.EditBox;
 //? if >=1.21.9 {
@@ -70,37 +63,15 @@ final class RegistryTextInputRow extends KonfigConfigRow {
         this.activateSuggestions();
     }
 
+    @Override
+    protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
+        boolean renderIcon = true;
 //? if >=26.1 {
-    @Override
-    public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        int x = this.getContentX();
-        int y = this.getContentY();
-        int width = this.getContentWidth();
-        int height = this.getContentHeight();
-        int controlWidth = Math.min(this.host.controlMaxWidth(), Math.max(this.host.controlMinWidth(), width / 2));
-        int labelRight = x + width - controlWidth - 8;
-        this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, labelRight, y + height, false);
-    }
-//?} elif >=1.21.9 {
-    @Override
-    public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        int x = this.getContentX();
-        int y = this.getContentY();
-        int width = this.getContentWidth();
-        int height = this.getContentHeight();
-        this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), true);
-    }
-//?} elif >=1.20 {
-    @Override
-    protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, true);
-    }
-//?} else {
-    @Override
-    protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, true);
-    }
+        tooltipRight = layout.controlX - 8;
+        renderIcon = false;
 //?}
+        this.renderRegistryTextInputRow(context, layout.x, layout.y, layout.width, layout.height, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, renderIcon);
+    }
 
     private void renderRegistryTextInputRow(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, boolean renderIcon) {
         this.host.updateHoveredEntry(this.entry, hovered);

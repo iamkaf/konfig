@@ -5,13 +5,6 @@ import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.button;
 
 import com.mojang.blaze3d.platform.InputConstants;
-//? if >=26.1 {
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-//?} elif >=1.20 {
-import net.minecraft.client.gui.GuiGraphics;
-//?} else {
-import com.mojang.blaze3d.vertex.PoseStack;
-//?}
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 //? if >=1.21.9 {
@@ -63,53 +56,15 @@ final class DropdownRow extends KonfigConfigRow {
         return isBlank(optionTooltip) ? this.entry.tooltip : optionTooltip;
     }
 
-//? if >=26.1 {
     @Override
-    public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.extractContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
-        this.captureButtonBounds();
-        this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
+    protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
+        super.renderRowContent(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+        this.captureButtonBounds(layout);
+        this.renderButtonLabel(context);
         if (this.dropdown.isOpen()) {
             this.host.markRenderedDropdownRow(this);
         }
     }
-//?} elif >=1.21.9 {
-    @Override
-    public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.renderContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
-        this.captureButtonBounds();
-        this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
-        if (this.dropdown.isOpen()) {
-            this.host.markRenderedDropdownRow(this);
-        }
-    }
-//?} elif >=1.20 {
-    @Override
-    protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
-        this.captureButtonBounds();
-        this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
-        if (this.dropdown.isOpen()) {
-            this.host.markRenderedDropdownRow(this);
-        }
-    }
-//?} else {
-    @Override
-    protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
-//? if >=1.19.3 {
-        this.captureButtonBounds();
-//?} else {
-        this.lastButtonX = this.button.x;
-        this.lastButtonY = this.button.y;
-        this.lastButtonWidth = Math.min(this.host.controlMaxWidth(), Math.max(this.host.controlMinWidth(), width / 2));
-//?}
-        this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
-        if (this.dropdown.isOpen()) {
-            this.host.markRenderedDropdownRow(this);
-        }
-    }
-//?}
 
     private void toggleDropdown() {
         if (this.dropdown.isOpen()) {
@@ -313,6 +268,16 @@ final class DropdownRow extends KonfigConfigRow {
         this.lastButtonWidth = this.button.getWidth();
     }
 //?}
+
+    private void captureButtonBounds(KonfigRowLayout layout) {
+//? if >=1.19.3 {
+        this.captureButtonBounds();
+//?} else {
+        this.lastButtonX = this.button.x;
+        this.lastButtonY = this.button.y;
+        this.lastButtonWidth = layout.controlWidth;
+//?}
+    }
 
     private void renderButtonLabel(KonfigRenderContext context) {
         int textX = this.lastButtonX + 6;

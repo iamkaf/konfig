@@ -5,13 +5,6 @@ import static com.iamkaf.konfig.impl.v1.KonfigRegistryAdapter.supportsRegistryIc
 import static com.iamkaf.konfig.impl.v1.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.button;
 
-//? if >=26.1 {
-import net.minecraft.client.gui.GuiGraphicsExtractor;
-//?} elif >=1.20 {
-import net.minecraft.client.gui.GuiGraphics;
-//?} else {
-import com.mojang.blaze3d.vertex.PoseStack;
-//?}
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -87,39 +80,12 @@ final class ColorRow extends KonfigConfigRow {
         this.button.setMessage(this.host.colorText(this.entry.value));
     }
 
-//? if >=26.1 {
     @Override
-    public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
+    protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
         int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
         int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-        this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY, PREVIEW_SIZE);
+        this.renderColorRow(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, previewX, previewY, PREVIEW_SIZE);
     }
-//?} elif >=1.21.9 {
-    @Override
-    public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
-        int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
-        int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-        this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY, PREVIEW_SIZE);
-    }
-//?} elif >=1.20 {
-    @Override
-    protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(x, y, width, height);
-        int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
-        int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-        this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY, PREVIEW_SIZE);
-    }
-//?} else {
-    @Override
-    protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        KonfigRowLayout layout = this.rowLayout(x, y, width, height);
-        int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
-        int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-        this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY, PREVIEW_SIZE);
-    }
-//?}
 }
 
 final class StringListRow extends KonfigConfigRow {
@@ -143,31 +109,11 @@ final class StringListRow extends KonfigConfigRow {
         this.button.setMessage(this.host.stringListText(this.entry.value));
     }
 
-//? if >=26.1 {
     @Override
-    public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.extractContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
-        this.renderPreviewIcon(KonfigRenderContext.of(guiGraphics));
+    protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
+        super.renderRowContent(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+        this.renderPreviewIcon(context);
     }
-//?} elif >=1.21.9 {
-    @Override
-    public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.renderContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
-        this.renderPreviewIcon(KonfigRenderContext.of(guiGraphics));
-    }
-//?} elif >=1.20 {
-    @Override
-    protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
-        this.renderPreviewIcon(KonfigRenderContext.of(guiGraphics));
-    }
-//?} else {
-    @Override
-    protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-        super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
-        this.renderPreviewIcon(KonfigRenderContext.of(guiGraphics));
-    }
-//?}
 
     private void renderPreviewIcon(KonfigRenderContext context) {
         if (!this.entry.value.hasBoundRegistry() || !supportsRegistryIcon(this.entry.value.boundRegistryKey())) {

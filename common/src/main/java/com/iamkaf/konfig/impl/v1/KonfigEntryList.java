@@ -1,8 +1,6 @@
 //? if >=1.17 {
 package com.iamkaf.konfig.impl.v1;
 
-import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.fillRect;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 //? if >=26.1 {
@@ -57,26 +55,30 @@ final class KonfigEntryList extends ContainerObjectSelectionList<KonfigConfigRow
 //? if >=26.1 {
     @Override
     public void extractWidgetRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-        fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+        this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.getX(), this.getY(), this.getRight(), this.getBottom());
         super.extractWidgetRenderState(guiGraphics, mouseX, mouseY, partialTick);
     }
 //?} elif >=1.20.3 {
     @Override
     public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        fillRect(guiGraphics, this.getX(), this.getY(), this.getRight(), this.getBottom(), 0x66000000);
+        this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.getX(), this.getY(), this.getRight(), this.getBottom());
         super.renderWidget(guiGraphics, mouseX, mouseY, partialTick);
     }
 //?} elif >=1.20 {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+        this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.x0, this.y0, this.x1, this.y1);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
     }
 //?} else {
     @Override
     protected void renderBackground(PoseStack guiGraphics) {
-        fillRect(guiGraphics, this.x0, this.y0, this.x1, this.y1, 0x66000000);
+        this.renderListBackground(KonfigRenderContext.of(guiGraphics), this.x0, this.y0, this.x1, this.y1);
     }
 //?}
+
+    private void renderListBackground(KonfigRenderContext context, int left, int top, int right, int bottom) {
+        context.fill(left, top, right, bottom, 0x66000000);
+    }
 }
 //?}
