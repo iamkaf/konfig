@@ -6,7 +6,9 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
 //?} else {
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
 //?}
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -124,6 +126,29 @@ final class KonfigRenderContext {
             tooltipLayer.render(this);
         } finally {
             this.graphics.popPose();
+        }
+//?}
+    }
+
+    void renderScissored(int left, int top, int right, int bottom, RenderLayer layer) {
+//? if >=1.20 {
+        this.graphics.enableScissor(left, top, right, bottom);
+        try {
+            layer.render(this);
+        } finally {
+            this.graphics.disableScissor();
+        }
+//?} else {
+        double scale = Minecraft.getInstance().getWindow().getGuiScale();
+        int scissorX = (int) Math.round(left * scale);
+        int scissorY = (int) Math.round(Minecraft.getInstance().getWindow().getHeight() - (bottom * scale));
+        int scissorWidth = Math.max(0, (int) Math.round((right - left) * scale));
+        int scissorHeight = Math.max(0, (int) Math.round((bottom - top) * scale));
+        RenderSystem.enableScissor(scissorX, scissorY, scissorWidth, scissorHeight);
+        try {
+            layer.render(this);
+        } finally {
+            RenderSystem.disableScissor();
         }
 //?}
     }
