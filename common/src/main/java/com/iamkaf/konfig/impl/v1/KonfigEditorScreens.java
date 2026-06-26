@@ -218,19 +218,19 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
 //? if >=26.1 {
     private void renderValidationMessage(GuiGraphicsExtractor guiGraphics) {
         if (!this.validationMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigConfigScreen.CONTROL_HEIGHT + 3, KonfigConfigScreen.VALIDATION_COLOR);
+            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigScreenMetrics.CONTROL_HEIGHT + 3, KonfigScreenMetrics.VALIDATION_COLOR);
         }
     }
 //?} elif >=1.20 {
     private void renderValidationMessage(GuiGraphics guiGraphics) {
         if (!this.validationMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigConfigScreen.CONTROL_HEIGHT + 3, KonfigConfigScreen.VALIDATION_COLOR);
+            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigScreenMetrics.CONTROL_HEIGHT + 3, KonfigScreenMetrics.VALIDATION_COLOR);
         }
     }
 //?} else {
     private void renderValidationMessage(PoseStack guiGraphics) {
         if (!this.validationMessage.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigConfigScreen.CONTROL_HEIGHT + 3, KonfigConfigScreen.VALIDATION_COLOR);
+            drawCenteredText(guiGraphics, this.font, text(this.validationMessage), this.width / 2, HEX_Y + KonfigScreenMetrics.CONTROL_HEIGHT + 3, KonfigScreenMetrics.VALIDATION_COLOR);
         }
     }
 //?}
@@ -508,7 +508,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
         this.activeRegistryRow = null;
         this.renderedRegistryRow = null;
         int listTop = EDITOR_CONTENT_TOP;
-        int listHeight = Math.max(48, this.height - listTop - KonfigConfigScreen.LIST_BOTTOM_MARGIN);
+        int listHeight = Math.max(48, this.height - listTop - KonfigScreenMetrics.LIST_BOTTOM_MARGIN);
         this.list = this.addRenderableWidget(new ListEntryList(this.minecraft, this.width, listHeight, listTop));
         List<String> values = this.editorState.values();
         for (int i = 0; i < values.size(); i++) {
@@ -634,7 +634,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
 
         private ListEntryRow(int index, String value) {
             this.index = index;
-            this.input = new EditBox(StringListEditorScreen.this.font, 0, 0, 140, KonfigConfigScreen.CONTROL_HEIGHT, StringListEditorScreen.this.entry.label);
+            this.input = new EditBox(StringListEditorScreen.this.font, 0, 0, 140, KonfigScreenMetrics.CONTROL_HEIGHT, StringListEditorScreen.this.entry.label);
             this.input.setMaxLength(256);
             this.input.setValue(value);
             this.input.setResponder(this::onValueChanged);
@@ -675,7 +675,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
             return mouseX >= this.lastInputX
                     && mouseX <= this.lastInputX + this.lastInputWidth
                     && mouseY >= this.lastInputY
-                    && mouseY <= this.lastInputY + KonfigConfigScreen.CONTROL_HEIGHT;
+                    && mouseY <= this.lastInputY + KonfigScreenMetrics.CONTROL_HEIGHT;
         }
 
         private boolean persistListValue(String value) {
@@ -840,8 +840,8 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
             context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
             for (int suggestionIndex = 0; suggestionIndex < this.suggestions.size(); suggestionIndex++) {
-                int rowY = this.lastDropdownY + 2 + (suggestionIndex * KonfigConfigScreen.SUGGESTION_ROW_HEIGHT);
-                int rowBottom = rowY + KonfigConfigScreen.SUGGESTION_ROW_HEIGHT;
+                int rowY = this.lastDropdownY + 2 + (suggestionIndex * KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT);
+                int rowBottom = rowY + KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT;
                 boolean suggestionHovered = suggestionIndex == this.hoveredSuggestionIndex(mouseX, mouseY);
                 if (suggestionHovered || suggestionIndex == this.suggestions.selectedIndex()) {
                     context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
@@ -971,15 +971,15 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
         private void layoutSuggestionBox() {
             this.lastDropdownX = this.lastInputX;
             this.lastDropdownWidth = this.lastInputWidth;
-            this.lastDropdownHeight = (this.suggestions.size() * KonfigConfigScreen.SUGGESTION_ROW_HEIGHT) + 4;
-            int belowY = this.lastInputY + KonfigConfigScreen.CONTROL_HEIGHT + 2;
+            this.lastDropdownHeight = (this.suggestions.size() * KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT) + 4;
+            int belowY = this.lastInputY + KonfigScreenMetrics.CONTROL_HEIGHT + 2;
             int aboveY = this.lastInputY - this.lastDropdownHeight - 2;
-            boolean openAbove = belowY + this.lastDropdownHeight > StringListEditorScreen.this.height - 32 && aboveY >= KonfigConfigScreen.LIST_TOP;
+            boolean openAbove = belowY + this.lastDropdownHeight > StringListEditorScreen.this.height - 32 && aboveY >= KonfigScreenMetrics.LIST_TOP;
             this.lastDropdownY = openAbove ? aboveY : belowY;
         }
 
         private int hoveredSuggestionIndex(int mouseX, int mouseY) {
-            return this.suggestions.hoveredIndex(mouseX, mouseY, this.lastDropdownX, this.lastDropdownY, this.lastDropdownWidth, this.lastDropdownHeight, KonfigConfigScreen.SUGGESTION_ROW_HEIGHT);
+            return this.suggestions.hoveredIndex(mouseX, mouseY, this.lastDropdownX, this.lastDropdownY, this.lastDropdownWidth, this.lastDropdownHeight, KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT);
         }
 
         @Override

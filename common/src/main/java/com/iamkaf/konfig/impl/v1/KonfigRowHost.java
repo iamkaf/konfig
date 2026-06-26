@@ -27,47 +27,47 @@ final class KonfigRowHost {
     }
 
     int rowHeight() {
-        return KonfigConfigScreen.ROW_HEIGHT;
+        return KonfigScreenMetrics.ROW_HEIGHT;
     }
 
     int controlHeight() {
-        return KonfigConfigScreen.CONTROL_HEIGHT;
+        return KonfigScreenMetrics.CONTROL_HEIGHT;
     }
 
     int controlMinWidth() {
-        return KonfigConfigScreen.CONTROL_MIN_WIDTH;
+        return KonfigScreenMetrics.CONTROL_MIN_WIDTH;
     }
 
     int controlMaxWidth() {
-        return KonfigConfigScreen.CONTROL_MAX_WIDTH;
+        return KonfigScreenMetrics.CONTROL_MAX_WIDTH;
     }
 
     int validationColor() {
-        return KonfigConfigScreen.VALIDATION_COLOR;
+        return KonfigScreenMetrics.VALIDATION_COLOR;
     }
 
     int urlButtonWidth() {
-        return KonfigConfigScreen.URL_BUTTON_WIDTH;
+        return KonfigScreenMetrics.URL_BUTTON_WIDTH;
     }
 
     int suggestionLimit() {
-        return KonfigConfigScreen.SUGGESTION_LIMIT;
+        return KonfigScreenMetrics.SUGGESTION_LIMIT;
     }
 
     int suggestionRowHeight() {
-        return KonfigConfigScreen.SUGGESTION_ROW_HEIGHT;
+        return KonfigScreenMetrics.SUGGESTION_ROW_HEIGHT;
     }
 
     int dropdownChevronWidth() {
-        return KonfigConfigScreen.DROPDOWN_CHEVRON_WIDTH;
+        return KonfigScreenMetrics.DROPDOWN_CHEVRON_WIDTH;
     }
 
     long dropdownTypeSelectResetMs() {
-        return KonfigConfigScreen.DROPDOWN_TYPE_SELECT_RESET_MS;
+        return KonfigScreenMetrics.DROPDOWN_TYPE_SELECT_RESET_MS;
     }
 
     int listTop() {
-        return KonfigConfigScreen.LIST_TOP;
+        return KonfigScreenMetrics.LIST_TOP;
     }
 
     int screenHeight() {

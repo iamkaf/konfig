@@ -18,9 +18,9 @@ final class KonfigEntryList extends ContainerObjectSelectionList<KonfigConfigRow
 
     KonfigEntryList(Minecraft minecraft, int width, int screenHeight, int height, int y, int rowWidth) {
 //? if >=1.20.3 {
-        super(minecraft, width, height, y, KonfigConfigScreen.ROW_HEIGHT);
+        super(minecraft, width, height, y, KonfigScreenMetrics.ROW_HEIGHT);
 //?} else {
-        super(minecraft, width, screenHeight, y, y + height, KonfigConfigScreen.ROW_HEIGHT);
+        super(minecraft, width, screenHeight, y, y + height, KonfigScreenMetrics.ROW_HEIGHT);
 //?}
         this.rowWidth = rowWidth;
 //? if <=1.16.3 {

@@ -14,7 +14,7 @@ import net.minecraft.util.Mth;
 
 abstract class BaseSliderWidget extends AbstractSliderButton {
     BaseSliderWidget(double initialProgress) {
-        super(0, 0, KonfigConfigScreen.CONTROL_MIN_WIDTH, KonfigConfigScreen.CONTROL_HEIGHT, text(""), initialProgress);
+        super(0, 0, KonfigScreenMetrics.CONTROL_MIN_WIDTH, KonfigScreenMetrics.CONTROL_HEIGHT, text(""), initialProgress);
     }
 
     protected final void syncToProgress(double progress) {

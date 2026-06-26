@@ -1,0 +1,21 @@
+//? if >=1.17 {
+package com.iamkaf.konfig.impl.v1;
+
+final class KonfigScreenMetrics {
+    static final int LIST_TOP = 28;
+    static final int LIST_BOTTOM_MARGIN = 52;
+    static final int ROW_HEIGHT = 34;
+    static final int CONTROL_HEIGHT = 20;
+    static final int CONTROL_MIN_WIDTH = 132;
+    static final int CONTROL_MAX_WIDTH = 200;
+    static final int VALIDATION_COLOR = 0xFFFF8080;
+    static final int URL_BUTTON_WIDTH = 60;
+    static final int SUGGESTION_LIMIT = 7;
+    static final int SUGGESTION_ROW_HEIGHT = 14;
+    static final int DROPDOWN_CHEVRON_WIDTH = 16;
+    static final long DROPDOWN_TYPE_SELECT_RESET_MS = 1000L;
+
+    private KonfigScreenMetrics() {
+    }
+}
+//?}
