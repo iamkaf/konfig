@@ -2007,18 +2007,10 @@ public final class KonfigConfigScreen extends Screen {
 
     private final class DropdownRow extends ConfigRow {
         private final Button button;
-        private boolean open;
-        private int selectedIndex;
-        private int scrollOffset;
+        private final KonfigDropdownState dropdown = new KonfigDropdownState();
         private int lastButtonX;
         private int lastButtonY;
         private int lastButtonWidth = CONTROL_MIN_WIDTH;
-        private int lastDropdownX;
-        private int lastDropdownY;
-        private int lastDropdownWidth;
-        private int lastDropdownHeight;
-        private final StringBuilder typeSelectBuffer = new StringBuilder();
-        private long lastTypeSelectMillis;
 
         private DropdownRow(EntryRef entry) {
             super(entry);
@@ -2044,7 +2036,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected String rowTooltip() {
-            if (this.open) {
+            if (this.dropdown.isOpen()) {
                 return this.entry.tooltip;
             }
             String optionTooltip = translatedDropdownTooltip(this.currentOption());
@@ -2057,7 +2049,7 @@ public final class KonfigConfigScreen extends Screen {
             super.extractContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
             this.captureButtonBounds();
             this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
-            if (this.open) {
+            if (this.dropdown.isOpen()) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
         }
@@ -2067,7 +2059,7 @@ public final class KonfigConfigScreen extends Screen {
             super.renderContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
             this.captureButtonBounds();
             this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
-            if (this.open) {
+            if (this.dropdown.isOpen()) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
         }
@@ -2077,7 +2069,7 @@ public final class KonfigConfigScreen extends Screen {
             super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
             this.captureButtonBounds();
             this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
-            if (this.open) {
+            if (this.dropdown.isOpen()) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
         }
@@ -2093,14 +2085,14 @@ public final class KonfigConfigScreen extends Screen {
             this.lastButtonWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
 //?}
             this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
-            if (this.open) {
+            if (this.dropdown.isOpen()) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
         }
 //?}
 
         private void toggleDropdown() {
-            if (this.open) {
+            if (this.dropdown.isOpen()) {
                 this.closeDropdown();
             } else {
                 this.openDropdown();
@@ -2108,20 +2100,14 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void openDropdown() {
-            if (this.options().isEmpty()) {
+            if (!this.dropdown.open(this.options(), KonfigConfigScreen.this.currentDropdownValue(this.entry.value), SUGGESTION_LIMIT)) {
                 return;
             }
-            this.open = true;
-            this.selectedIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
-            this.ensureSelectedVisible();
-            this.typeSelectBuffer.setLength(0);
-            this.lastTypeSelectMillis = 0L;
             KonfigConfigScreen.this.setActiveDropdownRow(this);
         }
 
         private void closeDropdown() {
-            this.open = false;
-            this.typeSelectBuffer.setLength(0);
+            this.dropdown.close();
             if (KonfigConfigScreen.this.activeDropdownRow == this) {
                 KonfigConfigScreen.this.activeDropdownRow = null;
             }
@@ -2148,7 +2134,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private DropdownOptionMetadata activeInfoOption(int mouseX, int mouseY) {
-            if (!this.open) {
+            if (!this.dropdown.isOpen()) {
                 return null;
             }
 
@@ -2157,39 +2143,15 @@ public final class KonfigConfigScreen extends Screen {
             if (hovered >= 0) {
                 return this.option(hovered);
             }
-            return this.option(this.selectedIndex);
-        }
-
-        private int optionIndex(String option) {
-            List<String> options = this.options();
-            for (int index = 0; index < options.size(); index++) {
-                if (sameValue(options.get(index), option)) {
-                    return index;
-                }
-            }
-            return 0;
+            return this.option(this.dropdown.selectedIndex());
         }
 
         private int visibleOptionCount() {
-            return Math.min(SUGGESTION_LIMIT, this.options().size());
+            return this.dropdown.visibleOptionCount(this.options().size(), SUGGESTION_LIMIT);
         }
 
         private int maxScrollOffset() {
-            return Math.max(0, this.options().size() - this.visibleOptionCount());
-        }
-
-        private void ensureSelectedVisible() {
-            int visibleCount = this.visibleOptionCount();
-            if (visibleCount <= 0) {
-                this.scrollOffset = 0;
-                return;
-            }
-            if (this.selectedIndex < this.scrollOffset) {
-                this.scrollOffset = this.selectedIndex;
-            } else if (this.selectedIndex >= this.scrollOffset + visibleCount) {
-                this.scrollOffset = this.selectedIndex - visibleCount + 1;
-            }
-            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
+            return this.dropdown.maxScrollOffset(this.options().size(), SUGGESTION_LIMIT);
         }
 
         private void selectOption(int optionIndex) {
@@ -2216,7 +2178,7 @@ public final class KonfigConfigScreen extends Screen {
 //?}
 
         private boolean handleDropdownClick(double mouseX, double mouseY) {
-            if (!this.open) {
+            if (!this.dropdown.isOpen()) {
                 return false;
             }
             this.layoutDropdown();
@@ -2233,7 +2195,7 @@ public final class KonfigConfigScreen extends Screen {
 
         private boolean handleDropdownKey(int keyCode) {
             List<String> options = this.options();
-            if (!this.open || options.isEmpty()) {
+            if (!this.dropdown.isOpen() || options.isEmpty()) {
                 return false;
             }
 
@@ -2245,24 +2207,22 @@ public final class KonfigConfigScreen extends Screen {
                     || keyCode == InputConstants.KEY_NUMPADENTER
                     || keyCode == InputConstants.KEY_SPACE
                     || keyCode == InputConstants.KEY_TAB) {
-                this.selectOption(this.selectedIndex);
+                this.selectOption(this.dropdown.selectedIndex());
                 return true;
             }
             if (keyCode == InputConstants.KEY_DOWN) {
-                this.selectedIndex = (this.selectedIndex + 1) % options.size();
-                this.ensureSelectedVisible();
+                this.dropdown.selectNext(options.size(), SUGGESTION_LIMIT);
                 return true;
             }
             if (keyCode == InputConstants.KEY_UP) {
-                this.selectedIndex = (this.selectedIndex + options.size() - 1) % options.size();
-                this.ensureSelectedVisible();
+                this.dropdown.selectPrevious(options.size(), SUGGESTION_LIMIT);
                 return true;
             }
             return false;
         }
 
         private boolean handleClosedDropdownKey(int keyCode) {
-            if (this.open || this.options().isEmpty()) {
+            if (this.dropdown.isOpen() || this.options().isEmpty()) {
                 return false;
             }
             if (keyCode == InputConstants.KEY_RETURN
@@ -2275,46 +2235,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private boolean handleDropdownChar(int codePoint) {
-            if (!this.open
-                    || this.options().isEmpty()
-                    || !Character.isValidCodePoint(codePoint)
-                    || Character.isISOControl(codePoint)) {
-                return false;
-            }
-
-            long now = System.currentTimeMillis();
-            if (now - this.lastTypeSelectMillis > DROPDOWN_TYPE_SELECT_RESET_MS) {
-                this.typeSelectBuffer.setLength(0);
-            }
-            this.lastTypeSelectMillis = now;
-            int normalizedCodePoint = Character.toLowerCase(codePoint);
-            this.typeSelectBuffer.appendCodePoint(normalizedCodePoint);
-
-            if (!this.focusFirstTypeMatch(this.typeSelectBuffer.toString())) {
-                this.typeSelectBuffer.setLength(0);
-                this.typeSelectBuffer.appendCodePoint(normalizedCodePoint);
-                this.focusFirstTypeMatch(this.typeSelectBuffer.toString());
-            }
-            return true;
-        }
-
-        private boolean focusFirstTypeMatch(String query) {
-            if (isBlank(query)) {
-                return false;
-            }
-
-            String normalizedQuery = query.toLowerCase(Locale.ROOT);
-            List<String> options = this.options();
-            int start = Math.max(0, this.selectedIndex + 1);
-            for (int offset = 0; offset < options.size(); offset++) {
-                int index = (start + offset) % options.size();
-                if (this.optionSearchText(index).startsWith(normalizedQuery)) {
-                    this.selectedIndex = index;
-                    this.ensureSelectedVisible();
-                    return true;
-                }
-            }
-            return false;
+            return this.dropdown.handleTypeSelect(codePoint, this.options(), SUGGESTION_LIMIT, DROPDOWN_TYPE_SELECT_RESET_MS, (index, query) -> this.optionSearchText(index).startsWith(query));
         }
 
         private String optionSearchText(int index) {
@@ -2328,7 +2249,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private boolean handleDropdownScroll(double mouseX, double mouseY, double scrollY) {
-            if (!this.open) {
+            if (!this.dropdown.isOpen()) {
                 return false;
             }
             this.layoutDropdown();
@@ -2336,17 +2257,7 @@ public final class KonfigConfigScreen extends Screen {
                 return false;
             }
 
-            int previousOffset = this.scrollOffset;
-            if (scrollY > 0.0D) {
-                this.scrollOffset--;
-            } else if (scrollY < 0.0D) {
-                this.scrollOffset++;
-            }
-            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
-            if (this.scrollOffset != previousOffset && this.visibleOptionCount() > 0) {
-                this.selectedIndex = Mth.clamp(this.selectedIndex, this.scrollOffset, this.scrollOffset + this.visibleOptionCount() - 1);
-            }
-            return true;
+            return this.dropdown.scroll(scrollY, this.options().size(), SUGGESTION_LIMIT);
         }
 
         private boolean isPointInsideButton(double mouseX, double mouseY) {
@@ -2357,27 +2268,26 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private boolean isPointInsideDropdown(double mouseX, double mouseY) {
-            if (!this.open) {
+            if (!this.dropdown.isOpen()) {
                 return false;
             }
             this.layoutDropdown();
-            return mouseX >= this.lastDropdownX
-                    && mouseX <= this.lastDropdownX + this.lastDropdownWidth
-                    && mouseY >= this.lastDropdownY
-                    && mouseY <= this.lastDropdownY + this.lastDropdownHeight;
+            return this.dropdown.contains(mouseX, mouseY);
         }
 
         private void layoutDropdown() {
-            int visibleCount = this.visibleOptionCount();
-            this.lastDropdownWidth = Math.max(CONTROL_MIN_WIDTH, this.lastButtonWidth);
-            this.lastDropdownHeight = (visibleCount * SUGGESTION_ROW_HEIGHT) + 4;
-            this.lastDropdownX = this.lastButtonX;
-
-            int belowY = this.lastButtonY + CONTROL_HEIGHT + 2;
-            int aboveY = this.lastButtonY - this.lastDropdownHeight - 2;
-            boolean openAbove = belowY + this.lastDropdownHeight > KonfigConfigScreen.this.height - 32 && aboveY >= LIST_TOP;
-            this.lastDropdownY = openAbove ? aboveY : belowY;
-            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
+            this.dropdown.layout(
+                    this.lastButtonX,
+                    this.lastButtonY,
+                    this.lastButtonWidth,
+                    CONTROL_MIN_WIDTH,
+                    CONTROL_HEIGHT,
+                    SUGGESTION_ROW_HEIGHT,
+                    this.options().size(),
+                    SUGGESTION_LIMIT,
+                    KonfigConfigScreen.this.height - 32,
+                    LIST_TOP
+            );
         }
 
 //? if >=1.19.3 {
@@ -2396,9 +2306,9 @@ public final class KonfigConfigScreen extends Screen {
             Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
             context.drawText(KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
 
-            Component chevron = text(this.open ? "\u25B4" : "\u25BE");
+            Component chevron = text(this.dropdown.isOpen() ? "\u25B4" : "\u25BE");
             int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
-            context.drawText(KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
+            context.drawText(KonfigConfigScreen.this.font, chevron, chevronX, textY, this.dropdown.isOpen() ? 0xFFF8E38F : 0xFFCFCFCF);
         }
 
         private Component fitDropdownText(Component value, int maxWidth) {
@@ -2416,67 +2326,62 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private int hoveredOptionIndex(int mouseX, int mouseY) {
-            if (mouseX < this.lastDropdownX
-                    || mouseX > this.lastDropdownX + this.lastDropdownWidth
-                    || mouseY < this.lastDropdownY + 2
-                    || mouseY > this.lastDropdownY + this.lastDropdownHeight - 2) {
-                return -1;
-            }
-
-            int visibleIndex = (mouseY - this.lastDropdownY - 2) / SUGGESTION_ROW_HEIGHT;
-            int index = this.scrollOffset + visibleIndex;
-            return index >= 0 && index < this.options().size() && visibleIndex < this.visibleOptionCount() ? index : -1;
+            return this.dropdown.hoveredIndex(mouseX, mouseY, this.options().size(), SUGGESTION_LIMIT, SUGGESTION_ROW_HEIGHT);
         }
 
         private void renderDropdown(KonfigRenderContext context, int mouseX, int mouseY) {
             List<String> options = this.options();
-            if (!this.open || options.isEmpty()) {
+            if (!this.dropdown.isOpen() || options.isEmpty()) {
                 return;
             }
 
             this.layoutDropdown();
-            context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
+            int dropdownX = this.dropdown.dropdownX();
+            int dropdownY = this.dropdown.dropdownY();
+            int dropdownWidth = this.dropdown.dropdownWidth();
+            int dropdownHeight = this.dropdown.dropdownHeight();
+            context.fill(dropdownX - 1, dropdownY - 1, dropdownX + dropdownWidth + 1, dropdownY + dropdownHeight + 1, 0xFF202020);
+            context.fill(dropdownX, dropdownY, dropdownX + dropdownWidth, dropdownY + dropdownHeight, 0xFF101010);
 
             int hovered = this.hoveredOptionIndex(mouseX, mouseY);
-            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
+            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.dropdown.selectedIndex());
             String tooltip = translatedDropdownTooltip(tooltipOption);
             if (!isBlank(tooltip)) {
                 KonfigConfigScreen.this.queueTooltip(tooltip, mouseX, mouseY);
             }
             int visibleCount = this.visibleOptionCount();
-            int currentIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
+            int currentIndex = this.dropdown.optionIndex(options, KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
             for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
-                int optionIndex = this.scrollOffset + visibleIndex;
+                int optionIndex = this.dropdown.scrollOffset() + visibleIndex;
                 if (optionIndex >= options.size()) {
                     break;
                 }
 
-                int rowY = this.lastDropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
+                int rowY = dropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
                 int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                 boolean rowHovered = optionIndex == hovered;
-                boolean focused = optionIndex == this.selectedIndex;
+                boolean focused = optionIndex == this.dropdown.selectedIndex();
                 boolean current = optionIndex == currentIndex;
                 if (rowHovered || focused || current) {
                     int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
-                    context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
+                    context.fill(dropdownX + 1, rowY, dropdownX + dropdownWidth - 1, rowBottom, color);
                 }
                 if (current) {
-                    context.fill(this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
+                    context.fill(dropdownX + 2, rowY + 2, dropdownX + 4, rowBottom - 2, 0xFFF8E38F);
                 }
-                int textX = this.lastDropdownX + 8;
-                int textRight = this.maxScrollOffset() > 0 ? this.lastDropdownX + this.lastDropdownWidth - 8 : this.lastDropdownX + this.lastDropdownWidth - 4;
+                int textX = dropdownX + 8;
+                int textRight = this.maxScrollOffset() > 0 ? dropdownX + dropdownWidth - 8 : dropdownX + dropdownWidth - 4;
                 context.drawText(KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
             }
 
             if (this.maxScrollOffset() > 0) {
-                int trackTop = this.lastDropdownY + 2;
-                int trackBottom = this.lastDropdownY + this.lastDropdownHeight - 2;
+                int trackTop = dropdownY + 2;
+                int trackBottom = dropdownY + dropdownHeight - 2;
                 int trackHeight = Math.max(1, trackBottom - trackTop);
                 int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
-                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
-                context.fill(this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
-                context.fill(this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
+                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.dropdown.scrollOffset() / this.maxScrollOffset());
+                context.fill(dropdownX + dropdownWidth - 4, trackTop, dropdownX + dropdownWidth - 2, trackBottom, 0x44000000);
+                context.fill(dropdownX + dropdownWidth - 4, thumbTop, dropdownX + dropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
             }
         }
     }
