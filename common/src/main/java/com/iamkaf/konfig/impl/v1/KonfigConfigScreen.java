@@ -3567,12 +3567,14 @@ public final class KonfigConfigScreen extends Screen {
     private final class StringListEditorScreen extends EntryEditorScreen {
         private static final int ITEM_ROW_HEIGHT = 28;
 
+        private final KonfigStringListEditorState editorState;
         private ListEntryList list;
         private ListEntryRow activeRegistryRow;
         private ListEntryRow renderedRegistryRow;
 
         private StringListEditorScreen(EntryRef entry) {
             super(entry);
+            this.editorState = new KonfigStringListEditorState(KonfigConfigScreen.this.session, entry, this::persistEditedValue);
         }
 
         @Override
@@ -3604,9 +3606,9 @@ public final class KonfigConfigScreen extends Screen {
 //?}
 
         private void renderStringListEditorOverlay(KonfigRenderContext context, int mouseX, int mouseY) {
-            String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
+            String count = translate("konfig.screen.list.count", Integer.valueOf(this.editorState.size())).getString();
             context.drawText(this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
-            if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
+            if (this.editorState.isEmpty()) {
                 context.drawCenteredText(this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
             }
             if (this.renderedRegistryRow != null) {
@@ -3692,7 +3694,7 @@ public final class KonfigConfigScreen extends Screen {
             int listTop = EDITOR_CONTENT_TOP;
             int listHeight = Math.max(48, this.height - listTop - LIST_BOTTOM_MARGIN);
             this.list = this.addRenderableWidget(new ListEntryList(this.minecraft, this.width, listHeight, listTop));
-            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
+            List<String> values = this.editorState.values();
             for (int i = 0; i < values.size(); i++) {
                 this.list.addListEntry(new ListEntryRow(i, values.get(i)));
             }
@@ -3708,11 +3710,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void addValue() {
-            Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(this.entry.value);
-            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
-            values.add(this.entry.value.hasBoundRegistry() ? "" : translate("konfig.screen.list.new_item").getString());
-            KonfigConfigScreen.this.session.setDraft(this.entry.value, values);
-            if (this.persistEditedValue(previousValue)) {
+            if (this.editorState.add(translate("konfig.screen.list.new_item").getString())) {
                 this.rebuildEditorWidgets();
             }
         }
@@ -3865,13 +3863,9 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             private boolean persistListValue(String value) {
-                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(StringListEditorScreen.this.entry.value);
-                List<String> values = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
-                values.set(this.index, value);
-                KonfigConfigScreen.this.session.setDraft(StringListEditorScreen.this.entry.value, values);
-                if (!StringListEditorScreen.this.persistEditedValue(previousValue)) {
+                if (!StringListEditorScreen.this.editorState.set(this.index, value)) {
                     this.suppressResponder = true;
-                    this.input.setValue(currentStringList(StringListEditorScreen.this.entry.value).get(this.index));
+                    this.input.setValue(StringListEditorScreen.this.editorState.valueAt(this.index));
                     this.suppressResponder = false;
                     this.refreshSuggestions();
                     return false;
@@ -3881,30 +3875,13 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             private void move(int delta) {
-                int targetIndex = this.index + delta;
-                List<String> current = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
-                if (targetIndex < 0 || targetIndex >= current.size()) {
-                    return;
-                }
-
-                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(StringListEditorScreen.this.entry.value);
-                Collections.swap(current, this.index, targetIndex);
-                KonfigConfigScreen.this.session.setDraft(StringListEditorScreen.this.entry.value, current);
-                if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
+                if (StringListEditorScreen.this.editorState.move(this.index, delta)) {
                     StringListEditorScreen.this.rebuildEditorWidgets();
                 }
             }
 
             private void remove() {
-                List<String> current = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
-                if (this.index < 0 || this.index >= current.size()) {
-                    return;
-                }
-
-                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(StringListEditorScreen.this.entry.value);
-                current.remove(this.index);
-                KonfigConfigScreen.this.session.setDraft(StringListEditorScreen.this.entry.value, current);
-                if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
+                if (StringListEditorScreen.this.editorState.remove(this.index)) {
                     StringListEditorScreen.this.rebuildEditorWidgets();
                 }
             }
@@ -3956,9 +3933,9 @@ public final class KonfigConfigScreen extends Screen {
 
                 this.layoutInput(inputX, buttonY, inputWidth);
                 this.positionButton(this.moveUpButton, upX, buttonY);
-                this.moveUpButton.active = this.index > 0;
+                this.moveUpButton.active = StringListEditorScreen.this.editorState.canMoveUp(this.index);
                 this.positionButton(this.moveDownButton, downX, buttonY);
-                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
+                this.moveDownButton.active = StringListEditorScreen.this.editorState.canMoveDown(this.index);
                 this.positionButton(this.removeButton, removeX, buttonY);
 
                 context.renderWidget(this.input, mouseX, mouseY, partialTick);
