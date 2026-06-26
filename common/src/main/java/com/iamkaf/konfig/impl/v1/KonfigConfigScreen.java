@@ -541,34 +541,36 @@ public final class KonfigConfigScreen extends Screen {
 //? if >=26.1 {
     @Override
     public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderedRegistryRow = null;
-        this.renderedDropdownRow = null;
-        this.hoveredEntry = null;
-        this.pendingTooltip = null;
-        this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
-        this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
-        this.infoPanelLinks.clear();
-        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+        KonfigRenderContext context = KonfigRenderContext.of(guiGraphics);
+        this.beginMainScreenRender(context, mouseX, mouseY);
         super.extractRenderState(guiGraphics, mouseX, mouseY, partialTick);
-        this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
+        this.renderMainScreenChrome(context, mouseX, mouseY, () -> this.renderInfoPanel(guiGraphics, mouseX, mouseY));
     }
 //?} elif >=1.20 {
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        this.renderedRegistryRow = null;
-        this.renderedDropdownRow = null;
-        this.hoveredEntry = null;
-        this.pendingTooltip = null;
-        this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
-        this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
-        this.infoPanelLinks.clear();
-        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
+        KonfigRenderContext context = KonfigRenderContext.of(guiGraphics);
+        this.beginMainScreenRender(context, mouseX, mouseY);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
-        this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
+        this.renderMainScreenChrome(context, mouseX, mouseY, () -> this.renderInfoPanel(guiGraphics, mouseX, mouseY));
     }
 //?} else {
     @Override
     public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
+        KonfigRenderContext context = KonfigRenderContext.of(guiGraphics);
+        this.beginMainScreenRender(context, mouseX, mouseY);
+//? if <=1.19.3 {
+        if (this.list != null) {
+            this.list.render(guiGraphics, mouseX, mouseY, partialTick);
+        }
+        context.fill(0, this.height - LIST_BOTTOM_MARGIN, this.mainPanelRight(), this.height, 0xC0101010);
+//?}
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        this.renderMainScreenChrome(context, mouseX, mouseY, () -> this.renderInfoPanel(guiGraphics, mouseX, mouseY));
+    }
+//?}
+
+    private void beginMainScreenRender(KonfigRenderContext context, int mouseX, int mouseY) {
         this.renderedRegistryRow = null;
         this.renderedDropdownRow = null;
         this.hoveredEntry = null;
@@ -576,105 +578,29 @@ public final class KonfigConfigScreen extends Screen {
         this.mouseOverInfoPanel = this.isPointInInfoPanel(mouseX, mouseY);
         this.mouseOverInfoPanelBridge = this.isPointInInfoPanelBridge(mouseX, mouseY);
         this.infoPanelLinks.clear();
-        fillRect(guiGraphics, 0, 0, this.width, this.height, 0xC0101010);
-//? if <=1.19.3 {
-        if (this.list != null) {
-            this.list.render(guiGraphics, mouseX, mouseY, partialTick);
-        }
-        fillRect(guiGraphics, 0, this.height - LIST_BOTTOM_MARGIN, this.mainPanelRight(), this.height, 0xC0101010);
-//?}
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        this.renderMainScreenChrome(guiGraphics, mouseX, mouseY);
+        context.fill(0, 0, this.width, this.height, 0xC0101010);
     }
-//?}
 
-//? if >=26.1 {
-    private void renderMainScreenChrome(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
-        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
-        fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
-        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
+    private void renderMainScreenChrome(KonfigRenderContext context, int mouseX, int mouseY, Runnable infoPanelRenderer) {
+        context.drawCenteredText(this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
+        context.fill(this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
+        infoPanelRenderer.run();
         if (this.entries.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
+            context.drawCenteredText(this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
         }
         // Painter order matters here: side panels first, floating controls next, queued tooltips last.
-        guiGraphics.nextStratum();
-        if (this.renderedRegistryRow != null) {
-            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
-        }
-        if (this.renderedDropdownRow != null) {
-            this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
-        }
-        guiGraphics.nextStratum();
-        this.renderPendingTooltip(guiGraphics);
+        context.renderFloatingLayers(
+                layer -> {
+                    if (this.renderedRegistryRow != null) {
+                        this.renderedRegistryRow.renderSuggestions(layer, mouseX, mouseY);
+                    }
+                    if (this.renderedDropdownRow != null) {
+                        this.renderedDropdownRow.renderDropdown(layer, mouseX, mouseY);
+                    }
+                },
+                this::renderPendingTooltip
+        );
     }
-//?} elif >=1.21.6 {
-    private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
-        fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
-        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
-        if (this.entries.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
-        }
-        // Painter order matters here: side panels first, floating controls next, queued tooltips last.
-        guiGraphics.nextStratum();
-        if (this.renderedRegistryRow != null) {
-            this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
-        }
-        if (this.renderedDropdownRow != null) {
-            this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
-        }
-        guiGraphics.nextStratum();
-        this.renderPendingTooltip(guiGraphics);
-    }
-//?} elif >=1.20 {
-    private void renderMainScreenChrome(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
-        fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
-        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
-        if (this.entries.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
-        }
-        // Painter order matters here: side panels first, floating controls next, queued tooltips last.
-        guiGraphics.pose().pushPose();
-        guiGraphics.pose().translate(0.0F, 0.0F, 300.0F);
-        try {
-            if (this.renderedRegistryRow != null) {
-                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
-            }
-            if (this.renderedDropdownRow != null) {
-                this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
-            }
-            guiGraphics.pose().translate(0.0F, 0.0F, 100.0F);
-            this.renderPendingTooltip(guiGraphics);
-        } finally {
-            guiGraphics.pose().popPose();
-        }
-    }
-//?} else {
-    private void renderMainScreenChrome(PoseStack guiGraphics, int mouseX, int mouseY) {
-        drawCenteredText(guiGraphics, this.font, screenTitle(), this.width / 2, 8, 0xFFFFFFFF);
-        fillRect(guiGraphics, this.mainPanelRight(), LIST_TOP, this.mainPanelRight() + 1, this.height, 0xFF202020);
-        this.renderInfoPanel(guiGraphics, mouseX, mouseY);
-        if (this.entries.isEmpty()) {
-            drawCenteredText(guiGraphics, this.font, translate("konfig.screen.empty"), this.mainPanelRight() / 2, this.height / 2 - 10, 0xFFC0C0C0);
-        }
-        // Painter order matters here: side panels first, floating controls next, queued tooltips last.
-        guiGraphics.pushPose();
-        guiGraphics.translate(0.0D, 0.0D, 300.0D);
-        try {
-            if (this.renderedRegistryRow != null) {
-                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
-            }
-            if (this.renderedDropdownRow != null) {
-                this.renderedDropdownRow.renderDropdown(guiGraphics, mouseX, mouseY);
-            }
-            guiGraphics.translate(0.0D, 0.0D, 100.0D);
-            this.renderPendingTooltip(guiGraphics);
-        } finally {
-            guiGraphics.popPose();
-        }
-    }
-//?}
 
     void queueTooltip(String tooltip, int mouseX, int mouseY) {
         this.pendingTooltip = tooltip;
@@ -682,19 +608,9 @@ public final class KonfigConfigScreen extends Screen {
         this.pendingTooltipMouseY = mouseY;
     }
 
-//? if >=26.1 {
-    private void renderPendingTooltip(GuiGraphicsExtractor guiGraphics) {
-        renderTooltipNow(this, this.font, guiGraphics, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
+    private void renderPendingTooltip(KonfigRenderContext context) {
+        context.renderTooltipNow(this, this.font, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
     }
-//?} elif >=1.20 {
-    private void renderPendingTooltip(GuiGraphics guiGraphics) {
-        renderTooltipNow(this, this.font, guiGraphics, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
-    }
-//?} else {
-    private void renderPendingTooltip(PoseStack guiGraphics) {
-        renderTooltipNow(this, this.font, guiGraphics, this.pendingTooltip, this.pendingTooltipMouseX, this.pendingTooltipMouseY);
-    }
-//?}
 
     private void rebuildScreenWidgets() {
         this.clearWidgets();
@@ -1674,82 +1590,38 @@ public final class KonfigConfigScreen extends Screen {
             return new RowLayout(x, y, width, height, controlWidth, x + width - controlWidth, y + (height - CONTROL_HEIGHT) / 2);
         }
 
-//? if >=26.1 {
-        protected final void renderStandardRow(GuiGraphicsExtractor guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
+        protected final void renderStandardRow(KonfigRenderContext context, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
             KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
-                fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
+                context.fill(layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
             }
 
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+            context.showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
             layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
-            renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
+            context.drawText(KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
+            context.drawText(KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
+            context.renderWidget(this.control(), mouseX, mouseY, partialTick);
             if (!this.validationMessage().isEmpty()) {
-                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.validationMessage()), layout.controlX, layout.controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
+                context.drawText(KonfigConfigScreen.this.font, text(this.validationMessage()), layout.controlX, layout.controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
             }
         }
 
-        protected final void renderColorRow(GuiGraphicsExtractor guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
-            drawColorSwatch(guiGraphics, previewX, previewY, ColorRow.PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
+        protected final void renderColorRow(KonfigRenderContext context, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
+            this.renderStandardRow(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
+            context.drawColorSwatch(previewX, previewY, ColorRow.PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
         }
-//?} elif >=1.20 {
-        protected final void renderStandardRow(GuiGraphics guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
-            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
-            if (hovered) {
-                fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
-            }
-
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
-            layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
-            renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
-            if (!this.validationMessage().isEmpty()) {
-                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.validationMessage()), layout.controlX, layout.controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
-            }
-        }
-
-        protected final void renderColorRow(GuiGraphics guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
-            drawColorSwatch(guiGraphics, previewX, previewY, ColorRow.PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
-        }
-//?} else {
-        protected final void renderStandardRow(PoseStack guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int labelColor) {
-            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
-            if (hovered) {
-                fillRect(guiGraphics, layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
-            }
-
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
-            layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
-            renderWidget(this.control(), guiGraphics, mouseX, mouseY, partialTick);
-            if (!this.validationMessage().isEmpty()) {
-                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.validationMessage()), layout.controlX, layout.controlY + CONTROL_HEIGHT + 2, VALIDATION_COLOR);
-            }
-        }
-
-        protected final void renderColorRow(PoseStack guiGraphics, RowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY) {
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
-            drawColorSwatch(guiGraphics, previewX, previewY, ColorRow.PREVIEW_SIZE, KonfigConfigScreen.this.currentColor(this.entry.value), this.entry.value.kind());
-        }
-//?}
 
 //? if >=26.1 {
         @Override
         public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
         }
 //?} elif >=1.21.9 {
         @Override
         public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
         }
 //?} elif >=1.20 {
         @Override
@@ -1759,7 +1631,7 @@ public final class KonfigConfigScreen extends Screen {
 
         protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(x, y, width, height);
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
         }
 //?} else {
         @Override
@@ -1769,7 +1641,7 @@ public final class KonfigConfigScreen extends Screen {
 
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(x, y, width, height);
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
         }
 //?}
 
@@ -2161,25 +2033,25 @@ public final class KonfigConfigScreen extends Screen {
         @Override
         public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), 0xFF80C8FF);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), 0xFF80C8FF);
         }
 //?} elif >=1.21.9 {
         @Override
         public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), 0xFF80C8FF);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), 0xFF80C8FF);
         }
 //?} elif >=1.20 {
         @Override
         protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(x, y, width, height);
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, 0xFF80C8FF);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, 0xFF80C8FF);
         }
 //?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             RowLayout layout = this.rowLayout(x, y, width, height);
-            this.renderStandardRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, 0xFF80C8FF);
+            this.renderStandardRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, 0xFF80C8FF);
         }
 //?}
     }
@@ -2283,7 +2155,7 @@ public final class KonfigConfigScreen extends Screen {
         public void extractContent(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
             super.extractContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
             this.captureButtonBounds();
-            this.renderButtonLabel(guiGraphics);
+            this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
             if (this.open) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
@@ -2293,7 +2165,7 @@ public final class KonfigConfigScreen extends Screen {
         public void renderContent(GuiGraphics guiGraphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
             super.renderContent(guiGraphics, mouseX, mouseY, hovered, partialTick);
             this.captureButtonBounds();
-            this.renderButtonLabel(guiGraphics);
+            this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
             if (this.open) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
@@ -2303,7 +2175,7 @@ public final class KonfigConfigScreen extends Screen {
         protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             super.renderRow(guiGraphics, x, y, width, height, mouseX, mouseY, hovered, partialTick);
             this.captureButtonBounds();
-            this.renderButtonLabel(guiGraphics);
+            this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
             if (this.open) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
@@ -2319,7 +2191,7 @@ public final class KonfigConfigScreen extends Screen {
             this.lastButtonY = this.button.y;
             this.lastButtonWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
 //?}
-            this.renderButtonLabel(guiGraphics);
+            this.renderButtonLabel(KonfigRenderContext.of(guiGraphics));
             if (this.open) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
@@ -2615,46 +2487,18 @@ public final class KonfigConfigScreen extends Screen {
         }
 //?}
 
-//? if >=26.1 {
-        private void renderButtonLabel(GuiGraphicsExtractor guiGraphics) {
+        private void renderButtonLabel(KonfigRenderContext context) {
             int textX = this.lastButtonX + 6;
             int chevronLeft = this.lastButtonX + this.lastButtonWidth - DROPDOWN_CHEVRON_WIDTH;
             int textMaxWidth = Math.max(0, chevronLeft - textX - 4);
             int textY = this.lastButtonY + ((CONTROL_HEIGHT - KonfigConfigScreen.this.font.lineHeight) / 2) + 1;
             Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
+            context.drawText(KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
 
             Component chevron = text(this.open ? "\u25B4" : "\u25BE");
             int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
+            context.drawText(KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
         }
-//?} elif >=1.20 {
-        private void renderButtonLabel(GuiGraphics guiGraphics) {
-            int textX = this.lastButtonX + 6;
-            int chevronLeft = this.lastButtonX + this.lastButtonWidth - DROPDOWN_CHEVRON_WIDTH;
-            int textMaxWidth = Math.max(0, chevronLeft - textX - 4);
-            int textY = this.lastButtonY + ((CONTROL_HEIGHT - KonfigConfigScreen.this.font.lineHeight) / 2) + 1;
-            Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
-
-            Component chevron = text(this.open ? "\u25B4" : "\u25BE");
-            int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
-        }
-//?} else {
-        private void renderButtonLabel(PoseStack guiGraphics) {
-            int textX = this.lastButtonX + 6;
-            int chevronLeft = this.lastButtonX + this.lastButtonWidth - DROPDOWN_CHEVRON_WIDTH;
-            int textMaxWidth = Math.max(0, chevronLeft - textX - 4);
-            int textY = this.lastButtonY + ((CONTROL_HEIGHT - KonfigConfigScreen.this.font.lineHeight) / 2) + 1;
-            Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, valueText, textX, textY, 0xFFFFFFFF);
-
-            Component chevron = text(this.open ? "\u25B4" : "\u25BE");
-            int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, chevron, chevronX, textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
-        }
-//?}
 
         private Component fitDropdownText(Component value, int maxWidth) {
             if (maxWidth <= 0) {
@@ -2683,16 +2527,15 @@ public final class KonfigConfigScreen extends Screen {
             return index >= 0 && index < this.options().size() && visibleIndex < this.visibleOptionCount() ? index : -1;
         }
 
-//? if >=26.1 {
-        private void renderDropdown(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
+        private void renderDropdown(KonfigRenderContext context, int mouseX, int mouseY) {
             List<String> options = this.options();
             if (!this.open || options.isEmpty()) {
                 return;
             }
 
             this.layoutDropdown();
-            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
+            context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+            context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
             int hovered = this.hoveredOptionIndex(mouseX, mouseY);
             DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
@@ -2715,14 +2558,14 @@ public final class KonfigConfigScreen extends Screen {
                 boolean current = optionIndex == currentIndex;
                 if (rowHovered || focused || current) {
                     int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
-                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
+                    context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
                 }
                 if (current) {
-                    fillRect(guiGraphics, this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
+                    context.fill(this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
                 }
                 int textX = this.lastDropdownX + 8;
                 int textRight = this.maxScrollOffset() > 0 ? this.lastDropdownX + this.lastDropdownWidth - 8 : this.lastDropdownX + this.lastDropdownWidth - 4;
-                drawText(guiGraphics, KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
+                context.drawText(KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
             }
 
             if (this.maxScrollOffset() > 0) {
@@ -2731,115 +2574,10 @@ public final class KonfigConfigScreen extends Screen {
                 int trackHeight = Math.max(1, trackBottom - trackTop);
                 int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
                 int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
-                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
-                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
+                context.fill(this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
+                context.fill(this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
             }
         }
-//?} elif >=1.20 {
-        private void renderDropdown(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-            List<String> options = this.options();
-            if (!this.open || options.isEmpty()) {
-                return;
-            }
-
-            this.layoutDropdown();
-            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
-
-            int hovered = this.hoveredOptionIndex(mouseX, mouseY);
-            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
-            String tooltip = translatedDropdownTooltip(tooltipOption);
-            if (!isBlank(tooltip)) {
-                KonfigConfigScreen.this.queueTooltip(tooltip, mouseX, mouseY);
-            }
-            int visibleCount = this.visibleOptionCount();
-            int currentIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
-            for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
-                int optionIndex = this.scrollOffset + visibleIndex;
-                if (optionIndex >= options.size()) {
-                    break;
-                }
-
-                int rowY = this.lastDropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
-                int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
-                boolean rowHovered = optionIndex == hovered;
-                boolean focused = optionIndex == this.selectedIndex;
-                boolean current = optionIndex == currentIndex;
-                if (rowHovered || focused || current) {
-                    int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
-                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
-                }
-                if (current) {
-                    fillRect(guiGraphics, this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
-                }
-                int textX = this.lastDropdownX + 8;
-                int textRight = this.maxScrollOffset() > 0 ? this.lastDropdownX + this.lastDropdownWidth - 8 : this.lastDropdownX + this.lastDropdownWidth - 4;
-                drawText(guiGraphics, KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
-            }
-
-            if (this.maxScrollOffset() > 0) {
-                int trackTop = this.lastDropdownY + 2;
-                int trackBottom = this.lastDropdownY + this.lastDropdownHeight - 2;
-                int trackHeight = Math.max(1, trackBottom - trackTop);
-                int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
-                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
-                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
-                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
-            }
-        }
-//?} else {
-        private void renderDropdown(PoseStack guiGraphics, int mouseX, int mouseY) {
-            List<String> options = this.options();
-            if (!this.open || options.isEmpty()) {
-                return;
-            }
-
-            this.layoutDropdown();
-            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
-
-            int hovered = this.hoveredOptionIndex(mouseX, mouseY);
-            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
-            String tooltip = translatedDropdownTooltip(tooltipOption);
-            if (!isBlank(tooltip)) {
-                KonfigConfigScreen.this.queueTooltip(tooltip, mouseX, mouseY);
-            }
-            int visibleCount = this.visibleOptionCount();
-            int currentIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
-            for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
-                int optionIndex = this.scrollOffset + visibleIndex;
-                if (optionIndex >= options.size()) {
-                    break;
-                }
-
-                int rowY = this.lastDropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
-                int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
-                boolean rowHovered = optionIndex == hovered;
-                boolean focused = optionIndex == this.selectedIndex;
-                boolean current = optionIndex == currentIndex;
-                if (rowHovered || focused || current) {
-                    int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
-                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, color);
-                }
-                if (current) {
-                    fillRect(guiGraphics, this.lastDropdownX + 2, rowY + 2, this.lastDropdownX + 4, rowBottom - 2, 0xFFF8E38F);
-                }
-                int textX = this.lastDropdownX + 8;
-                int textRight = this.maxScrollOffset() > 0 ? this.lastDropdownX + this.lastDropdownWidth - 8 : this.lastDropdownX + this.lastDropdownWidth - 4;
-                drawText(guiGraphics, KonfigConfigScreen.this.font, this.fitDropdownText(dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
-            }
-
-            if (this.maxScrollOffset() > 0) {
-                int trackTop = this.lastDropdownY + 2;
-                int trackBottom = this.lastDropdownY + this.lastDropdownHeight - 2;
-                int trackHeight = Math.max(1, trackBottom - trackTop);
-                int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
-                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
-                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
-                fillRect(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
-            }
-        }
-//?}
     }
 
     private final class ColorRow extends ConfigRow {
@@ -2871,7 +2609,7 @@ public final class KonfigConfigScreen extends Screen {
             RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
             int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
             int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY);
+            this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY);
         }
 //?} elif >=1.21.9 {
         @Override
@@ -2879,7 +2617,7 @@ public final class KonfigConfigScreen extends Screen {
             RowLayout layout = this.rowLayout(this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight());
             int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
             int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY);
+            this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), previewX, previewY);
         }
 //?} elif >=1.20 {
         @Override
@@ -2887,7 +2625,7 @@ public final class KonfigConfigScreen extends Screen {
             RowLayout layout = this.rowLayout(x, y, width, height);
             int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
             int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY);
+            this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY);
         }
 //?} else {
         @Override
@@ -2895,7 +2633,7 @@ public final class KonfigConfigScreen extends Screen {
             RowLayout layout = this.rowLayout(x, y, width, height);
             int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
             int previewY = layout.y + (layout.height - PREVIEW_SIZE) / 2;
-            this.renderColorRow(guiGraphics, layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY);
+            this.renderColorRow(KonfigRenderContext.of(guiGraphics), layout, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, previewX, previewY);
         }
 //?}
     }
@@ -3364,35 +3102,9 @@ public final class KonfigConfigScreen extends Screen {
             int y = this.getContentY();
             int width = this.getContentWidth();
             int height = this.getContentHeight();
-            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
-            if (hovered) {
-                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
-            }
-
             int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
             int labelRight = x + width - controlWidth - 8;
-            int inputX = labelRight + 8;
-            int inputWidth = controlWidth;
-            int inputY = y + (height - CONTROL_HEIGHT) / 2;
-            this.input.setX(inputX);
-            this.input.setY(inputY);
-            this.input.setWidth(inputWidth);
-            this.lastInputX = inputX;
-            this.lastInputY = inputY;
-            this.lastInputWidth = inputWidth;
-
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, labelRight, y + height);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
-            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
-
-            if (this.input.isFocused()) {
-                KonfigConfigScreen.this.setActiveRegistryRow(this);
-                this.refreshSuggestions();
-            }
-            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
-                KonfigConfigScreen.this.renderedRegistryRow = this;
-            }
+            this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, labelRight, y + height, false);
         }
 //?} elif >=1.21.9 {
         @Override
@@ -3401,90 +3113,27 @@ public final class KonfigConfigScreen extends Screen {
             int y = this.getContentY();
             int width = this.getContentWidth();
             int height = this.getContentHeight();
-            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
-            if (hovered) {
-                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
-            }
-
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight());
-
-            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
-            int controlX = x + width - controlWidth;
-            int controlY = y + (height - CONTROL_HEIGHT) / 2;
-            layoutControl(this.control(), controlX, controlY, controlWidth);
-            this.lastInputX = controlX;
-            this.lastInputY = controlY;
-            this.lastInputWidth = controlWidth;
-
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
-            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
-                renderRegistryIcon(
-                        guiGraphics,
-                        this.entry.value.boundRegistryKey(),
-                        KonfigConfigScreen.this.currentStringValue(this.entry.value),
-                        controlX - ICON_GAP - ICON_SIZE,
-                        y + (height - ICON_SIZE) / 2
-                );
-            }
-            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
-
-            if (this.input.isFocused()) {
-                KonfigConfigScreen.this.setActiveRegistryRow(this);
-                this.refreshSuggestions();
-            }
-            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
-                KonfigConfigScreen.this.renderedRegistryRow = this;
-            }
+            this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, this.getX(), this.getY(), this.getX() + this.getWidth(), this.getY() + this.getHeight(), true);
         }
 //?} elif >=1.20 {
         @Override
         protected void renderRow(GuiGraphics guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
-            if (hovered) {
-                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
-            }
-
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
-
-            int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
-            int controlX = x + width - controlWidth;
-            int controlY = y + (height - CONTROL_HEIGHT) / 2;
-            layoutControl(this.control(), controlX, controlY, controlWidth);
-            this.lastInputX = controlX;
-            this.lastInputY = controlY;
-            this.lastInputWidth = controlWidth;
-
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
-            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
-                renderRegistryIcon(
-                        guiGraphics,
-                        this.entry.value.boundRegistryKey(),
-                        KonfigConfigScreen.this.currentStringValue(this.entry.value),
-                        controlX - ICON_GAP - ICON_SIZE,
-                        y + (height - ICON_SIZE) / 2
-                );
-            }
-            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
-
-            if (this.input.isFocused()) {
-                KonfigConfigScreen.this.setActiveRegistryRow(this);
-                this.refreshSuggestions();
-            }
-            if (KonfigConfigScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
-                KonfigConfigScreen.this.renderedRegistryRow = this;
-            }
+            this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, true);
         }
 //?} else {
         @Override
         protected void renderRow(PoseStack guiGraphics, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+            this.renderRegistryTextInputRow(KonfigRenderContext.of(guiGraphics), x, y, width, height, mouseX, mouseY, hovered, partialTick, x, y, x + width, y + height, true);
+        }
+//?}
+
+        private void renderRegistryTextInputRow(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, boolean renderIcon) {
             KonfigConfigScreen.this.updateHoveredEntry(this.entry, hovered);
             if (hovered) {
-                fillRect(guiGraphics, x, y, x + width, y + height, 0x22000000);
+                context.fill(x, y, x + width, y + height, 0x22000000);
             }
 
-            showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, guiGraphics, this.entry.tooltip, mouseX, mouseY, x, y, x + width, y + height);
+            context.showTooltip(KonfigConfigScreen.this, KonfigConfigScreen.this.font, this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
 
             int controlWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
             int controlX = x + width - controlWidth;
@@ -3494,18 +3143,17 @@ public final class KonfigConfigScreen extends Screen {
             this.lastInputY = controlY;
             this.lastInputWidth = controlWidth;
 
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
-            drawText(guiGraphics, KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
-            if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
-                renderRegistryIcon(
-                        guiGraphics,
+            context.drawText(KonfigConfigScreen.this.font, this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
+            context.drawText(KonfigConfigScreen.this.font, this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
+            if (renderIcon && this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
+                context.renderRegistryIcon(
                         this.entry.value.boundRegistryKey(),
                         KonfigConfigScreen.this.currentStringValue(this.entry.value),
                         controlX - ICON_GAP - ICON_SIZE,
                         y + (height - ICON_SIZE) / 2
                 );
             }
-            renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
+            context.renderWidget(this.input, mouseX, mouseY, partialTick);
 
             if (this.input.isFocused()) {
                 KonfigConfigScreen.this.setActiveRegistryRow(this);
@@ -3515,7 +3163,6 @@ public final class KonfigConfigScreen extends Screen {
                 KonfigConfigScreen.this.renderedRegistryRow = this;
             }
         }
-//?}
 
         public boolean isFocused() {
             return this.input.isFocused();
@@ -3586,34 +3233,28 @@ public final class KonfigConfigScreen extends Screen {
             }
         }
 
-//? if >=26.1 {
-        private void renderSuggestions(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
-//?} elif >=1.20 {
-        private void renderSuggestions(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-//?} else {
-        private void renderSuggestions(PoseStack guiGraphics, int mouseX, int mouseY) {
-//?}
+        private void renderSuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
             if (KonfigConfigScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
                 return;
             }
 
             this.layoutSuggestionBox();
-            fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
+            context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+            context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
             for (int index = 0; index < this.visibleSuggestions.size(); index++) {
                 int rowY = this.lastDropdownY + 2 + (index * SUGGESTION_ROW_HEIGHT);
                 int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                 boolean hovered = index == this.hoveredSuggestionIndex(mouseX, mouseY);
                 if (hovered || index == this.selectedSuggestionIndex) {
-                    fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, hovered ? 0x80406080 : 0x50303030);
+                    context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, hovered ? 0x80406080 : 0x50303030);
                 }
                 int textX = this.lastDropdownX + 4;
                 if (this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
-                    renderRegistryIcon(guiGraphics, this.entry.value.boundRegistryKey(), this.visibleSuggestions.get(index), this.lastDropdownX + 2, rowY - 1);
+                    context.renderRegistryIcon(this.entry.value.boundRegistryKey(), this.visibleSuggestions.get(index), this.lastDropdownX + 2, rowY - 1);
                     textX += 18;
                 }
-                drawText(guiGraphics, KonfigConfigScreen.this.font, text(this.visibleSuggestions.get(index)), textX, rowY + 3, 0xFFFFFFFF);
+                context.drawText(KonfigConfigScreen.this.font, text(this.visibleSuggestions.get(index)), textX, rowY + 3, 0xFFFFFFFF);
             }
         }
 
@@ -4194,44 +3835,34 @@ public final class KonfigConfigScreen extends Screen {
         public void extractRenderState(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY, float partialTick) {
             this.renderedRegistryRow = null;
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-            String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
-            drawText(guiGraphics, this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
-            if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
-                drawCenteredText(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
-            }
-            if (this.renderedRegistryRow != null) {
-                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
-            }
+            this.renderStringListEditorOverlay(KonfigRenderContext.of(guiGraphics), mouseX, mouseY);
         }
 //?} elif >=1.20 {
         @Override
         public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
             this.renderedRegistryRow = null;
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-            String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
-            drawText(guiGraphics, this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
-            if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
-                drawCenteredText(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
-            }
-            if (this.renderedRegistryRow != null) {
-                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
-            }
+            this.renderStringListEditorOverlay(KonfigRenderContext.of(guiGraphics), mouseX, mouseY);
         }
 //?} else {
         @Override
         public void render(PoseStack guiGraphics, int mouseX, int mouseY, float partialTick) {
             this.renderedRegistryRow = null;
             this.renderEditorChrome(guiGraphics, mouseX, mouseY, partialTick);
-            String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
-            drawText(guiGraphics, this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
-            if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
-                drawCenteredText(guiGraphics, this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
-            }
-            if (this.renderedRegistryRow != null) {
-                this.renderedRegistryRow.renderSuggestions(guiGraphics, mouseX, mouseY);
-            }
+            this.renderStringListEditorOverlay(KonfigRenderContext.of(guiGraphics), mouseX, mouseY);
         }
 //?}
+
+        private void renderStringListEditorOverlay(KonfigRenderContext context, int mouseX, int mouseY) {
+            String count = translate("konfig.screen.list.count", Integer.valueOf(KonfigConfigScreen.this.currentStringList(this.entry.value).size())).getString();
+            context.drawText(this.font, text(count), this.width - 12 - this.font.width(count), EDITOR_CONTEXT_Y, 0xFFC0C0C0);
+            if (KonfigConfigScreen.this.currentStringList(this.entry.value).isEmpty()) {
+                context.drawCenteredText(this.font, translate("konfig.screen.list.empty"), this.width / 2, this.height / 2 - 12, 0xFFC0C0C0);
+            }
+            if (this.renderedRegistryRow != null) {
+                this.renderedRegistryRow.renderSuggestions(context, mouseX, mouseY);
+            }
+        }
 
 //? if >=1.21.9 {
         @Override
@@ -4539,52 +4170,7 @@ public final class KonfigConfigScreen extends Screen {
                 int x = this.getContentX();
                 int y = this.getContentY();
                 int width = this.getContentWidth();
-                if (hovered) {
-                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
-                }
-
-                int buttonY = y + 4;
-                int removeX = x + width - 20;
-                int downX = removeX - 24;
-                int upX = downX - 24;
-                int iconOffset = 0;
-                if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
-                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
-                    iconOffset = ICON_SIZE + ICON_GAP;
-                }
-                int inputX = x + iconOffset;
-                int inputWidth = Math.max(60, upX - inputX - 8);
-
-                this.input.setX(inputX);
-                this.input.setY(buttonY);
-                this.input.setWidth(inputWidth);
-                this.lastInputX = inputX;
-                this.lastInputY = buttonY;
-                this.lastInputWidth = inputWidth;
-
-                this.moveUpButton.setX(upX);
-                this.moveUpButton.setY(buttonY);
-                this.moveUpButton.active = this.index > 0;
-
-                this.moveDownButton.setX(downX);
-                this.moveDownButton.setY(buttonY);
-                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
-
-                this.removeButton.setX(removeX);
-                this.removeButton.setY(buttonY);
-
-                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
-
-                if (this.hasRegistryBinding() && this.input.isFocused()) {
-                    StringListEditorScreen.this.setActiveRegistryRow(this);
-                    this.refreshSuggestions();
-                }
-                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
-                    StringListEditorScreen.this.renderedRegistryRow = this;
-                }
+                this.renderListEntryRow(KonfigRenderContext.of(guiGraphics), x, y, width, mouseX, mouseY, hovered, partialTick);
             }
 //?} elif >=1.21.9 {
             @Override
@@ -4592,127 +4178,23 @@ public final class KonfigConfigScreen extends Screen {
                 int x = this.getContentX();
                 int y = this.getContentY();
                 int width = this.getContentWidth();
-                if (hovered) {
-                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
-                }
-
-                int buttonY = y + 4;
-                int removeX = x + width - 20;
-                int downX = removeX - 24;
-                int upX = downX - 24;
-                int iconOffset = 0;
-                if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
-                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
-                    iconOffset = ICON_SIZE + ICON_GAP;
-                }
-                int inputX = x + iconOffset;
-                int inputWidth = Math.max(60, upX - inputX - 8);
-
-                this.input.setX(inputX);
-                this.input.setY(buttonY);
-                this.input.setWidth(inputWidth);
-                this.lastInputX = inputX;
-                this.lastInputY = buttonY;
-                this.lastInputWidth = inputWidth;
-
-                this.moveUpButton.setX(upX);
-                this.moveUpButton.setY(buttonY);
-                this.moveUpButton.active = this.index > 0;
-
-                this.moveDownButton.setX(downX);
-                this.moveDownButton.setY(buttonY);
-                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
-
-                this.removeButton.setX(removeX);
-                this.removeButton.setY(buttonY);
-
-                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
-
-                if (this.hasRegistryBinding() && this.input.isFocused()) {
-                    StringListEditorScreen.this.setActiveRegistryRow(this);
-                    this.refreshSuggestions();
-                }
-                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
-                    StringListEditorScreen.this.renderedRegistryRow = this;
-                }
+                this.renderListEntryRow(KonfigRenderContext.of(guiGraphics), x, y, width, mouseX, mouseY, hovered, partialTick);
             }
 //?} elif >=1.20 {
             @Override
             public void render(GuiGraphics guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
-                if (hovered) {
-                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
-                }
-
-                int buttonY = y + 4;
-                int removeX = x + width - 20;
-                int downX = removeX - 24;
-                int upX = downX - 24;
-                int iconOffset = 0;
-                if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
-                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
-                    iconOffset = ICON_SIZE + ICON_GAP;
-                }
-                int inputX = x + iconOffset;
-                int inputWidth = Math.max(60, upX - inputX - 8);
-
-                this.input.setX(inputX);
-//? if >=1.20 {
-                this.input.setY(buttonY);
-//?} else {
-                this.input.y = buttonY;
-//?}
-                this.input.setWidth(inputWidth);
-                this.lastInputX = inputX;
-                this.lastInputY = buttonY;
-                this.lastInputWidth = inputWidth;
-
-//? if >=1.20 {
-                this.moveUpButton.setX(upX);
-                this.moveUpButton.setY(buttonY);
-//?} else {
-                this.moveUpButton.x = upX;
-                this.moveUpButton.y = buttonY;
-//?}
-                this.moveUpButton.active = this.index > 0;
-
-//? if >=1.20 {
-                this.moveDownButton.setX(downX);
-                this.moveDownButton.setY(buttonY);
-//?} else {
-                this.moveDownButton.x = downX;
-                this.moveDownButton.y = buttonY;
-//?}
-                this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
-
-//? if >=1.20 {
-                this.removeButton.setX(removeX);
-                this.removeButton.setY(buttonY);
-//?} else {
-                this.removeButton.x = removeX;
-                this.removeButton.y = buttonY;
-//?}
-
-                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
-
-                if (this.hasRegistryBinding() && this.input.isFocused()) {
-                    StringListEditorScreen.this.setActiveRegistryRow(this);
-                    this.refreshSuggestions();
-                }
-                if (StringListEditorScreen.this.activeRegistryRow == this && !this.visibleSuggestions.isEmpty()) {
-                    StringListEditorScreen.this.renderedRegistryRow = this;
-                }
+                this.renderListEntryRow(KonfigRenderContext.of(guiGraphics), x, y, width, mouseX, mouseY, hovered, partialTick);
             }
 //?} else {
             @Override
             public void render(PoseStack guiGraphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
+                this.renderListEntryRow(KonfigRenderContext.of(guiGraphics), x, y, width, mouseX, mouseY, hovered, partialTick);
+            }
+//?}
+
+            private void renderListEntryRow(KonfigRenderContext context, int x, int y, int width, int mouseX, int mouseY, boolean hovered, float partialTick) {
                 if (hovered) {
-                    fillRect(guiGraphics, x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
+                    context.fill(x, y, x + width, y + ITEM_ROW_HEIGHT, 0x22000000);
                 }
 
                 int buttonY = y + 4;
@@ -4721,53 +4203,23 @@ public final class KonfigConfigScreen extends Screen {
                 int upX = downX - 24;
                 int iconOffset = 0;
                 if (this.hasRegistryBinding() && supportsRegistryIcon(this.registryKey())) {
-                    renderRegistryIcon(guiGraphics, this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
+                    context.renderRegistryIcon(this.registryKey(), this.input.getValue(), x, y + (ITEM_ROW_HEIGHT - ICON_SIZE) / 2);
                     iconOffset = ICON_SIZE + ICON_GAP;
                 }
                 int inputX = x + iconOffset;
                 int inputWidth = Math.max(60, upX - inputX - 8);
 
-                this.input.setX(inputX);
-//? if >=1.19.3 {
-                this.input.setY(buttonY);
-//?} else {
-                this.input.y = buttonY;
-//?}
-                this.input.setWidth(inputWidth);
-                this.lastInputX = inputX;
-                this.lastInputY = buttonY;
-                this.lastInputWidth = inputWidth;
-
-//? if >=1.19.3 {
-                this.moveUpButton.setX(upX);
-                this.moveUpButton.setY(buttonY);
-//?} else {
-                this.moveUpButton.x = upX;
-                this.moveUpButton.y = buttonY;
-//?}
+                this.layoutInput(inputX, buttonY, inputWidth);
+                this.positionButton(this.moveUpButton, upX, buttonY);
                 this.moveUpButton.active = this.index > 0;
-
-//? if >=1.19.3 {
-                this.moveDownButton.setX(downX);
-                this.moveDownButton.setY(buttonY);
-//?} else {
-                this.moveDownButton.x = downX;
-                this.moveDownButton.y = buttonY;
-//?}
+                this.positionButton(this.moveDownButton, downX, buttonY);
                 this.moveDownButton.active = this.index + 1 < KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value).size();
+                this.positionButton(this.removeButton, removeX, buttonY);
 
-//? if >=1.19.3 {
-                this.removeButton.setX(removeX);
-                this.removeButton.setY(buttonY);
-//?} else {
-                this.removeButton.x = removeX;
-                this.removeButton.y = buttonY;
-//?}
-
-                renderWidget(this.input, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveUpButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.moveDownButton, guiGraphics, mouseX, mouseY, partialTick);
-                renderWidget(this.removeButton, guiGraphics, mouseX, mouseY, partialTick);
+                context.renderWidget(this.input, mouseX, mouseY, partialTick);
+                context.renderWidget(this.moveUpButton, mouseX, mouseY, partialTick);
+                context.renderWidget(this.moveDownButton, mouseX, mouseY, partialTick);
+                context.renderWidget(this.removeButton, mouseX, mouseY, partialTick);
 
                 if (this.hasRegistryBinding() && this.input.isFocused()) {
                     StringListEditorScreen.this.setActiveRegistryRow(this);
@@ -4777,7 +4229,29 @@ public final class KonfigConfigScreen extends Screen {
                     StringListEditorScreen.this.renderedRegistryRow = this;
                 }
             }
+
+            private void layoutInput(int x, int y, int width) {
+                this.input.setX(x);
+//? if >=1.19.3 {
+                this.input.setY(y);
+//?} else {
+                this.input.y = y;
 //?}
+                this.input.setWidth(width);
+                this.lastInputX = x;
+                this.lastInputY = y;
+                this.lastInputWidth = width;
+            }
+
+            private void positionButton(Button button, int x, int y) {
+//? if >=1.19.3 {
+                button.setX(x);
+                button.setY(y);
+//?} else {
+                button.x = x;
+                button.y = y;
+//?}
+            }
 
             private void refreshSuggestions() {
                 if (!this.hasRegistryBinding()) {
@@ -4836,34 +4310,28 @@ public final class KonfigConfigScreen extends Screen {
                 }
             }
 
-//? if >=26.1 {
-            private void renderSuggestions(GuiGraphicsExtractor guiGraphics, int mouseX, int mouseY) {
-//?} elif >=1.20 {
-            private void renderSuggestions(GuiGraphics guiGraphics, int mouseX, int mouseY) {
-//?} else {
-            private void renderSuggestions(PoseStack guiGraphics, int mouseX, int mouseY) {
-//?}
+            private void renderSuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
                 if (StringListEditorScreen.this.activeRegistryRow != this || this.visibleSuggestions.isEmpty()) {
                     return;
                 }
 
                 this.layoutSuggestionBox();
-                fillRect(guiGraphics, this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
-            fillRect(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
+                context.fill(this.lastDropdownX - 1, this.lastDropdownY - 1, this.lastDropdownX + this.lastDropdownWidth + 1, this.lastDropdownY + this.lastDropdownHeight + 1, 0xFF202020);
+                context.fill(this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
                 for (int suggestionIndex = 0; suggestionIndex < this.visibleSuggestions.size(); suggestionIndex++) {
                     int rowY = this.lastDropdownY + 2 + (suggestionIndex * SUGGESTION_ROW_HEIGHT);
                     int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                     boolean suggestionHovered = suggestionIndex == this.hoveredSuggestionIndex(mouseX, mouseY);
                     if (suggestionHovered || suggestionIndex == this.selectedSuggestionIndex) {
-                        fillRect(guiGraphics, this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
+                        context.fill(this.lastDropdownX + 1, rowY, this.lastDropdownX + this.lastDropdownWidth - 1, rowBottom, suggestionHovered ? 0x80406080 : 0x50303030);
                     }
                     int textX = this.lastDropdownX + 4;
                     if (supportsRegistryIcon(this.registryKey())) {
-                        renderRegistryIcon(guiGraphics, this.registryKey(), this.visibleSuggestions.get(suggestionIndex), this.lastDropdownX + 2, rowY - 1);
+                        context.renderRegistryIcon(this.registryKey(), this.visibleSuggestions.get(suggestionIndex), this.lastDropdownX + 2, rowY - 1);
                         textX += 18;
                     }
-                    drawText(guiGraphics, StringListEditorScreen.this.font, text(this.visibleSuggestions.get(suggestionIndex)), textX, rowY + 3, 0xFFFFFFFF);
+                    context.drawText(StringListEditorScreen.this.font, text(this.visibleSuggestions.get(suggestionIndex)), textX, rowY + 3, 0xFFFFFFFF);
                 }
             }
 
