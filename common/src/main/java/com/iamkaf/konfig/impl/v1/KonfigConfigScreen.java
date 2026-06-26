@@ -186,7 +186,6 @@ import static com.iamkaf.konfig.impl.v1.KonfigUiAdapter.*;
 
 import com.iamkaf.konfig.Constants;
 import com.iamkaf.konfig.KonfigDebugConfig;
-import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.mojang.blaze3d.platform.InputConstants;
 //? if >=26.1 {
@@ -226,11 +225,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.net.URI;
 
 public final class KonfigConfigScreen extends Screen {
@@ -257,8 +254,7 @@ public final class KonfigConfigScreen extends Screen {
     private final String modIdFilter;
     private final String screenTitle;
     private final List<EntryRef> entries;
-    private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
-    private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
+    private final KonfigScreenSession session;
     private final Map<ResourceKey<? extends Registry<?>>, List<String>> registrySuggestionCache = new LinkedHashMap<ResourceKey<? extends Registry<?>>, List<String>>();
 
     private EntryList list;
@@ -303,13 +299,7 @@ public final class KonfigConfigScreen extends Screen {
                     this.entries.size()
             );
         }
-        for (EntryRef entry : this.entries) {
-            Object value = entry.value.get();
-            this.drafts.put(entry.value, copyDraftValue(entry.value, value));
-            if (entry.editable) {
-                this.sessionStartValues.put(entry.value, snapshotValue(entry.value, value));
-            }
-        }
+        this.session = new KonfigScreenSession(this.entries);
     }
 
     private static Component defaultScreenTitle(String modIdFilter, String screenTitle) {
@@ -680,18 +670,10 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private boolean persistEntry(EntryRef entry) {
-        Object previousValue = entry.value.get();
         try {
-            Object parsed = parseDraft(entry.value, this.drafts.get(entry.value));
-            if (sameValue(previousValue, parsed)) {
-                return true;
-            }
-
-            setRawValue(entry.value, parsed);
-            entry.handle.save();
+            this.session.persist(entry);
             return true;
-        } catch (Exception exception) {
-            setRawValue(entry.value, previousValue);
+        } catch (RuntimeException exception) {
             KonfigToastSupport.saveFailed(exceptionMessage(exception));
             return false;
         }
@@ -702,28 +684,9 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void resetEntries() {
-        Map<ConfigValueImpl<?>, Object> previousValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
-        Set<ConfigHandleImpl> handles = new LinkedHashSet<ConfigHandleImpl>();
         try {
-            for (EntryRef entry : this.entries) {
-                if (!entry.editable) {
-                    continue;
-                }
-                Object resetValue = snapshotValue(entry.value, this.sessionStartValues.get(entry.value));
-                previousValues.put(entry.value, snapshotValue(entry.value, entry.value.get()));
-                this.drafts.put(entry.value, copyDraftValue(entry.value, resetValue));
-                setRawValue(entry.value, resetValue);
-                handles.add(entry.handle);
-            }
-
-            for (ConfigHandleImpl handle : handles) {
-                handle.save();
-            }
-        } catch (Exception exception) {
-            for (Map.Entry<ConfigValueImpl<?>, Object> previousValue : previousValues.entrySet()) {
-                setRawValue(previousValue.getKey(), previousValue.getValue());
-                this.drafts.put(previousValue.getKey(), copyDraftValue(previousValue.getKey(), previousValue.getValue()));
-            }
+            this.session.resetAll();
+        } catch (RuntimeException exception) {
             KonfigToastSupport.resetFailed(exceptionMessage(exception));
         }
         this.rebuildScreenWidgets();
@@ -1302,85 +1265,27 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private boolean readBoolean(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
-        if (current instanceof Boolean) {
-            return ((Boolean) current).booleanValue();
-        }
-        return ((Boolean) value.get()).booleanValue();
+        return this.session.readBoolean(value);
     }
 
     private Enum<?> currentEnum(ConfigValueImpl<?> value) {
-        Object defaultValue = value.defaultValue();
-        if (!(defaultValue instanceof Enum<?>)) {
-            throw new IllegalStateException("Expected enum value for '" + value.path() + "'.");
-        }
-
-        Object current = this.drafts.get(value);
-        if (current != null && defaultValue.getClass().isInstance(current)) {
-            return (Enum<?>) current;
-        }
-
-        return (Enum<?>) defaultValue;
+        return this.session.currentEnum(value);
     }
 
     private Enum<?> cycleEnum(ConfigValueImpl<?> value) {
-        Enum<?> current = currentEnum(value);
-        Object[] constants = current.getDeclaringClass().getEnumConstants();
-
-        int index = 0;
-        for (int i = 0; i < constants.length; i++) {
-            if (constants[i] == current) {
-                index = i;
-                break;
-            }
-        }
-
-        return (Enum<?>) constants[(index + 1) % constants.length];
+        return this.session.nextEnum(value);
     }
 
     private int currentColor(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
-        if (current instanceof Number) {
-            return ((Number) current).intValue();
-        }
-        return ((Number) value.get()).intValue();
+        return this.session.currentColor(value);
     }
 
     private List<String> currentStringList(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
-        if (current instanceof List<?>) {
-            return StringListValueHelper.mutableCopy(stringListValue(current, value.path()));
-        }
-        return StringListValueHelper.mutableCopy(stringListValue(value.get(), value.path()));
+        return this.session.currentStringList(value);
     }
 
     private String currentDropdownValue(ConfigValueImpl<?> value) {
-        List<String> options = value.dropdownOptions();
-        Object current = this.drafts.get(value);
-        if (current instanceof String) {
-            String normalized = ((String) current).trim();
-            if (options.contains(normalized)) {
-                return normalized;
-            }
-        }
-
-        Object stored = value.get();
-        if (stored instanceof String) {
-            String normalized = ((String) stored).trim();
-            if (options.contains(normalized)) {
-                return normalized;
-            }
-        }
-
-        Object defaultValue = value.defaultValue();
-        if (defaultValue instanceof String) {
-            String normalized = ((String) defaultValue).trim();
-            if (options.contains(normalized)) {
-                return normalized;
-            }
-        }
-
-        return options.isEmpty() ? "" : options.get(0);
+        return this.session.currentDropdownValue(value);
     }
 
     private Component booleanText(ConfigValueImpl<?> value) {
@@ -1419,11 +1324,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private String currentStringValue(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
-        if (current instanceof String) {
-            return (String) current;
-        }
-        return stringValue(value.get());
+        return this.session.currentStringValue(value);
     }
 
     private RegistryTextInputRow findFocusedRegistryRow() {
@@ -1667,7 +1568,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         protected void revertDraft(Object previousValue) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+            KonfigConfigScreen.this.session.setDraft(this.entry.value, previousValue);
         }
 
         protected void commitOrRevert(Object previousValue) {
@@ -2062,8 +1963,8 @@ public final class KonfigConfigScreen extends Screen {
         private BooleanRow(EntryRef entry) {
             super(entry);
             this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, booleanText(entry.value), button -> {
-                Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
-                KonfigConfigScreen.this.drafts.put(entry.value, Boolean.valueOf(!KonfigConfigScreen.this.readBoolean(entry.value)));
+                Object previousDraft = KonfigConfigScreen.this.session.draft(entry.value);
+                KonfigConfigScreen.this.session.setDraft(entry.value, Boolean.valueOf(!KonfigConfigScreen.this.readBoolean(entry.value)));
                 this.commitOrRevert(previousDraft);
                 this.syncFromDraft();
             });
@@ -2086,8 +1987,8 @@ public final class KonfigConfigScreen extends Screen {
         private EnumRow(EntryRef entry) {
             super(entry);
             this.button = button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, enumText(entry, KonfigConfigScreen.this.currentEnum(entry.value)), button -> {
-                Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
-                KonfigConfigScreen.this.drafts.put(entry.value, KonfigConfigScreen.this.cycleEnum(entry.value));
+                Object previousDraft = KonfigConfigScreen.this.session.draft(entry.value);
+                KonfigConfigScreen.this.session.setDraft(entry.value, KonfigConfigScreen.this.cycleEnum(entry.value));
                 this.commitOrRevert(previousDraft);
                 this.syncFromDraft();
             });
@@ -2297,8 +2198,8 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
-            Object previousDraft = KonfigConfigScreen.this.drafts.get(this.entry.value);
-            KonfigConfigScreen.this.drafts.put(this.entry.value, options.get(optionIndex));
+            Object previousDraft = KonfigConfigScreen.this.session.draft(this.entry.value);
+            KonfigConfigScreen.this.session.setDraft(this.entry.value, options.get(optionIndex));
             this.commitOrRevert(previousDraft);
             this.syncFromDraft();
             this.closeDropdown();
@@ -2796,15 +2697,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private int currentValue() {
-            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
-            if (draft instanceof Number) {
-                return ((Number) draft).intValue();
-            }
-            return ((Number) this.entry.value.get()).intValue();
+            return KonfigConfigScreen.this.session.currentInt(this.entry.value);
         }
 
         private void updateDraftFromSlider(double progress) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(intFromProgress(progress, this.min, this.max)));
+            KonfigConfigScreen.this.session.setDraft(this.entry.value, Integer.valueOf(intFromProgress(progress, this.min, this.max)));
         }
 
         private final class SliderWidget extends BaseSliderWidget {
@@ -2884,15 +2781,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private long currentValue() {
-            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
-            if (draft instanceof Number) {
-                return ((Number) draft).longValue();
-            }
-            return ((Number) this.entry.value.get()).longValue();
+            return KonfigConfigScreen.this.session.currentLong(this.entry.value);
         }
 
         private void updateDraftFromSlider(double progress) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Long.valueOf(longFromProgress(progress, this.min, this.max)));
+            KonfigConfigScreen.this.session.setDraft(this.entry.value, Long.valueOf(longFromProgress(progress, this.min, this.max)));
         }
 
         private final class SliderWidget extends BaseSliderWidget {
@@ -2972,15 +2865,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private double currentValue() {
-            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
-            if (draft instanceof Number) {
-                return ((Number) draft).doubleValue();
-            }
-            return ((Number) this.entry.value.get()).doubleValue();
+            return KonfigConfigScreen.this.session.currentDouble(this.entry.value);
         }
 
         private void updateDraftFromSlider(double progress) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Double.valueOf(doubleFromProgress(progress, this.min, this.max)));
+            KonfigConfigScreen.this.session.setDraft(this.entry.value, Double.valueOf(doubleFromProgress(progress, this.min, this.max)));
         }
 
         private final class SliderWidget extends BaseSliderWidget {
@@ -3059,14 +2948,14 @@ public final class KonfigConfigScreen extends Screen {
             super(entry);
             this.input = new EditBox(KonfigConfigScreen.this.font, 0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, entry.label);
             this.input.setMaxLength(256);
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
+            this.input.setValue(KonfigConfigScreen.this.currentStringValue(entry.value));
             this.input.setResponder(value -> {
                 if (this.suppressResponder) {
                     return;
                 }
                 this.suggestionsDismissed = false;
                 this.dismissedValue = "";
-                KonfigConfigScreen.this.drafts.put(entry.value, value);
+                KonfigConfigScreen.this.session.setDraft(entry.value, value);
                 KonfigConfigScreen.this.persistEntry(entry);
                 this.refreshSuggestions();
             });
@@ -3088,7 +2977,7 @@ public final class KonfigConfigScreen extends Screen {
         @Override
         protected void syncFromDraft() {
             this.suppressResponder = true;
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(this.entry.value)));
+            this.input.setValue(KonfigConfigScreen.this.currentStringValue(this.entry.value));
             this.suppressResponder = false;
             this.suggestionsDismissed = false;
             this.dismissedValue = "";
@@ -3359,7 +3248,7 @@ public final class KonfigConfigScreen extends Screen {
             this.suppressResponder = true;
             this.input.setValue(suggestion);
             this.suppressResponder = false;
-            KonfigConfigScreen.this.drafts.put(this.entry.value, suggestion);
+            KonfigConfigScreen.this.session.setDraft(this.entry.value, suggestion);
             KonfigConfigScreen.this.persistEntry(this.entry);
             this.dismissSuggestions();
 //? if >=1.19.4 {
@@ -3409,9 +3298,9 @@ public final class KonfigConfigScreen extends Screen {
             super(entry);
             this.input = new EditBox(KonfigConfigScreen.this.font, 0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, entry.label);
             this.input.setMaxLength(256);
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
+            this.input.setValue(KonfigConfigScreen.this.currentStringValue(entry.value));
             this.input.setResponder(value -> {
-                KonfigConfigScreen.this.drafts.put(entry.value, value);
+                KonfigConfigScreen.this.session.setDraft(entry.value, value);
                 try {
                     parseDraft(entry.value, value);
                     this.validationMessage = "";
@@ -3443,7 +3332,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void syncFromDraft() {
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(this.entry.value)));
+            this.input.setValue(KonfigConfigScreen.this.currentStringValue(this.entry.value));
         }
     }
 
@@ -3471,23 +3360,17 @@ public final class KonfigConfigScreen extends Screen {
 
         protected final boolean persistEditedValue(Object previousValue) {
             if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+                KonfigConfigScreen.this.session.setDraft(this.entry.value, previousValue);
                 return false;
             }
             return true;
         }
 
         protected final boolean resetToSessionStart() {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
             try {
-                Object resetValue = snapshotValue(this.entry.value, KonfigConfigScreen.this.sessionStartValues.get(this.entry.value));
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, resetValue));
-                setRawValue(this.entry.value, resetValue);
-                this.entry.handle.save();
+                KonfigConfigScreen.this.session.resetEntry(this.entry);
                 return true;
-            } catch (Exception exception) {
-                setRawValue(this.entry.value, previousValue);
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+            } catch (RuntimeException exception) {
                 KonfigToastSupport.resetFailed(exceptionMessage(exception));
                 return false;
             }
@@ -3630,10 +3513,10 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
+            Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(this.entry.value);
             try {
                 int parsed = parseColor(this.entry.value, value);
-                KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(parsed));
+                KonfigConfigScreen.this.session.setDraft(this.entry.value, Integer.valueOf(parsed));
                 if (this.persistEditedValue(previousValue)) {
                     this.validationMessage = "";
                     this.syncWidgetsFromDraft();
@@ -3641,7 +3524,7 @@ public final class KonfigConfigScreen extends Screen {
                     this.syncWidgetsFromDraft();
                 }
             } catch (Exception exception) {
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+                KonfigConfigScreen.this.session.setDraft(this.entry.value, previousValue);
                 this.validationMessage = exception.getMessage() == null
                         ? translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString()
                         : exception.getMessage();
@@ -3763,13 +3646,13 @@ public final class KonfigConfigScreen extends Screen {
 
             @Override
             protected void applyValue() {
-                KonfigConfigScreen.this.drafts.put(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, intFromProgress(this.value, 0, 255))));
+                KonfigConfigScreen.this.session.setDraft(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, intFromProgress(this.value, 0, 255))));
             }
 
 //? if >=1.21.9 {
             @Override
             public void onRelease(MouseButtonEvent event) {
-                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(ColorEditorScreen.this.entry.value);
                 super.onRelease(event);
                 if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
                     ColorEditorScreen.this.syncWidgetsFromDraft();
@@ -3778,7 +3661,7 @@ public final class KonfigConfigScreen extends Screen {
 
             @Override
             public boolean keyPressed(KeyEvent event) {
-                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(ColorEditorScreen.this.entry.value);
                 int before = ColorEditorScreen.this.currentChannel(this.channel);
                 boolean handled = super.keyPressed(event);
                 if (handled && before != ColorEditorScreen.this.currentChannel(this.channel)) {
@@ -3791,7 +3674,7 @@ public final class KonfigConfigScreen extends Screen {
 //?} else {
             @Override
             public void onRelease(double mouseX, double mouseY) {
-                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(ColorEditorScreen.this.entry.value);
                 super.onRelease(mouseX, mouseY);
                 if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
                     ColorEditorScreen.this.syncWidgetsFromDraft();
@@ -3800,7 +3683,7 @@ public final class KonfigConfigScreen extends Screen {
 
             @Override
             public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(ColorEditorScreen.this.entry.value);
                 int before = ColorEditorScreen.this.currentChannel(this.channel);
                 boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
                 if (handled && before != ColorEditorScreen.this.currentChannel(this.channel)) {
@@ -3958,10 +3841,10 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void addValue() {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
+            Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(this.entry.value);
             List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
             values.add(this.entry.value.hasBoundRegistry() ? "" : translate("konfig.screen.list.new_item").getString());
-            KonfigConfigScreen.this.drafts.put(this.entry.value, values);
+            KonfigConfigScreen.this.session.setDraft(this.entry.value, values);
             if (this.persistEditedValue(previousValue)) {
                 this.rebuildEditorWidgets();
             }
@@ -4120,10 +4003,10 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             private boolean persistListValue(String value) {
-                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(StringListEditorScreen.this.entry.value);
                 List<String> values = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
                 values.set(this.index, value);
-                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, values);
+                KonfigConfigScreen.this.session.setDraft(StringListEditorScreen.this.entry.value, values);
                 if (!StringListEditorScreen.this.persistEditedValue(previousValue)) {
                     this.suppressResponder = true;
                     this.input.setValue(currentStringList(StringListEditorScreen.this.entry.value).get(this.index));
@@ -4142,9 +4025,9 @@ public final class KonfigConfigScreen extends Screen {
                     return;
                 }
 
-                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(StringListEditorScreen.this.entry.value);
                 Collections.swap(current, this.index, targetIndex);
-                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, current);
+                KonfigConfigScreen.this.session.setDraft(StringListEditorScreen.this.entry.value, current);
                 if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
                     StringListEditorScreen.this.rebuildEditorWidgets();
                 }
@@ -4156,9 +4039,9 @@ public final class KonfigConfigScreen extends Screen {
                     return;
                 }
 
-                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                Object previousValue = KonfigConfigScreen.this.session.storedSnapshot(StringListEditorScreen.this.entry.value);
                 current.remove(this.index);
-                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, current);
+                KonfigConfigScreen.this.session.setDraft(StringListEditorScreen.this.entry.value, current);
                 if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
                     StringListEditorScreen.this.rebuildEditorWidgets();
                 }
