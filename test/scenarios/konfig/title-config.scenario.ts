@@ -115,7 +115,6 @@ const fabricModern = {
     { action: "wait_for_screen", title: "Mods", timeoutMs: 5000, pollMs: 100 },
     { action: "click_list_entry", label: "Konfig", contains: false, nth: 0, listRole: "mod_list", waitAfterMs: 300 },
     { action: "activate_widget_class", widgetClass: "com.terraformersmc.modmenu.gui.widget.LegacyTexturedButtonWidget", nth: 1, waitAfterMs: 800 },
-    { action: "wait_for_screen", screenClass: "com.iamkaf.konfig.impl.v1.KonfigConfigScreen", timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Debug Settings", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "These entries exist to test Konfig's own screen", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Documentation", contains: true, timeoutMs: 5000, pollMs: 100 },
@@ -131,7 +130,7 @@ const fabricModern = {
 const fabricModernPre262 = {
   ...fabricModern,
   name: "konfig-title-config-fabric-pre262",
-  steps: replaceStep(fabricModern.steps, 11, { action: "click_mouse", x: 203, y: 185 }),
+  steps: replaceStep(fabricModern.steps, 10, { action: "click_mouse", x: 203, y: 185 }),
 } as ScenarioDefinition;
 
 const fabric117 = {
@@ -199,7 +198,6 @@ const forgeModern = {
     { action: "wait_for_screen", title: "Mods", timeoutMs: 5000, pollMs: 100 },
     { action: "click_list_entry", label: "Konfig", contains: false, nth: 0, waitAfterMs: 300 },
     { action: "activate_widget", label: "Config", contains: false, waitAfterMs: 800 },
-    { action: "wait_for_screen", screenClass: "com.iamkaf.konfig.impl.v1.KonfigConfigScreen", timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Debug Settings", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "These entries exist to test Konfig's own screen", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Documentation", contains: true, timeoutMs: 5000, pollMs: 100 },
@@ -215,12 +213,16 @@ const forgeModern = {
 const forgeLegacy = {
   ...forgeModern,
   name: "konfig-title-config-forge-legacy",
-  steps: replaceStep(forgeModern.steps, 6, {
-    action: "wait_for_screen",
-    screenClass: "com.iamkaf.konfig.forge.KonfigConfigScreen",
-    timeoutMs: 10000,
-    pollMs: 100,
-  }).map((step, index) => index >= 7 && index <= 10 ? { ...step, timeoutMs: 10000 } : step),
+  steps: [
+    ...forgeModern.steps.slice(0, 6),
+    {
+      action: "wait_for_screen",
+      screenClass: "com.iamkaf.konfig.forge.KonfigConfigScreen",
+      timeoutMs: 10000,
+      pollMs: 100,
+    },
+    ...forgeModern.steps.slice(6).map((step, index) => index < 4 ? { ...step, timeoutMs: 10000 } : step),
+  ],
 } as ScenarioDefinition;
 
 const neoforge = {

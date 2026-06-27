@@ -17,6 +17,36 @@ def useTeaKit = providers.systemProperty('konfig.withTeaKit')
     .orElse(false)
     .get()
 
+configurations.configureEach {
+    resolutionStrategy.eachDependency { details ->
+        if (details.requested.group == 'org.apache.logging.log4j' && details.requested.version == '2.11.+') {
+            details.useVersion '2.11.2'
+            details.because 'Forge 1.20.1 userdev requests Log4j dynamically; pin it before repository metadata lookup.'
+        }
+        if (details.requested.group == 'cpw.mods' && details.requested.name == 'modlauncher') {
+            if (details.requested.version == '9.0.+') {
+                details.useVersion '9.0.24'
+                details.because 'Forge 1.18.2 userdev requests ModLauncher dynamically; pin it before repository metadata lookup.'
+            }
+            if (details.requested.version == '10.0.+') {
+                details.useVersion '10.0.9'
+                details.because 'Forge 1.19-1.20 userdev requests ModLauncher dynamically; pin it before repository metadata lookup.'
+            }
+        }
+    }
+}
+
+// Keep Forge's cpw.mods artifacts ahead of flaky broad repositories without shadowing mavenized Forge artifacts.
+def forgeLibrariesRepository = repositories.maven {
+    name = 'ForgeLibraries'
+    url = uri('https://maven.minecraftforge.net/')
+    content {
+        includeGroup 'cpw.mods'
+    }
+}
+repositories.remove(forgeLibrariesRepository)
+repositories.addFirst(forgeLibrariesRepository)
+
 dependencies {
     compileOnly 'org.jetbrains:annotations:24.1.0'
     implementation('net.sf.jopt-simple:jopt-simple:5.0.4') { version { strictly '5.0.4' } }
