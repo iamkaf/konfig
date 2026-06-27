@@ -10,6 +10,8 @@ import com.iamkaf.konfig.api.v1.SyncMode;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 //? if >=1.17 {
+// Modern sync tracks ServerPlayer directly; legacy Forge/Fabric player types
+// are kept as Object at the runtime facade edge.
 import net.minecraft.server.level.ServerPlayer;
 //?}
 

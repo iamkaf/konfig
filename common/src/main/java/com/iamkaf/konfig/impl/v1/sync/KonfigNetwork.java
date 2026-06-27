@@ -75,6 +75,8 @@ public final class KonfigNetwork {
 //?}
 
 //? if >=1.17 {
+// FriendlyByteBuf is the shared modern network buffer; legacy Forge 1.16 keeps
+// PacketBuffer handling in its loader root because the mapped type differs.
     public static void encodeSnapshot(SyncSnapshot snapshot, FriendlyByteBuf buffer) {
         buffer.writeUtf(snapshot.configId(), 256);
         buffer.writeUtf(snapshot.jsonPayload());

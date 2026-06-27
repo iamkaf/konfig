@@ -12,6 +12,8 @@ import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 //? if >=1.17 {
+// Modern registry binding stores ResourceKey values; legacy bindings stay as
+// string ids because the 1.16 registry API does not share the same type.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}

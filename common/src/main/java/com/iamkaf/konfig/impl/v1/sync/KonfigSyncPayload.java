@@ -58,6 +58,8 @@ public final class KonfigSyncPayload {
     }
 
 //? if >=1.17 {
+// The pre-1.20.5 custom payload class still needs FriendlyByteBuf helpers;
+// modern typed payloads use StreamCodec above and legacy 1.16 stays loader-local.
     public static void encode(KonfigSyncPayload payload, FriendlyByteBuf buffer) {
         buffer.writeUtf(payload.configId(), 256);
         buffer.writeUtf(payload.jsonPayload());

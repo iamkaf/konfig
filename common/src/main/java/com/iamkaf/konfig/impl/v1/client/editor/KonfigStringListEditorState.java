@@ -3,6 +3,8 @@ package com.iamkaf.konfig.impl.v1.client.editor;
 import org.jetbrains.annotations.ApiStatus;
 
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so editor session state belongs to the 1.17 client API baseline.
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSession;
 

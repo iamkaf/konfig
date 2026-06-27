@@ -7,6 +7,8 @@ import com.iamkaf.konfig.api.v1.StringListValueBuilder;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
 //? if >=1.17 {
+// Registry-bound string lists use ResourceKey on modern lines; <=1.16.5 keeps
+// string registry ids to match the legacy Minecraft registry API.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}

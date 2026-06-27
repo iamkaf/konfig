@@ -7,6 +7,8 @@ import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 //? if >=1.17 {
+// Runtime model stores typed ResourceKey registry bindings on modern lines;
+// <=1.16.5 stores the equivalent binding as a string registry id.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}

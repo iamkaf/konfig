@@ -3,6 +3,8 @@ package com.iamkaf.konfig.impl.v1.client.render;
 import org.jetbrains.annotations.ApiStatus;
 
 //? if >=1.17 {
+// Registry UI is a modern screen seam: 1.17+ has ResourceKey-backed registries,
+// while legacy screens avoid shared registry icon/suggestion rendering.
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;

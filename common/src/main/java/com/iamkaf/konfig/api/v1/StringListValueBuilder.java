@@ -1,6 +1,8 @@
 package com.iamkaf.konfig.api.v1;
 
 //? if >=1.17 {
+// Registry binding is typed with ResourceKey on modern Minecraft; legacy
+// lines keep registry ids as strings in their loader-specific API shape.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}

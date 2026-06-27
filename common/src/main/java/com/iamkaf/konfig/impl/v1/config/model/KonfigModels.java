@@ -10,6 +10,8 @@ import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.SyncMode;
 //? if >=1.17 {
+// Model construction accepts typed ResourceKey registry bindings on modern
+// lines; legacy values are built with string registry ids instead.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}

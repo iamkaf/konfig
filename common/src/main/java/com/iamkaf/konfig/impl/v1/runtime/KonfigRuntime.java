@@ -9,6 +9,8 @@ import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 //? if >=1.17 {
+// Modern server lifecycle events expose ServerPlayer directly; legacy Forge
+// still passes loader-specific player objects through the same facade.
 import net.minecraft.server.level.ServerPlayer;
 //?}
 //? if >=1.21.11 {

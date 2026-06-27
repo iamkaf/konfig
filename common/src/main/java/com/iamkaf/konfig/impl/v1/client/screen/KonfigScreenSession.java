@@ -3,6 +3,8 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 import org.jetbrains.annotations.ApiStatus;
 
 //? if >=1.17 {
+// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
+// so draft/session state is shared only for the 1.17+ screen model.
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.copyDraftValue;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.parseDraft;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.sameValue;

@@ -8,6 +8,8 @@ import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.StringValueBuilder;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 //? if >=1.17 {
+// Registry-bound strings use ResourceKey on modern lines; <=1.16.5 keeps
+// string registry ids to match the legacy Minecraft registry API.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 //?}
