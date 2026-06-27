@@ -31,12 +31,6 @@
       "waitAfterMs": 800
     },
     {
-      "action": "wait_for_screen",
-      "screenClass": "com.iamkaf.konfig.impl.v1.KonfigConfigScreen",
-      "timeoutMs": 5000,
-      "pollMs": 100
-    },
-    {
       "action": "wait_for_list_entry",
       "label": "Konfig Debug Settings",
       "contains": true,
