@@ -3,7 +3,7 @@ package com.iamkaf.konfig.neoforge;
 import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
+import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -31,13 +31,13 @@ public final class KonfigNeoForge {
     private void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
         event.registrar(KonfigRuntime.MOD_ID)
                 .playToClient(
-                        KonfigSyncPayload.TYPE,
-                        KonfigSyncPayload.STREAM_CODEC,
-                        (payload, context) -> KonfigRuntime.clientReceivedSnapshot(payload.configId(), payload.jsonPayload())
+                        KonfigNetwork.snapshotPayloadType(),
+                        KonfigNetwork.snapshotPayloadCodec(),
+                        (payload, context) -> KonfigNetwork.receiveClientSnapshot(payload)
                 );
 
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
-                player.connection.send(new KonfigSyncPayload(configId, jsonPayload))
+                player.connection.send(KonfigNetwork.snapshotPayload(configId, jsonPayload))
         );
     }
 

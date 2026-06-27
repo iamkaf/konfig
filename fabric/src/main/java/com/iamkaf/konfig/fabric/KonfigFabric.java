@@ -3,7 +3,7 @@ package com.iamkaf.konfig.fabric;
 import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-import com.iamkaf.konfig.impl.v1.sync.KonfigSyncPayload;
+import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
 //? if <=1.20.4 {
 import io.netty.buffer.Unpooled;
 //?}
@@ -27,7 +27,7 @@ public final class KonfigFabric implements ModInitializer {
 //? if <=1.16.5 {
     private static final ResourceLocation SYNC_CHANNEL = new ResourceLocation(KonfigRuntime.MOD_ID, "sync_snapshot");
 //?} else {
-    private static final net.minecraft.resources.ResourceLocation SYNC_CHANNEL = KonfigRuntime.resource("sync_snapshot");
+    private static final net.minecraft.resources.ResourceLocation SYNC_CHANNEL = KonfigNetwork.syncSnapshotChannel();
 //?}
 //?}
 
@@ -39,14 +39,14 @@ public final class KonfigFabric implements ModInitializer {
         );
 
 //? if >=26.1 {
-        PayloadTypeRegistry.clientboundPlay().register(KonfigSyncPayload.TYPE, KonfigSyncPayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(KonfigNetwork.snapshotPayloadType(), KonfigNetwork.snapshotPayloadCodec());
 //?} elif >=1.20.5 {
-        PayloadTypeRegistry.playS2C().register(KonfigSyncPayload.TYPE, KonfigSyncPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(KonfigNetwork.snapshotPayloadType(), KonfigNetwork.snapshotPayloadCodec());
 //?}
 
 //? if >=1.20.5 {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
-                ServerPlayNetworking.send(player, new KonfigSyncPayload(configId, jsonPayload))
+                ServerPlayNetworking.send(player, KonfigNetwork.snapshotPayload(configId, jsonPayload))
         );
 //?} else {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) -> {
@@ -56,7 +56,7 @@ public final class KonfigFabric implements ModInitializer {
             buffer.writeUtf(configId, 256);
             buffer.writeUtf(jsonPayload);
 //?} else {
-            KonfigSyncPayload.encode(new KonfigSyncPayload(configId, jsonPayload), buffer);
+            KonfigNetwork.encodeSnapshot(KonfigNetwork.snapshot(configId, jsonPayload), buffer);
 //?}
             ServerPlayNetworking.send(serverPlayer, SYNC_CHANNEL, buffer);
         });
