@@ -6,6 +6,7 @@ import com.iamkaf.konfig.api.v1.DropdownOptionBuilder;
 import com.iamkaf.konfig.api.v1.InfoPanelBuilder;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
+import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 
 import java.util.Collections;
 import java.util.List;
@@ -59,7 +60,7 @@ final class DropdownOptionBuilderImpl implements DropdownOptionBuilder {
     }
 
     DropdownOptionMetadata build() {
-        return new DropdownOptionMetadata(
+        return KonfigModels.dropdownOption(
                 this.value,
                 this.label,
                 this.labelTranslationKey,

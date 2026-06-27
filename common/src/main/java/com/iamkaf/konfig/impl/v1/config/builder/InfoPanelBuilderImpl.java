@@ -6,6 +6,7 @@ import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.InfoPanelBuilder;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
+import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
 //?} elif >=1.17 {
@@ -120,7 +121,7 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
     }
 
     private void add(EntryKind kind, String label, String target, ImageOptions imageOptions, boolean labelTranslationKey) {
-        this.items.add(new InfoPanelItem(kind, label, target, imageOptions, labelTranslationKey));
+        this.items.add(KonfigModels.infoPanelItem(kind, label, target, imageOptions, labelTranslationKey));
     }
 
     private static String requireText(String value, String name) {

@@ -57,7 +57,7 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
     private final LinkedHashMap<Integer, ConfigMigration> migrations;
     private final List<ConfigListener> listeners = new CopyOnWriteArrayList<ConfigListener>();
 
-    public ConfigHandleImpl(
+    ConfigHandleImpl(
             String modId,
             String name,
             ConfigScope scope,

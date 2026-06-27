@@ -50,7 +50,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     private volatile T localValue;
     private volatile T syncedValue;
 
-    public ConfigValueImpl(
+    ConfigValueImpl(
             String path,
             T defaultValue,
             EntryKind kind,
@@ -108,7 +108,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         this.localValue = this.defaultValue;
     }
 
-    public ConfigValueImpl(
+    ConfigValueImpl(
             String path,
             T defaultValue,
             EntryKind kind,
@@ -155,40 +155,6 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
                 boundRegistryId
 //?} else {
                 boundRegistryKey
-//?}
-        );
-    }
-
-    public static ConfigValueImpl<String> inlineDecoration(String path, EntryKind kind, String label, String target, ImageOptions imageOptions) {
-        return inlineDecoration(path, kind, label, target, imageOptions, false);
-    }
-
-    public static ConfigValueImpl<String> inlineDecoration(String path, EntryKind kind, String label, String target, ImageOptions imageOptions, boolean labelTranslationKey) {
-        return new ConfigValueImpl<String>(
-                path,
-                label,
-                kind,
-                JsonElement::getAsString,
-                com.google.gson.JsonPrimitive::new,
-                value -> true,
-                "Invalid decoration value",
-                UnaryOperator.identity(),
-                false,
-                false,
-                false,
-                RestartRequirement.NONE,
-                null,
-                null,
-                Collections.emptyList(),
-                false,
-                label,
-                labelTranslationKey,
-                target,
-                imageOptions,
-//? if <=1.16.5 {
-                null
-//?} else {
-                null
 //?}
         );
     }

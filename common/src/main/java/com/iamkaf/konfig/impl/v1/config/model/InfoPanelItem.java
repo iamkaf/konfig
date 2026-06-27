@@ -12,11 +12,11 @@ public final class InfoPanelItem {
     public final ImageOptions imageOptions;
     public final boolean labelTranslationKey;
 
-    public InfoPanelItem(EntryKind kind, String label, String target, ImageOptions imageOptions) {
+    InfoPanelItem(EntryKind kind, String label, String target, ImageOptions imageOptions) {
         this(kind, label, target, imageOptions, false);
     }
 
-    public InfoPanelItem(EntryKind kind, String label, String target, ImageOptions imageOptions, boolean labelTranslationKey) {
+    InfoPanelItem(EntryKind kind, String label, String target, ImageOptions imageOptions, boolean labelTranslationKey) {
         this.kind = kind;
         this.label = label == null ? "" : label;
         this.target = target;

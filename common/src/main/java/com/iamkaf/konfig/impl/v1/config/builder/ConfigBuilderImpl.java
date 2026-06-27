@@ -13,6 +13,7 @@ import com.iamkaf.konfig.impl.v1.config.model.ColorValueHelper;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
+import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
 //? if >=1.21.11 {
@@ -471,7 +472,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         Path path = RuntimeEnvironment.configDirectory()
                 .resolve(this.modId)
                 .resolve(normalizeFileName(this.fileName));
-        ConfigHandleImpl handle = new ConfigHandleImpl(
+        ConfigHandleImpl handle = KonfigModels.configHandle(
                 this.modId,
                 this.name,
                 this.scope,
@@ -570,7 +571,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
 
         String prefix = currentCategoryPath();
         String path = (isBlank(prefix) ? "" : prefix + ".") + "__inline_" + String.format(Locale.ROOT, "%04d", ++this.inlineDecorationIndex);
-        ConfigValueImpl<String> entry = ConfigValueImpl.inlineDecoration(path, kind, normalizedLabel, target, imageOptions, labelTranslationKey);
+        ConfigValueImpl<String> entry = KonfigModels.inlineDecorationValue(path, kind, normalizedLabel, target, imageOptions, labelTranslationKey);
         this.entries.put(path, entry);
         this.entryComments.remove(path);
     }
@@ -612,7 +613,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         }
         List<DropdownOptionMetadata> result = new ArrayList<DropdownOptionMetadata>();
         for (String value : unique) {
-            result.add(new DropdownOptionMetadata(value, "", false, "", false, java.util.Collections.emptyList()));
+            result.add(KonfigModels.dropdownOption(value, "", false, "", false, java.util.Collections.emptyList()));
         }
         return java.util.Collections.unmodifiableList(result);
     }

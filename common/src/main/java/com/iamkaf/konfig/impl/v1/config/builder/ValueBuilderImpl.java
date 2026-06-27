@@ -10,6 +10,7 @@ import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
+import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 //? if >=1.17 {
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
@@ -145,7 +146,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
 
     @Override
     public ConfigValue<T> build() {
-        ConfigValueImpl<T> entry = new ConfigValueImpl<>(
+        ConfigValueImpl<T> entry = KonfigModels.configValue(
                 this.path,
                 this.defaultValue,
                 this.kind,

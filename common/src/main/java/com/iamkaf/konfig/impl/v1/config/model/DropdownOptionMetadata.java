@@ -15,7 +15,7 @@ public final class DropdownOptionMetadata {
     private final boolean tooltipTranslationKey;
     private final List<InfoPanelItem> info;
 
-    public DropdownOptionMetadata(
+    DropdownOptionMetadata(
             String value,
             String label,
             boolean labelTranslationKey,
