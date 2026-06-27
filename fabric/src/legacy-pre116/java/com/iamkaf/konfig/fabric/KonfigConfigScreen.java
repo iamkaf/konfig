@@ -14,8 +14,8 @@ import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
-import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
+import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiComponent;
@@ -54,6 +54,8 @@ import java.util.Set;
 import java.net.URI;
 
 @ApiStatus.Internal
+// Legacy screen containment: this quarantined UI keeps read-oriented concrete
+// model access while construction and runtime side checks stay behind common boundaries.
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
     private static final int LIST_BOTTOM_MARGIN = 52;
@@ -871,10 +873,10 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private static boolean isVisibleOnThisSide(ConfigValueImpl<?> value) {
-        if (value.clientOnly() && !RuntimeEnvironment.isClient()) {
+        if (value.clientOnly() && !KonfigRuntime.isClient()) {
             return false;
         }
-        if (value.serverOnly() && RuntimeEnvironment.isClient()) {
+        if (value.serverOnly() && KonfigRuntime.isClient()) {
             return false;
         }
         return true;
