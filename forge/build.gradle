@@ -63,6 +63,8 @@ if (useLegacy1165ForgeSources && useTeaKit && hasTeaKit) {
 
 if (useLegacy1165ForgeSources) {
     tasks.named('stageMergedJavaSources').configure {
+        // Forge 1.16.5 is the only legacy Forge screen line. It keeps its own MCP/
+        // MatrixStack render shell and excludes the common modern client screen.
         from rootProject.file('forge/src/legacy-1.16.5/java')
         exclude 'com/iamkaf/konfig/impl/v1/client/screen/KonfigConfigScreen.java'
     }

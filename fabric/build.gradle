@@ -22,6 +22,10 @@ def useLegacy116SharedScreen = minecraftVersion == '1.16' || minecraftVersion.st
 def useLegacyTeaKitJvm = useTeaKit && !isModernLine && javaVersion < 16
 
 tasks.named('stageMergedJavaSources').configure {
+    // Legacy source ownership:
+    // - 1.14.x/1.15.x use legacy-pre116 for the no-PoseStack config screen and TeaKit mods shim.
+    // - 1.16.x uses the main Fabric config screen with guarded 1.16 render/widget APIs.
+    // - 1.17+ excludes that Fabric legacy screen and uses the common modern client screen.
     if (useLegacyPre1165ModMenu) {
         from rootProject.file('fabric/src/legacy-pre1165/java')
     }
