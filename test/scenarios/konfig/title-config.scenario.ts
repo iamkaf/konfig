@@ -123,9 +123,6 @@ const fabricModern = {
     { action: "wait_ms", durationMs: 300 },
     { action: "screenshot", name: "konfig-debug-dropdown-open", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
     { action: "click_mouse", x: 8, y: 8 },
-    { action: "scroll_mouse", x: 120, y: 185, verticalAmount: -4 },
-    { action: "wait_ms", durationMs: 200 },
-    { action: "wait_for_list_entry", label: "Enable Debug Logging", contains: false, timeoutMs: 5000, pollMs: 100 },
     { action: "screenshot", name: "konfig-debug-settings", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
   ],
   cleanup: [],
@@ -213,11 +210,6 @@ const forgeModern = {
     { action: "click_mouse", x: 203, y: 185 },
     { action: "wait_ms", durationMs: 300 },
     { action: "screenshot", name: "konfig-debug-dropdown-open", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
-    { action: "click_mouse", x: 8, y: 8 },
-    { action: "scroll_mouse", x: 120, y: 185, verticalAmount: -4 },
-    { action: "wait_ms", durationMs: 200 },
-    { action: "wait_for_list_entry", label: "Enable Debug Logging", contains: false, timeoutMs: 5000, pollMs: 100 },
-    { action: "screenshot", name: "konfig-debug-settings", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
   ],
   cleanup: [],
 } as ScenarioDefinition;
@@ -233,9 +225,14 @@ const forgeLegacy = {
       timeoutMs: 10000,
       pollMs: 100,
     },
-    ...forgeModern.steps.slice(6).map((step) =>
+    ...forgeModern.steps.slice(6, 14).map((step) =>
       step.action === "wait_for_list_entry" ? { ...step, timeoutMs: 10000 } : step
     ),
+    { action: "click_mouse", x: 8, y: 8 },
+    { action: "scroll_mouse", x: 120, y: 185, verticalAmount: -4 },
+    { action: "wait_ms", durationMs: 200 },
+    { action: "wait_for_list_entry", label: "Enable Debug Logging", contains: false, timeoutMs: 10000, pollMs: 100 },
+    { action: "screenshot", name: "konfig-debug-settings", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
   ],
 } as ScenarioDefinition;
 
