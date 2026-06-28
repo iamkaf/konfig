@@ -6,7 +6,6 @@ package com.iamkaf.konfig.impl.v1.client.row;
 import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.supportsRegistryIcon;
-import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
 
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
@@ -24,9 +23,9 @@ final class BooleanRow extends KonfigConfigRow {
 
     BooleanRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
-        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), host.booleanText(entry.value), button -> {
-            Object previousDraft = this.host.draft(entry.value);
-            this.host.setDraft(entry.value, Boolean.valueOf(!this.host.readBoolean(entry.value)));
+        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), this.field().booleanText(), button -> {
+            Object previousDraft = this.field().draft();
+            this.field().setBoolean(!this.field().booleanValue());
             this.commitOrRevert(previousDraft);
             this.syncFromDraft();
         });
@@ -39,7 +38,7 @@ final class BooleanRow extends KonfigConfigRow {
 
     @Override
     protected void syncFromDraft() {
-        this.button.setMessage(this.host.booleanText(this.entry.value));
+        this.button.setMessage(this.field().booleanText());
     }
 }
 
@@ -49,9 +48,9 @@ final class EnumRow extends KonfigConfigRow {
 
     EnumRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
-        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), host.enumText(entry, host.currentEnum(entry.value)), button -> {
-            Object previousDraft = this.host.draft(entry.value);
-            this.host.setDraft(entry.value, this.host.cycleEnum(entry.value));
+        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), this.field().enumText(), button -> {
+            Object previousDraft = this.field().draft();
+            this.field().setDraft(this.field().nextEnumValue());
             this.commitOrRevert(previousDraft);
             this.syncFromDraft();
         });
@@ -64,7 +63,7 @@ final class EnumRow extends KonfigConfigRow {
 
     @Override
     protected void syncFromDraft() {
-        this.button.setMessage(this.host.enumText(this.entry, this.host.currentEnum(this.entry.value)));
+        this.button.setMessage(this.field().enumText());
     }
 }
 
@@ -77,7 +76,7 @@ final class ColorRow extends KonfigConfigRow {
 
     ColorRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
-        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), host.colorText(entry.value), ignored -> this.host.openColorEditor(entry));
+        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), this.field().colorText(), ignored -> this.host.openColorEditor(entry));
     }
 
     @Override
@@ -87,7 +86,7 @@ final class ColorRow extends KonfigConfigRow {
 
     @Override
     protected void syncFromDraft() {
-        this.button.setMessage(this.host.colorText(this.entry.value));
+        this.button.setMessage(this.field().colorText());
     }
 
     @Override
@@ -107,7 +106,7 @@ final class StringListRow extends KonfigConfigRow {
 
     StringListRow(KonfigRowHost host, EntryRef entry) {
         super(host, entry);
-        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), host.stringListText(entry.value), ignored -> this.host.openStringListEditor(entry));
+        this.button = button(0, 0, host.controlMinWidth(), host.controlHeight(), this.field().stringListText(), ignored -> this.host.openStringListEditor(entry));
     }
 
     @Override
@@ -117,7 +116,7 @@ final class StringListRow extends KonfigConfigRow {
 
     @Override
     protected void syncFromDraft() {
-        this.button.setMessage(this.host.stringListText(this.entry.value));
+        this.button.setMessage(this.field().stringListText());
     }
 
     @Override
@@ -131,7 +130,7 @@ final class StringListRow extends KonfigConfigRow {
             return;
         }
 
-        List<String> values = this.host.currentStringList(this.entry.value);
+        List<String> values = this.field().stringListValue();
         if (values.isEmpty()) {
             return;
         }
@@ -156,11 +155,11 @@ final class TextInputRow extends KonfigConfigRow {
         super(host, entry);
         this.input = new EditBox(host.font(), 0, 0, host.controlMinWidth(), host.controlHeight(), entry.label);
         this.input.setMaxLength(256);
-        this.input.setValue(host.currentStringValue(entry.value));
+        this.input.setValue(this.field().stringValue());
         this.input.setResponder(value -> {
-            this.host.setDraft(entry.value, value);
+            this.field().setDraft(value);
             try {
-                parseDraft(entry.value, value);
+                this.field().validateDraft(value);
                 this.validationMessage = "";
                 this.host.persistEntry(entry);
             } catch (Exception exception) {
@@ -186,7 +185,7 @@ final class TextInputRow extends KonfigConfigRow {
 
     @Override
     protected void syncFromDraft() {
-        this.input.setValue(this.host.currentStringValue(this.entry.value));
+        this.input.setValue(this.field().stringValue());
     }
 }
 //?}

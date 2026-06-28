@@ -5,8 +5,7 @@ import org.jetbrains.annotations.ApiStatus;
 //? if >=1.17 {
 // Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
 // so editor session state belongs to the 1.17 client API baseline.
-import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
-import com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSession;
+import com.iamkaf.konfig.impl.v1.client.field.KonfigField;
 
 import java.util.Collections;
 import java.util.List;
@@ -17,18 +16,16 @@ public final class KonfigStringListEditorState {
         boolean persist(Object previousValue);
     }
 
-    private final KonfigScreenSession session;
-    private final EntryRef entry;
+    private final KonfigField field;
     private final PersistAction persistAction;
 
-    public KonfigStringListEditorState(KonfigScreenSession session, EntryRef entry, PersistAction persistAction) {
-        this.session = session;
-        this.entry = entry;
+    public KonfigStringListEditorState(KonfigField field, PersistAction persistAction) {
+        this.field = field;
         this.persistAction = persistAction;
     }
 
     public List<String> values() {
-        return this.session.currentStringList(this.entry.value);
+        return this.field.stringListValue();
     }
 
     public int size() {
@@ -54,7 +51,7 @@ public final class KonfigStringListEditorState {
 
     public boolean add(String fallbackValue) {
         List<String> values = this.values();
-        values.add(this.entry.value.hasBoundRegistry() ? "" : fallbackValue);
+        values.add(this.field.value().hasBoundRegistry() ? "" : fallbackValue);
         return this.commit(values);
     }
 
@@ -90,8 +87,8 @@ public final class KonfigStringListEditorState {
     }
 
     private boolean commit(List<String> values) {
-        Object previousValue = this.session.storedSnapshot(this.entry.value);
-        this.session.setDraft(this.entry.value, values);
+        Object previousValue = this.field.storedSnapshot();
+        this.field.setDraft(values);
         return this.persistAction.persist(previousValue);
     }
 

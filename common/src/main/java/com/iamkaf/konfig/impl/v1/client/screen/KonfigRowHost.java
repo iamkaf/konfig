@@ -5,13 +5,12 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 
 import org.jetbrains.annotations.ApiStatus;
 
+import com.iamkaf.konfig.impl.v1.client.field.KonfigField;
 import com.iamkaf.konfig.impl.v1.client.row.DropdownRowHandle;
 import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRowHandle;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.Registry;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 
 import java.util.List;
@@ -82,68 +81,8 @@ public final class KonfigRowHost {
         return this.screen.screenHeight();
     }
 
-    public Object draft(ConfigScreenValue<?> value) {
-        return this.coordinator.draft(value);
-    }
-
-    public boolean readBoolean(ConfigScreenValue<?> value) {
-        return this.coordinator.readBoolean(value);
-    }
-
-    public Enum<?> currentEnum(ConfigScreenValue<?> value) {
-        return this.coordinator.currentEnum(value);
-    }
-
-    public Enum<?> cycleEnum(ConfigScreenValue<?> value) {
-        return this.coordinator.cycleEnum(value);
-    }
-
-    public int currentColor(ConfigScreenValue<?> value) {
-        return this.coordinator.currentColor(value);
-    }
-
-    public List<String> currentStringList(ConfigScreenValue<?> value) {
-        return this.coordinator.currentStringList(value);
-    }
-
-    public String currentDropdownValue(ConfigScreenValue<?> value) {
-        return this.coordinator.currentDropdownValue(value);
-    }
-
-    public String currentStringValue(ConfigScreenValue<?> value) {
-        return this.coordinator.currentStringValue(value);
-    }
-
-    public int currentInt(ConfigScreenValue<?> value) {
-        return this.coordinator.currentInt(value);
-    }
-
-    public long currentLong(ConfigScreenValue<?> value) {
-        return this.coordinator.currentLong(value);
-    }
-
-    public double currentDouble(ConfigScreenValue<?> value) {
-        return this.coordinator.currentDouble(value);
-    }
-
-    public Component booleanText(ConfigScreenValue<?> value) {
-        return this.coordinator.booleanText(value);
-    }
-
-    public Component enumText(EntryRef entry, Enum<?> value) {
-        return this.coordinator.enumText(entry, value);
-    }
-
-    public Component colorText(ConfigScreenValue<?> value) {
-        return this.coordinator.colorText(value);
-    }
-
-    public Component stringListText(ConfigScreenValue<?> value) {
-        return this.coordinator.stringListText(value);
-    }
-
-    public Component dropdownText(EntryRef entry, String option) {
-        return this.coordinator.dropdownText(entry, option);
+    public KonfigField field(EntryRef entry) {
+        return this.coordinator.field(entry);
     }
 
     public List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
@@ -156,10 +95,6 @@ public final class KonfigRowHost {
 
     public void updateHoveredEntry(EntryRef entry, boolean hovered) {
         this.coordinator.updateHoveredEntry(entry, hovered);
-    }
-
-    public void setDraft(ConfigScreenValue<?> value, Object draft) {
-        this.coordinator.setDraft(value, draft);
     }
 
     public boolean persistEntry(EntryRef entry) {

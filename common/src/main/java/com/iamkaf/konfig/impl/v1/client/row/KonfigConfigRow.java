@@ -7,6 +7,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
+import com.iamkaf.konfig.impl.v1.client.field.KonfigField;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
@@ -36,6 +37,10 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
     }
 
     protected abstract AbstractWidget control();
+
+    protected final KonfigField field() {
+        return this.host.field(this.entry);
+    }
 
     public void tick() {
     }
@@ -75,7 +80,7 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
 
     protected final void renderColorRow(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom, int previewX, int previewY, int previewSize) {
         this.renderStandardRow(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFFFFFFFF);
-        context.drawColorSwatch(previewX, previewY, previewSize, this.host.currentColor(this.entry.value), this.entry.value.kind());
+        context.drawColorSwatch(previewX, previewY, previewSize, this.field().colorValue(), this.entry.value.kind());
     }
 
     protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
@@ -131,7 +136,7 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
     }
 
     protected void revertDraft(Object previousValue) {
-        this.host.setDraft(this.entry.value, previousValue);
+        this.field().setDraft(previousValue);
     }
 
     protected void commitOrRevert(Object previousValue) {

@@ -36,12 +36,12 @@ final class RegistryTextInputRow extends KonfigConfigRow implements RegistryText
         super(host, entry);
         this.input = new EditBox(host.font(), 0, 0, host.controlMinWidth(), host.controlHeight(), entry.label);
         this.input.setMaxLength(256);
-        this.input.setValue(host.currentStringValue(entry.value));
+        this.input.setValue(this.field().stringValue());
         this.input.setResponder(value -> {
             if (this.suppressResponder) {
                 return;
             }
-            this.host.setDraft(entry.value, value);
+            this.field().setDraft(value);
             this.host.persistEntry(entry);
             this.refreshSuggestions();
         });
@@ -76,7 +76,7 @@ final class RegistryTextInputRow extends KonfigConfigRow implements RegistryText
                 RegistryTextInputRow.this.suppressResponder = true;
                 RegistryTextInputRow.this.input.setValue(suggestion);
                 RegistryTextInputRow.this.suppressResponder = false;
-                RegistryTextInputRow.this.host.setDraft(RegistryTextInputRow.this.entry.value, suggestion);
+                RegistryTextInputRow.this.field().setDraft(suggestion);
                 RegistryTextInputRow.this.host.persistEntry(RegistryTextInputRow.this.entry);
                 return true;
             }
@@ -133,7 +133,7 @@ final class RegistryTextInputRow extends KonfigConfigRow implements RegistryText
     @Override
     protected void syncFromDraft() {
         this.suppressResponder = true;
-        this.input.setValue(this.host.currentStringValue(this.entry.value));
+        this.input.setValue(this.field().stringValue());
         this.suppressResponder = false;
         this.activateSuggestions();
     }
@@ -167,7 +167,7 @@ final class RegistryTextInputRow extends KonfigConfigRow implements RegistryText
         if (renderIcon && this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
             context.renderRegistryIcon(
                     this.entry.value.boundRegistryKey(),
-                    this.host.currentStringValue(this.entry.value),
+                    this.field().stringValue(),
                     controlX - ICON_GAP - ICON_SIZE,
                     y + (height - ICON_SIZE) / 2
             );

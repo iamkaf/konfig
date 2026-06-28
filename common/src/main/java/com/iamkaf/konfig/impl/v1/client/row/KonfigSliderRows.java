@@ -5,7 +5,8 @@ package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.*;
+import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.*;
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
@@ -41,11 +42,11 @@ final class IntegerSliderRow extends KonfigConfigRow {
     }
 
     private int currentValue() {
-        return this.host.currentInt(this.entry.value);
+        return this.field().intValue();
     }
 
     private void updateDraftFromSlider(double progress) {
-        this.host.setDraft(this.entry.value, Integer.valueOf(intFromProgress(progress, this.min, this.max)));
+        this.field().setDraft(Integer.valueOf(intFromProgress(progress, this.min, this.max)));
     }
 
     private final class SliderWidget extends BaseSliderWidget {
@@ -126,11 +127,11 @@ final class LongSliderRow extends KonfigConfigRow {
     }
 
     private long currentValue() {
-        return this.host.currentLong(this.entry.value);
+        return this.field().longValue();
     }
 
     private void updateDraftFromSlider(double progress) {
-        this.host.setDraft(this.entry.value, Long.valueOf(longFromProgress(progress, this.min, this.max)));
+        this.field().setDraft(Long.valueOf(longFromProgress(progress, this.min, this.max)));
     }
 
     private final class SliderWidget extends BaseSliderWidget {
@@ -211,11 +212,11 @@ final class DoubleSliderRow extends KonfigConfigRow {
     }
 
     private double currentValue() {
-        return this.host.currentDouble(this.entry.value);
+        return this.field().doubleValue();
     }
 
     private void updateDraftFromSlider(double progress) {
-        this.host.setDraft(this.entry.value, Double.valueOf(doubleFromProgress(progress, this.min, this.max)));
+        this.field().setDraft(Double.valueOf(doubleFromProgress(progress, this.min, this.max)));
     }
 
     private final class SliderWidget extends BaseSliderWidget {

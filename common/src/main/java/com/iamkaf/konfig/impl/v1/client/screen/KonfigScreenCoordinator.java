@@ -6,25 +6,22 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.builtInRegistry;
-import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.*;
 
 import com.iamkaf.konfig.impl.v1.client.editor.KonfigStringListEditorState;
+import com.iamkaf.konfig.impl.v1.client.field.KonfigField;
+import com.iamkaf.konfig.impl.v1.client.field.KonfigFieldSession;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelState;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
 import com.iamkaf.konfig.impl.v1.client.row.DropdownRowHandle;
 import com.iamkaf.konfig.impl.v1.client.row.RegistryTextInputRowHandle;
 import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
-import com.iamkaf.konfig.impl.v1.config.model.ColorValueHelper;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.Registry;
-import net.minecraft.network.chat.CommonComponents;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 
 import java.util.ArrayList;
@@ -36,7 +33,7 @@ import java.util.Map;
 @ApiStatus.Internal
 final class KonfigScreenCoordinator {
     private final List<EntryRef> entries;
-    private final KonfigScreenSession session;
+    private final KonfigFieldSession fields;
     private final KonfigInfoPanelState infoPanel;
     private final Map<ResourceKey<? extends Registry<?>>, List<String>> registrySuggestionCache = new LinkedHashMap<ResourceKey<? extends Registry<?>>, List<String>>();
 
@@ -50,7 +47,7 @@ final class KonfigScreenCoordinator {
 
     KonfigScreenCoordinator(List<EntryRef> entries) {
         this.entries = entries;
-        this.session = new KonfigScreenSession(entries);
+        this.fields = new KonfigFieldSession(entries);
         this.infoPanel = new KonfigInfoPanelState(entries);
     }
 
@@ -96,7 +93,7 @@ final class KonfigScreenCoordinator {
 
     boolean persistEntry(EntryRef entry) {
         try {
-            this.session.persist(entry);
+            this.field(entry).persist();
             return true;
         } catch (RuntimeException exception) {
             KonfigToastSupport.saveFailed(exceptionMessage(exception));
@@ -106,7 +103,7 @@ final class KonfigScreenCoordinator {
 
     void resetAll() {
         try {
-            this.session.resetAll();
+            this.fields.resetAll();
         } catch (RuntimeException exception) {
             KonfigToastSupport.resetFailed(exceptionMessage(exception));
         }
@@ -114,7 +111,7 @@ final class KonfigScreenCoordinator {
 
     boolean resetEntry(EntryRef entry) {
         try {
-            this.session.resetEntry(entry);
+            this.field(entry).resetToSessionStart();
             return true;
         } catch (RuntimeException exception) {
             KonfigToastSupport.resetFailed(exceptionMessage(exception));
@@ -122,95 +119,12 @@ final class KonfigScreenCoordinator {
         }
     }
 
-    Object draft(ConfigScreenValue<?> value) {
-        return this.session.draft(value);
-    }
-
-    void setDraft(ConfigScreenValue<?> value, Object draft) {
-        this.session.setDraft(value, draft);
-    }
-
-    Object storedSnapshot(ConfigScreenValue<?> value) {
-        return this.session.storedSnapshot(value);
+    KonfigField field(EntryRef entry) {
+        return this.fields.field(entry);
     }
 
     KonfigStringListEditorState stringListEditorState(EntryRef entry, KonfigStringListEditorState.PersistAction persistAction) {
-        return new KonfigStringListEditorState(this.session, entry, persistAction);
-    }
-
-    boolean readBoolean(ConfigScreenValue<?> value) {
-        return this.session.readBoolean(value);
-    }
-
-    Enum<?> currentEnum(ConfigScreenValue<?> value) {
-        return this.session.currentEnum(value);
-    }
-
-    Enum<?> cycleEnum(ConfigScreenValue<?> value) {
-        return this.session.nextEnum(value);
-    }
-
-    int currentColor(ConfigScreenValue<?> value) {
-        return this.session.currentColor(value);
-    }
-
-    List<String> currentStringList(ConfigScreenValue<?> value) {
-        return this.session.currentStringList(value);
-    }
-
-    String currentDropdownValue(ConfigScreenValue<?> value) {
-        return this.session.currentDropdownValue(value);
-    }
-
-    int currentInt(ConfigScreenValue<?> value) {
-        return this.session.currentInt(value);
-    }
-
-    long currentLong(ConfigScreenValue<?> value) {
-        return this.session.currentLong(value);
-    }
-
-    double currentDouble(ConfigScreenValue<?> value) {
-        return this.session.currentDouble(value);
-    }
-
-    String currentStringValue(ConfigScreenValue<?> value) {
-        return this.session.currentStringValue(value);
-    }
-
-    Component booleanText(ConfigScreenValue<?> value) {
-        return CommonComponents.optionStatus(readBoolean(value));
-    }
-
-    Component enumText(EntryRef entry, Enum<?> value) {
-        return translatedEnumValue(entry, value);
-    }
-
-    Component colorText(ConfigScreenValue<?> value) {
-        int color = currentColor(value);
-        if (value.kind() == EntryKind.COLOR_ARGB) {
-            return text(ColorValueHelper.formatArgb(color));
-        }
-        return text(ColorValueHelper.formatRgb(color));
-    }
-
-    Component stringListText(ConfigScreenValue<?> value) {
-        List<String> values = currentStringList(value);
-        if (values.isEmpty()) {
-            return translate("konfig.screen.list.empty");
-        }
-        if (values.size() == 1) {
-            return text(values.get(0));
-        }
-        if (values.size() == 2) {
-            return text(values.get(0) + ", " + values.get(1));
-        }
-        return translate("konfig.screen.list.summary", values.get(0), Integer.valueOf(values.size() - 1));
-    }
-
-    Component dropdownText(EntryRef entry, String option) {
-        DropdownOptionMetadata metadata = entry.value.dropdownOption(option);
-        return metadata == null ? translatedDropdownValue(entry, option) : translatedDropdownOption(entry, metadata);
+        return new KonfigStringListEditorState(this.field(entry), persistAction);
     }
 
     void updateHoveredEntry(EntryRef entry, boolean hovered) {
@@ -240,7 +154,7 @@ final class KonfigScreenCoordinator {
             return Collections.emptyList();
         }
 
-        DropdownOptionMetadata option = entry.value.dropdownOption(this.currentDropdownValue(entry.value));
+        DropdownOptionMetadata option = this.field(entry).currentDropdownOption();
         return option == null ? Collections.emptyList() : option.info();
     }
 

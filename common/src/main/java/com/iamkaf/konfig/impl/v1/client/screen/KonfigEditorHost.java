@@ -6,7 +6,7 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.client.editor.KonfigStringListEditorState;
-import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
+import com.iamkaf.konfig.impl.v1.client.field.KonfigField;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 
@@ -28,7 +28,7 @@ public final class KonfigEditorHost {
 
     public boolean persistEditedValue(EntryRef entry, Object previousValue) {
         if (!this.coordinator.persistEntry(entry)) {
-            this.coordinator.setDraft(entry.value, previousValue);
+            this.field(entry).setDraft(previousValue);
             return false;
         }
         return true;
@@ -38,16 +38,8 @@ public final class KonfigEditorHost {
         return this.coordinator.resetEntry(entry);
     }
 
-    public Object storedSnapshot(ConfigScreenValue<?> value) {
-        return this.coordinator.storedSnapshot(value);
-    }
-
-    public void setDraft(ConfigScreenValue<?> value, Object draft) {
-        this.coordinator.setDraft(value, draft);
-    }
-
-    public int currentColor(ConfigScreenValue<?> value) {
-        return this.coordinator.currentColor(value);
+    public KonfigField field(EntryRef entry) {
+        return this.coordinator.field(entry);
     }
 
     public List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {

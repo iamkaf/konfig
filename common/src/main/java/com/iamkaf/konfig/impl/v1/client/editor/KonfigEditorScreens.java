@@ -5,12 +5,14 @@ package com.iamkaf.konfig.impl.v1.client.editor;
 
 import org.jetbrains.annotations.ApiStatus;
 
+import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.*;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.supportsRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
 
 import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
 import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
+import com.iamkaf.konfig.impl.v1.client.field.KonfigField;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigEditorHost;
@@ -80,6 +82,10 @@ abstract class KonfigEntryEditorScreen extends Screen {
 
     protected final boolean persistEditedValue(Object previousValue) {
         return this.host.persistEditedValue(this.entry, previousValue);
+    }
+
+    protected final KonfigField field() {
+        return this.host.field(this.entry);
     }
 
     protected final boolean resetToSessionStart() {
@@ -228,10 +234,10 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
             return;
         }
 
-        Object previousValue = this.host.storedSnapshot(this.entry.value);
+        Object previousValue = this.field().storedSnapshot();
         try {
             int parsed = parseColor(this.entry.value, value);
-            this.host.setDraft(this.entry.value, Integer.valueOf(parsed));
+            this.field().setColor(parsed);
             if (this.persistEditedValue(previousValue)) {
                 this.validationMessage = "";
                 this.syncWidgetsFromDraft();
@@ -239,7 +245,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
                 this.syncWidgetsFromDraft();
             }
         } catch (Exception exception) {
-            this.host.setDraft(this.entry.value, previousValue);
+            this.field().setDraft(previousValue);
             this.validationMessage = exception.getMessage() == null
                     ? translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString()
                     : exception.getMessage();
@@ -249,7 +255,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
 
     private void renderColorEditorOverlay(KonfigRenderContext context) {
         int previewX = this.width / 2 - PREVIEW_SIZE / 2;
-        context.drawColorSwatch(previewX, PREVIEW_Y, PREVIEW_SIZE, this.host.currentColor(this.entry.value), this.entry.value.kind());
+        context.drawColorSwatch(previewX, PREVIEW_Y, PREVIEW_SIZE, this.field().colorValue(), this.entry.value.kind());
         this.renderValidationMessage(context);
     }
 
@@ -260,7 +266,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
     }
 
     private String currentHex() {
-        int color = this.host.currentColor(this.entry.value);
+        int color = this.field().colorValue();
         if (this.entry.value.kind() == EntryKind.COLOR_ARGB) {
             return ColorValueHelper.formatArgb(color);
         }
@@ -280,7 +286,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
     }
 
     private int currentChannel(ColorChannel channel) {
-        int color = this.host.currentColor(this.entry.value);
+        int color = this.field().colorValue();
         switch (channel) {
             case RED:
                 return ColorValueHelper.red(color);
@@ -296,7 +302,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
     }
 
     private int withChannel(ColorChannel channel, int value) {
-        int current = this.host.currentColor(this.entry.value);
+        int current = this.field().colorValue();
         int alpha = this.entry.value.kind() == EntryKind.COLOR_ARGB ? ColorValueHelper.alpha(current) : 255;
         int red = ColorValueHelper.red(current);
         int green = ColorValueHelper.green(current);
@@ -353,13 +359,13 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
 
         @Override
         protected void applyValue() {
-            ColorEditorScreen.this.host.setDraft(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, intFromProgress(this.value, 0, 255))));
+            ColorEditorScreen.this.field().setColor(ColorEditorScreen.this.withChannel(this.channel, intFromProgress(this.value, 0, 255)));
         }
 
 //? if >=1.21.9 {
         @Override
         public void onRelease(MouseButtonEvent event) {
-            Object previousValue = ColorEditorScreen.this.host.storedSnapshot(ColorEditorScreen.this.entry.value);
+            Object previousValue = ColorEditorScreen.this.field().storedSnapshot();
             super.onRelease(event);
             if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
                 ColorEditorScreen.this.syncWidgetsFromDraft();
@@ -368,7 +374,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
-            Object previousValue = ColorEditorScreen.this.host.storedSnapshot(ColorEditorScreen.this.entry.value);
+            Object previousValue = ColorEditorScreen.this.field().storedSnapshot();
             int before = ColorEditorScreen.this.currentChannel(this.channel);
             boolean handled = super.keyPressed(event);
             if (handled && before != ColorEditorScreen.this.currentChannel(this.channel)) {
@@ -381,7 +387,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
 //?} else {
         @Override
         public void onRelease(double mouseX, double mouseY) {
-            Object previousValue = ColorEditorScreen.this.host.storedSnapshot(ColorEditorScreen.this.entry.value);
+            Object previousValue = ColorEditorScreen.this.field().storedSnapshot();
             super.onRelease(mouseX, mouseY);
             if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
                 ColorEditorScreen.this.syncWidgetsFromDraft();
@@ -390,7 +396,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
 
         @Override
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            Object previousValue = ColorEditorScreen.this.host.storedSnapshot(ColorEditorScreen.this.entry.value);
+            Object previousValue = ColorEditorScreen.this.field().storedSnapshot();
             int before = ColorEditorScreen.this.currentChannel(this.channel);
             boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
             if (handled && before != ColorEditorScreen.this.currentChannel(this.channel)) {

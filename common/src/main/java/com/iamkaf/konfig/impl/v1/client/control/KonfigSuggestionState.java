@@ -7,7 +7,7 @@ import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.filterRegistrySuggestions;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.suggestionSuffix;
-import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.sameValue;
+import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.sameValue;
 
 import java.util.ArrayList;
 import java.util.List;

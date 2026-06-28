@@ -89,7 +89,7 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
     }
 
     private void openDropdown() {
-        if (!this.dropdown.open(this.options(), this.host.currentDropdownValue(this.entry.value), this.host.suggestionLimit())) {
+        if (!this.dropdown.open(this.options(), this.field().dropdownValue(), this.host.suggestionLimit())) {
             return;
         }
         this.host.setActiveDropdownRow(this);
@@ -106,12 +106,11 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
     }
 
     private DropdownOptionMetadata option(int index) {
-        List<DropdownOptionMetadata> options = this.entry.value.dropdownOptionMetadata();
-        return index >= 0 && index < options.size() ? options.get(index) : null;
+        return this.field().dropdownOption(index);
     }
 
     private DropdownOptionMetadata currentOption() {
-        return this.entry.value.dropdownOption(this.host.currentDropdownValue(this.entry.value));
+        return this.field().currentDropdownOption();
     }
 
     public boolean isButtonFocused() {
@@ -145,8 +144,8 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
             return;
         }
 
-        Object previousDraft = this.host.draft(this.entry.value);
-        this.host.setDraft(this.entry.value, options.get(optionIndex));
+        Object previousDraft = this.field().draft();
+        this.field().setDropdownValue(options.get(optionIndex));
         this.commitOrRevert(previousDraft);
         this.syncFromDraft();
         this.closeDropdown();
@@ -229,7 +228,7 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
             return "";
         }
 
-        String label = translatedDropdownOption(this.entry, option).getString();
+        String label = this.field().dropdownText(option.value()).getString();
         return (label + " " + option.value()).toLowerCase(Locale.ROOT);
     }
 
@@ -298,7 +297,7 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
         int chevronLeft = this.lastButtonX + this.lastButtonWidth - this.host.dropdownChevronWidth();
         int textMaxWidth = Math.max(0, chevronLeft - textX - 4);
         int textY = this.lastButtonY + ((this.host.controlHeight() - this.host.font().lineHeight) / 2) + 1;
-        Component valueText = this.fitDropdownText(this.host.dropdownText(this.entry, this.host.currentDropdownValue(this.entry.value)), textMaxWidth);
+        Component valueText = this.fitDropdownText(this.field().dropdownText(this.field().dropdownValue()), textMaxWidth);
         context.drawText(this.host.font(), valueText, textX, textY, 0xFFFFFFFF);
 
         Component chevron = text(this.dropdown.isOpen() ? "\u25B4" : "\u25BE");
@@ -345,7 +344,7 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
             this.host.queueTooltip(tooltip, mouseX, mouseY);
         }
         int visibleCount = this.visibleOptionCount();
-        int currentIndex = this.dropdown.optionIndex(options, this.host.currentDropdownValue(this.entry.value));
+        int currentIndex = this.dropdown.optionIndex(options, this.field().dropdownValue());
         for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
             int optionIndex = this.dropdown.scrollOffset() + visibleIndex;
             if (optionIndex >= options.size()) {
@@ -366,7 +365,7 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
             }
             int textX = dropdownX + 8;
             int textRight = this.maxScrollOffset() > 0 ? dropdownX + dropdownWidth - 8 : dropdownX + dropdownWidth - 4;
-            context.drawText(this.host.font(), this.fitDropdownText(this.host.dropdownText(this.entry, options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
+            context.drawText(this.host.font(), this.fitDropdownText(this.field().dropdownText(options.get(optionIndex)), Math.max(0, textRight - textX)), textX, rowY + 3, 0xFFFFFFFF);
         }
 
         if (this.maxScrollOffset() > 0) {
