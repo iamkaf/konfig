@@ -15,10 +15,10 @@ def useTeaKit = providers.systemProperty('konfig.withTeaKit')
     .map { it.toBoolean() }
     .orElse(false)
     .get()
-def useLegacyPre1165ModMenu = ['1.14.4', '1.15.2', '1.16', '1.16.1', '1.16.2', '1.16.3', '1.16.4'].contains(minecraftVersion)
-def useLegacy1165ModMenu = ['1.16.5', '1.17', '1.17.1'].contains(minecraftVersion)
-def useLegacyPre116SharedScreen = ['1.14.4', '1.15', '1.15.1', '1.15.2'].contains(minecraftVersion)
-def useLegacy116SharedScreen = minecraftVersion == '1.16' || minecraftVersion.startsWith('1.16.')
+def usesOldModMenuApi = ['1.14.4', '1.15.2', '1.16', '1.16.1', '1.16.2', '1.16.3', '1.16.4'].contains(minecraftVersion)
+def usesTerraformersLegacyModMenuApi = ['1.16.5', '1.17', '1.17.1'].contains(minecraftVersion)
+def usesFabricOldRenderLegacyScreen = ['1.14.4', '1.15', '1.15.1', '1.15.2'].contains(minecraftVersion)
+def usesFabricPoseStackLegacyScreen = minecraftVersion == '1.16' || minecraftVersion.startsWith('1.16.')
 def useLegacyTeaKitJvm = useTeaKit && !isModernLine && javaVersion < 16
 
 tasks.named('stageMergedJavaSources').configure {
@@ -26,16 +26,16 @@ tasks.named('stageMergedJavaSources').configure {
     // - 1.14.x/1.15.x use legacy-pre116 for the no-PoseStack config screen and TeaKit mods shim.
     // - 1.16.x uses the main Fabric config screen with guarded 1.16 render/widget APIs.
     // - 1.17+ excludes that Fabric legacy screen and uses the common modern client screen.
-    if (useLegacyPre1165ModMenu) {
+    if (usesOldModMenuApi) {
         from rootProject.file('fabric/src/legacy-pre1165/java')
     }
-    if (useLegacy1165ModMenu) {
+    if (usesTerraformersLegacyModMenuApi) {
         from rootProject.file('fabric/src/legacy-1.16.5/java')
     }
-    if (useLegacyPre116SharedScreen) {
+    if (usesFabricOldRenderLegacyScreen) {
         from rootProject.file('fabric/src/legacy-pre116/java')
     }
-    if (!(useLegacyPre116SharedScreen || useLegacy116SharedScreen)) {
+    if (!(usesFabricOldRenderLegacyScreen || usesFabricPoseStackLegacyScreen)) {
         exclude 'com/iamkaf/konfig/fabric/KonfigConfigScreen.java'
     }
     if (!hasModMenu) {

@@ -10,6 +10,8 @@ import net.minecraft.client.gui.screens.Screen;
 import java.util.function.Function;
 
 @ApiStatus.Internal
+// Prospector-era Mod Menu bridge for Fabric <=1.16.4. It is intentionally a
+// tiny adapter into the public Fabric screen factory.
 public final class KonfigModMenuApi implements ModMenuApi {
     @Override
     public String getModId() {

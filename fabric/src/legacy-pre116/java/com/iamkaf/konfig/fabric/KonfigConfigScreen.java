@@ -54,8 +54,8 @@ import java.util.Map;
 import java.net.URI;
 
 @ApiStatus.Internal
-// Legacy screen containment: this quarantined UI keeps read-oriented concrete
-// model access while construction and runtime side checks stay behind common boundaries.
+// Fabric 1.14/1.15 legacy config screen. It exists because these render methods
+// have no PoseStack parameter; shared config state lives in common client.legacy.
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
     private static final int LIST_BOTTOM_MARGIN = 52;

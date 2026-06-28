@@ -17,6 +17,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @ApiStatus.Internal
+// Modern Terraformers Mod Menu bridge. Legacy 1.16.5-1.17.1 has its own
+// source-set copy because the API shape differs, but both delegate to the
+// public Fabric screen factory.
 public final class KonfigModMenuApi implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {
@@ -53,6 +56,7 @@ package com.iamkaf.konfig.fabric;
 import org.jetbrains.annotations.ApiStatus;
 
 @ApiStatus.Internal
+// Empty fallback staged only where this source set is present without Mod Menu.
 final class KonfigModMenuApi {
     private KonfigModMenuApi() {
     }

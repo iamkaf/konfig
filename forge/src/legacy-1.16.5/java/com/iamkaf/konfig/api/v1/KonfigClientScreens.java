@@ -4,7 +4,7 @@ import com.iamkaf.konfig.forge.KonfigConfigScreen;
 import net.minecraft.client.gui.screen.Screen;
 
 /**
- * Factory for Konfig's generated client config screens on legacy Forge.
+ * Legacy Forge public bridge for Konfig client config screens.
  */
 public final class KonfigClientScreens {
     private KonfigClientScreens() {

@@ -13,6 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 @ApiStatus.Internal
+// Terraformers Mod Menu bridge for Fabric 1.16.5 through 1.17.1. It stays in a
+// legacy source set because the modern Mod Menu bridge is only compiled on 1.18+.
 public final class KonfigModMenuApi implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {

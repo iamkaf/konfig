@@ -54,8 +54,8 @@ import java.util.Map;
 import java.net.URI;
 
 @ApiStatus.Internal
-// Legacy screen containment: this quarantined UI keeps read-oriented concrete
-// model access while construction and runtime side checks stay behind common boundaries.
+// Forge 1.16.5 legacy config screen. This shell adapts MCP names, MatrixStack,
+// and Forge widgets to the shared common client.legacy state modules.
 public final class KonfigConfigScreen extends Screen {
     private static final int KEY_ESCAPE = 256;
     private static final int KEY_ENTER = 257;
