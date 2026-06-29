@@ -21,10 +21,18 @@ import net.minecraftforge.fml.ExtensionPoint;
 import net.minecraftforge.fml.ModLoadingContext;
 //?}
 
+/**
+ * Forge helper for registering Konfig's generated config screen with the mod list.
+ */
 public final class KonfigForgeClientScreens {
     private KonfigForgeClientScreens() {
     }
 
+    /**
+     * Registers a Konfig config screen factory for a Forge mod.
+     *
+     * @param modId the mod id whose config screen should open
+     */
     public static void register(String modId) {
 //? if >=26.1 {
         String displayName = LoadingModList.getMods().stream()

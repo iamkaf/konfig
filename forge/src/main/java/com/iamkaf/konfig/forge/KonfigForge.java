@@ -1,9 +1,10 @@
 package com.iamkaf.konfig.forge;
 
-import com.iamkaf.konfig.Constants;
-import com.iamkaf.konfig.KonfigCommon;
-import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
-import com.iamkaf.konfig.sync.v1.KonfigSync;
+import org.jetbrains.annotations.ApiStatus;
+
+import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
+import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
+import com.iamkaf.konfig.impl.v1.sync.SyncSnapshot;
 //? if >=1.17 {
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -18,21 +19,18 @@ import net.minecraftforge.network.ChannelBuilder;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 //?} elif >=1.18 {
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 //?} elif >=1.17 {
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import net.minecraftforge.fmllegacy.network.NetworkRegistry;
 import net.minecraftforge.fmllegacy.network.PacketDistributor;
 import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
 //?} else {
-import com.iamkaf.konfig.sync.v1.KonfigSyncPayload;
 import net.minecraft.entity.player.ServerPlayerEntity;
 import net.minecraft.network.PacketBuffer;
 import net.minecraft.util.ResourceLocation;
@@ -51,23 +49,24 @@ import net.minecraftforge.fml.network.simple.SimpleChannel;
 import java.util.function.Supplier;
 //?}
 
-@Mod(Constants.MOD_ID)
+@Mod(KonfigRuntime.MOD_ID)
+@ApiStatus.Internal
 public final class KonfigForge {
 //? if >=1.20.2 {
-    private static final int PROTOCOL = 1;
+    private static final int PROTOCOL = KonfigNetwork.FORGE_PROTOCOL_VERSION;
     private static final SimpleChannel CHANNEL = ChannelBuilder
-            .named(Constants.resource("main"))
+            .named(KonfigNetwork.mainChannel())
             .networkProtocolVersion(PROTOCOL)
             .clientAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
             .serverAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
             .simpleChannel();
 //?} else {
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = KonfigNetwork.FORGE_PROTOCOL;
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
 //? if >=1.17 {
-            Constants.resource("main"),
+            KonfigNetwork.mainChannel(),
 //?} else {
-            new ResourceLocation(Constants.MOD_ID, "main"),
+            new ResourceLocation(KonfigRuntime.MOD_ID, "main"),
 //?}
             () -> PROTOCOL,
             PROTOCOL::equals,
@@ -76,8 +75,7 @@ public final class KonfigForge {
 //?}
 
     public KonfigForge() {
-        RuntimeEnvironment.initialize(FMLPaths.CONFIGDIR.get(), FMLLoader.getDist().isClient());
-        KonfigCommon.init();
+        KonfigRuntime.initialize(FMLPaths.CONFIGDIR.get(), FMLLoader.getDist().isClient());
 
         if (FMLLoader.getDist().isClient()) {
             KonfigForgeClient.init();
@@ -89,7 +87,7 @@ public final class KonfigForge {
                 .decoder(SyncMessage::decode)
                 .consumerMainThread((message, context) -> {
                     if (context.getSender() == null) {
-                        KonfigSync.onClientSnapshot(message.configId, message.jsonPayload);
+                        KonfigNetwork.receiveClientSnapshot(message.snapshot);
                     }
                 })
                 .add();
@@ -99,7 +97,7 @@ public final class KonfigForge {
                     NetworkEvent.Context context = contextSupplier.get();
                     context.enqueueWork(() -> {
                         if (context.getSender() == null) {
-                            KonfigSync.onClientSnapshot(message.configId, message.jsonPayload);
+                            KonfigNetwork.receiveClientSnapshot(message.snapshot);
                         }
                     });
                     context.setPacketHandled(true);
@@ -107,16 +105,16 @@ public final class KonfigForge {
 //?}
 
 //? if >=1.20.2 {
-        KonfigSync.setSender((player, snapshot) ->
-                CHANNEL.send(new SyncMessage(snapshot.configId(), snapshot.jsonPayload()), PacketDistributor.PLAYER.with(player))
+        KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
+                CHANNEL.send(SyncMessage.of(configId, jsonPayload), PacketDistributor.PLAYER.with(player))
         );
 //?} elif >=1.17 {
-        KonfigSync.setSender((player, snapshot) ->
-                CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), new SyncMessage(snapshot.configId(), snapshot.jsonPayload()))
+        KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
+                CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), SyncMessage.of(configId, jsonPayload))
         );
 //?} else {
-        KonfigSync.setSender((player, snapshot) ->
-                CHANNEL.send(PacketDistributor.PLAYER.with(() -> (ServerPlayerEntity) player), new SyncMessage(snapshot.configId(), snapshot.jsonPayload()))
+        KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
+                CHANNEL.send(PacketDistributor.PLAYER.with(() -> (ServerPlayerEntity) player), SyncMessage.of(configId, jsonPayload))
         );
 //?}
 
@@ -132,12 +130,12 @@ public final class KonfigForge {
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
 //? if >=1.17 {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-            KonfigSync.onPlayerJoin(player);
+            KonfigRuntime.playerJoined(player);
         }
 //?} else {
         if (event.getEntity() instanceof ServerPlayerEntity) {
             ServerPlayerEntity player = (ServerPlayerEntity) event.getEntity();
-            KonfigSync.onPlayerJoin(player);
+            KonfigRuntime.playerJoined(player);
         }
 //?}
     }
@@ -145,61 +143,60 @@ public final class KonfigForge {
     private void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
 //? if >=1.17 {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
-            KonfigSync.onPlayerLeave(player);
+            KonfigRuntime.playerLeft(player);
         }
 //?} else {
         if (event.getEntity() instanceof ServerPlayerEntity) {
             ServerPlayerEntity player = (ServerPlayerEntity) event.getEntity();
-            KonfigSync.onPlayerLeave(player);
+            KonfigRuntime.playerLeft(player);
         }
 //?}
 //? if >=1.20.2 {
         if (event.getEntity().level().isClientSide()) {
-            KonfigSync.onClientDisconnect();
+            KonfigRuntime.clientDisconnected();
         }
 //?} else {
         if (FMLLoader.getDist().isClient()) {
-            KonfigSync.onClientDisconnect();
+            KonfigRuntime.clientDisconnected();
         }
 //?}
     }
 
     private static final class SyncMessage {
-        private final String configId;
-        private final String jsonPayload;
+        private final SyncSnapshot snapshot;
 
-        private SyncMessage(String configId, String jsonPayload) {
-            this.configId = configId;
-            this.jsonPayload = jsonPayload;
+        private SyncMessage(SyncSnapshot snapshot) {
+            this.snapshot = snapshot;
+        }
+
+        private static SyncMessage of(String configId, String jsonPayload) {
+            return new SyncMessage(KonfigNetwork.snapshot(configId, jsonPayload));
         }
 
 //? if >=1.20.2 {
         private static void encode(SyncMessage message, FriendlyByteBuf buffer) {
-            buffer.writeUtf(message.configId, 256);
-            buffer.writeUtf(message.jsonPayload);
+            KonfigNetwork.encodeSnapshot(message.snapshot, buffer);
         }
 
         private static SyncMessage decode(FriendlyByteBuf buffer) {
-            return new SyncMessage(buffer.readUtf(256), buffer.readUtf());
+            return new SyncMessage(KonfigNetwork.decodeSnapshot(buffer));
         }
 //?} elif >=1.17 {
         private static void encode(SyncMessage message, FriendlyByteBuf buffer) {
-            KonfigSyncPayload.encode(new KonfigSyncPayload(message.configId, message.jsonPayload), buffer);
+            KonfigNetwork.encodeSnapshot(message.snapshot, buffer);
         }
 
         private static SyncMessage decode(FriendlyByteBuf buffer) {
-            KonfigSyncPayload payload = KonfigSyncPayload.decode(buffer);
-            return new SyncMessage(payload.configId(), payload.jsonPayload());
+            return new SyncMessage(KonfigNetwork.decodeSnapshot(buffer));
         }
 //?} else {
         private static void encode(SyncMessage message, PacketBuffer buffer) {
-            buffer.writeUtf(message.configId);
-            buffer.writeUtf(message.jsonPayload);
+            buffer.writeUtf(message.snapshot.configId());
+            buffer.writeUtf(message.snapshot.jsonPayload());
         }
 
         private static SyncMessage decode(PacketBuffer buffer) {
-            KonfigSyncPayload payload = new KonfigSyncPayload(buffer.readUtf(256), buffer.readUtf());
-            return new SyncMessage(payload.configId(), payload.jsonPayload());
+            return SyncMessage.of(buffer.readUtf(256), buffer.readUtf());
         }
 //?}
     }

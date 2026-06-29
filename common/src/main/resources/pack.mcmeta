@@ -1,6 +1,6 @@
 {
   "pack": {
-    "pack_format": 8,
-    "description": "Konfig resources"
+    "pack_format": ${minecraft_version.startsWith("1.21") ? 81 : (minecraft_version.startsWith("1.20") ? 15 : (minecraft_version.startsWith("1.19") ? 9 : (minecraft_version.startsWith("1.14") || minecraft_version.startsWith("1.15") || minecraft_version.startsWith("1.16") ? 6 : 8)))}${minecraft_version.startsWith("1.21") ? ',\n    "min_format": 81,\n    "max_format": 81' : ''},
+    "description": "${minecraft_version.startsWith("26.1") ? mod_name : mod_name + " resources"}"
   }
 }

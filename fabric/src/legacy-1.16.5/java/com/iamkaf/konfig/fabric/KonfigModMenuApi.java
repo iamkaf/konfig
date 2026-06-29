@@ -1,6 +1,8 @@
 package com.iamkaf.konfig.fabric;
 
-import com.iamkaf.konfig.Constants;
+import org.jetbrains.annotations.ApiStatus;
+
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.api.v1.ConfigHandle;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.fabric.api.v1.KonfigClientScreens;
@@ -10,6 +12,9 @@ import com.terraformersmc.modmenu.api.ModMenuApi;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@ApiStatus.Internal
+// Terraformers Mod Menu bridge for Fabric 1.16.5 through 1.17.1. It stays in a
+// legacy source set because the modern Mod Menu bridge is only compiled on 1.18+.
 public final class KonfigModMenuApi implements ModMenuApi {
     @Override
     public ConfigScreenFactory<?> getModConfigScreenFactory() {

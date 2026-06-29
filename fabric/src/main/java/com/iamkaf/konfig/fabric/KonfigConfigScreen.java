@@ -1,19 +1,25 @@
 package com.iamkaf.konfig.fabric;
 
-import com.iamkaf.konfig.Constants;
-import com.iamkaf.konfig.KonfigDebugConfig;
-import com.iamkaf.konfig.api.v1.ConfigValue;
+import org.jetbrains.annotations.ApiStatus;
+
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
+import com.iamkaf.konfig.impl.v1.bootstrap.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ImageOptions;
-import com.iamkaf.konfig.impl.v1.ColorValueHelper;
-import com.iamkaf.konfig.impl.v1.ConfigHandleImpl;
-import com.iamkaf.konfig.impl.v1.ConfigValueImpl;
-import com.iamkaf.konfig.impl.v1.DropdownOptionMetadata;
-import com.iamkaf.konfig.impl.v1.EntryKind;
-import com.iamkaf.konfig.impl.v1.InfoPanelItem;
-import com.iamkaf.konfig.impl.v1.KonfigManager;
-import com.iamkaf.konfig.impl.v1.KonfigToastSupport;
-import com.iamkaf.konfig.impl.v1.RuntimeEnvironment;
-import com.iamkaf.konfig.impl.v1.StringListValueHelper;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyConfigEntries;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyConfigEntry;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyDraftSession;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyDropdownState;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyInfoPanelState;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyRegistrySuggestions;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyStringListState;
+import com.iamkaf.konfig.impl.v1.client.legacy.LegacyValueText;
+import com.iamkaf.konfig.impl.v1.config.model.ColorValueHelper;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
+import com.iamkaf.konfig.impl.v1.config.model.ConfigValueImpl;
+import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
+import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
+import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
+import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
 import com.mojang.blaze3d.platform.InputConstants;
 //? if >=1.16 {
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -47,16 +53,15 @@ import org.lwjgl.opengl.GL11;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.net.URI;
 
+@ApiStatus.Internal
+// Fabric 1.16.x legacy config screen. Modern Fabric excludes this file in
+// fabric/build.gradle, and 1.14/1.15 keep a separate no-PoseStack shell.
 public final class KonfigConfigScreen extends Screen {
     private static final int LIST_TOP = 28;
     private static final int LIST_BOTTOM_MARGIN = 52;
@@ -78,12 +83,34 @@ public final class KonfigConfigScreen extends Screen {
     private static final int INFO_PANEL_SCROLLBAR_WIDTH = 4;
     private static final int INFO_PANEL_SCROLL_STEP = 18;
 
+    private static final LegacyValueText.Translator<Component> VALUE_TEXT_TRANSLATOR = new LegacyValueText.Translator<Component>() {
+        @Override
+        public Component literal(String value) {
+            return text(value);
+        }
+
+        @Override
+        public Component translate(String key, Object... args) {
+            return KonfigConfigScreen.translate(key, args);
+        }
+
+        @Override
+        public Component translationOrNull(String key) {
+            return KonfigConfigScreen.translationOrNull(key);
+        }
+
+        @Override
+        public String string(Component value) {
+            return value.getString();
+        }
+    };
+
     private final Screen parent;
     private final String modIdFilter;
     private final String screenTitle;
+    private final List<LegacyConfigEntry> legacyEntries;
     private final List<EntryRef> entries;
-    private final Map<ConfigValueImpl<?>, Object> drafts = new LinkedHashMap<ConfigValueImpl<?>, Object>();
-    private final Map<ConfigValueImpl<?>, Object> sessionStartValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
+    private final LegacyDraftSession draftSession;
     private final Map<String, List<String>> registrySuggestionCache = new LinkedHashMap<String, List<String>>();
 
     private EntryList list;
@@ -92,16 +119,10 @@ public final class KonfigConfigScreen extends Screen {
     private DropdownRow activeDropdownRow;
     private DropdownRow renderedDropdownRow;
     private EntryRef hoveredEntry;
-    private EntryRef activeInfoEntry;
-    private EntryRef activeDropdownOptionEntry;
-    private List<InfoPanelItem> activeDropdownOptionInfo = Collections.emptyList();
+    private final LegacyInfoPanelState infoPanelState = new LegacyInfoPanelState();
     private boolean mouseOverInfoPanel;
     private boolean mouseOverInfoPanelBridge;
     private final List<InfoPanelLink> infoPanelLinks = new ArrayList<InfoPanelLink>();
-    private final Map<List<InfoPanelItem>, Double> infoPanelScrollPositions = new IdentityHashMap<List<InfoPanelItem>, Double>();
-    private List<InfoPanelItem> renderedInfoPanelItems = Collections.emptyList();
-    private double infoPanelScroll;
-    private int infoPanelMaxScroll;
     private List pendingTooltipLines;
     private int pendingTooltipMouseX;
     private int pendingTooltipMouseY;
@@ -119,7 +140,9 @@ public final class KonfigConfigScreen extends Screen {
         this.parent = parent;
         this.modIdFilter = modIdFilter;
         this.screenTitle = screenTitle;
-        this.entries = collectEntries(modIdFilter);
+        this.legacyEntries = LegacyConfigEntries.collect(modIdFilter);
+        this.entries = collectEntries(this.legacyEntries);
+        this.draftSession = new LegacyDraftSession(this.legacyEntries);
         if (KonfigDebugConfig.enabled()) {
             Constants.LOG.info(
                     "[Konfig/Debug] creating screen parent={} modFilter={} entries={}",
@@ -127,13 +150,6 @@ public final class KonfigConfigScreen extends Screen {
                     modIdFilter == null ? "<all>" : modIdFilter,
                     this.entries.size()
             );
-        }
-        for (EntryRef entry : this.entries) {
-            Object value = entry.value.get();
-            this.drafts.put(entry.value, copyDraftValue(entry.value, value));
-            if (entry.editable) {
-                this.sessionStartValues.put(entry.value, snapshotValue(entry.value, value));
-            }
         }
     }
 
@@ -380,79 +396,20 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private boolean persistEntry(EntryRef entry) {
-        Object previousValue = entry.value.get();
-        try {
-            Object parsed = parseDraft(entry.value, this.drafts.get(entry.value));
-            if (sameValue(previousValue, parsed)) {
-                return true;
-            }
-
-            setRawValue(entry.value, parsed);
-            entry.handle.save();
-            return true;
-        } catch (Exception exception) {
-            setRawValue(entry.value, previousValue);
-            KonfigToastSupport.saveFailed(exceptionMessage(exception));
-            return false;
-        }
-    }
-
-    private static String exceptionMessage(Exception exception) {
-        return exception.getMessage() == null ? "" : exception.getMessage();
+        return this.draftSession.persist(entry.legacyEntry);
     }
 
     private void resetEntries() {
-        Map<ConfigValueImpl<?>, Object> previousValues = new LinkedHashMap<ConfigValueImpl<?>, Object>();
-        Set<ConfigHandleImpl> handles = new LinkedHashSet<ConfigHandleImpl>();
-        try {
-            for (EntryRef entry : this.entries) {
-                if (!entry.editable) {
-                    continue;
-                }
-                Object resetValue = snapshotValue(entry.value, this.sessionStartValues.get(entry.value));
-                previousValues.put(entry.value, snapshotValue(entry.value, entry.value.get()));
-                this.drafts.put(entry.value, copyDraftValue(entry.value, resetValue));
-                setRawValue(entry.value, resetValue);
-                handles.add(entry.handle);
-            }
-
-            for (ConfigHandleImpl handle : handles) {
-                handle.save();
-            }
-        } catch (Exception exception) {
-            for (Map.Entry<ConfigValueImpl<?>, Object> previousValue : previousValues.entrySet()) {
-                setRawValue(previousValue.getKey(), previousValue.getValue());
-                this.drafts.put(previousValue.getKey(), copyDraftValue(previousValue.getKey(), previousValue.getValue()));
-            }
-            KonfigToastSupport.resetFailed(exceptionMessage(exception));
-        }
+        this.draftSession.reset(this.legacyEntries);
         this.rebuildScreenWidgets();
     }
 
     private static Component defaultScreenTitle(String modIdFilter, String screenTitle) {
-        if (!isBlank(screenTitle)) {
-            return text(screenTitle);
-        }
-        if (!isBlank(modIdFilter)) {
-            return translatedModTitle(modIdFilter);
-        }
-        return translate("konfig.screen.title.configurations");
+        return LegacyValueText.defaultScreenTitle(modIdFilter, screenTitle, VALUE_TEXT_TRANSLATOR);
     }
 
     private static Component translatedModTitle(String modId) {
-        String titleKey = "konfig.config." + modId + ".title";
-        Component translated = translate(titleKey);
-        if (!titleKey.equals(translated.getString())) {
-            return translated;
-        }
-
-        String legacyTitleKey = modId + ".configuration.title";
-        translated = translate(legacyTitleKey);
-        if (!legacyTitleKey.equals(translated.getString())) {
-            return translated;
-        }
-
-        return text(prettySegment(modId));
+        return LegacyValueText.translatedModTitle(modId, VALUE_TEXT_TRANSLATOR);
     }
 
     private Component screenTitle() {
@@ -471,51 +428,26 @@ public final class KonfigConfigScreen extends Screen {
     private void updateHoveredEntry(EntryRef entry, boolean hovered) {
         if (hovered) {
             this.hoveredEntry = entry;
-            this.activeInfoEntry = entry;
+            this.infoPanelState.hover(entry.legacyEntry);
         }
     }
 
     private List<InfoPanelItem> activeInfoItems() {
-        if (this.activeDropdownOptionEntry != null && !this.activeDropdownOptionInfo.isEmpty()) {
-            return this.activeDropdownOptionInfo;
-        }
-
-        EntryRef hovered = this.hoveredEntry;
-        if (hovered == null && (this.mouseOverInfoPanel || this.mouseOverInfoPanelBridge)) {
-            hovered = this.activeInfoEntry;
-        }
-        if (hovered != null) {
-            List<InfoPanelItem> selectedDropdownInfo = this.selectedDropdownOptionInfo(hovered);
-            if (!selectedDropdownInfo.isEmpty()) {
-                return selectedDropdownInfo;
-            }
-            List<InfoPanelItem> entryInfo = hovered.handle.entryInfo(hovered.value.path());
-            if (!entryInfo.isEmpty()) {
-                return entryInfo;
-            }
-            if (!isBlank(hovered.categoryPath)) {
-                List<InfoPanelItem> categoryInfo = hovered.handle.categoryInfo(hovered.categoryPath);
-                if (!categoryInfo.isEmpty()) {
-                    return categoryInfo;
+        return this.infoPanelState.activeItems(
+                this.legacyEntries,
+                this.hoveredEntry == null ? null : this.hoveredEntry.legacyEntry,
+                this.mouseOverInfoPanel || this.mouseOverInfoPanelBridge,
+                new LegacyInfoPanelState.DropdownInfoProvider() {
+                    @Override
+                    public List<InfoPanelItem> selectedDropdownInfo(LegacyConfigEntry entry) {
+                        return KonfigConfigScreen.this.selectedDropdownOptionInfo(entry);
+                    }
                 }
-            }
-            List<InfoPanelItem> globalInfo = hovered.handle.globalInfo();
-            if (!globalInfo.isEmpty()) {
-                return globalInfo;
-            }
-        }
-        for (EntryRef entry : this.entries) {
-            List<InfoPanelItem> globalInfo = entry.handle.globalInfo();
-            if (!globalInfo.isEmpty()) {
-                return globalInfo;
-            }
-        }
-        return Collections.emptyList();
+        );
     }
 
     private void updateActiveDropdownOptionInfo(int mouseX, int mouseY) {
-        this.activeDropdownOptionEntry = null;
-        this.activeDropdownOptionInfo = Collections.emptyList();
+        this.infoPanelState.clearDropdownOption();
         if (this.activeDropdownRow == null) {
             return;
         }
@@ -525,19 +457,18 @@ public final class KonfigConfigScreen extends Screen {
             return;
         }
 
-        this.activeDropdownOptionEntry = this.activeDropdownRow.entry;
-        this.activeDropdownOptionInfo = option.info();
+        this.infoPanelState.dropdownOption(this.activeDropdownRow.entry.legacyEntry, option.info());
     }
 
-    private List<InfoPanelItem> selectedDropdownOptionInfo(EntryRef entry) {
-        if (entry.value.kind() != EntryKind.DROPDOWN) {
+    private List<InfoPanelItem> selectedDropdownOptionInfo(LegacyConfigEntry entry) {
+        if (entry.value().kind() != EntryKind.DROPDOWN) {
             return Collections.emptyList();
         }
-        if (this.activeDropdownRow != null && this.activeDropdownRow.entry == entry) {
+        if (this.activeDropdownRow != null && this.activeDropdownRow.entry.legacyEntry == entry) {
             return Collections.emptyList();
         }
 
-        DropdownOptionMetadata option = entry.value.dropdownOption(this.currentDropdownValue(entry.value));
+        DropdownOptionMetadata option = entry.value().dropdownOption(this.currentDropdownValue(entry.value()));
         return option == null ? Collections.emptyList() : option.info();
     }
 
@@ -574,12 +505,10 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private boolean handleInfoPanelScroll(double mouseX, double mouseY, double scrollY) {
-        if (!this.isPointInInfoPanel(mouseX, mouseY) || this.infoPanelMaxScroll <= 0) {
+        if (!this.isPointInInfoPanel(mouseX, mouseY)) {
             return false;
         }
-        this.infoPanelScroll = Mth.clamp(this.infoPanelScroll - (scrollY * INFO_PANEL_SCROLL_STEP), 0.0D, (double) this.infoPanelMaxScroll);
-        this.rememberInfoPanelScroll();
-        return true;
+        return this.infoPanelState.scrollBy(scrollY, INFO_PANEL_SCROLL_STEP);
     }
 
     private void renderInfoPanel(PoseStack guiGraphics, int mouseX, int mouseY) {
@@ -592,13 +521,11 @@ public final class KonfigConfigScreen extends Screen {
         this.updateActiveDropdownOptionInfo(mouseX, mouseY);
         List<InfoPanelItem> items = this.activeInfoItems();
         if (items.isEmpty()) {
-            this.setRenderedInfoPanelItems(Collections.emptyList());
-            this.infoPanelScroll = 0.0D;
-            this.infoPanelMaxScroll = 0;
+            this.infoPanelState.clearRenderedItems();
             return;
         }
 
-        this.setRenderedInfoPanelItems(items);
+        this.infoPanelState.setRenderedItems(items);
 
         int x = left + INFO_PANEL_PADDING;
         int viewportTop = top + INFO_PANEL_PADDING;
@@ -606,11 +533,9 @@ public final class KonfigConfigScreen extends Screen {
         int contentWidth = Math.max(20, right - left - (INFO_PANEL_PADDING * 2) - INFO_PANEL_SCROLLBAR_WIDTH - 4);
         int contentHeight = this.measureInfoPanelItems(items, contentWidth);
         int viewportHeight = Math.max(1, viewportBottom - viewportTop);
-        this.infoPanelMaxScroll = Math.max(0, contentHeight - viewportHeight);
-        this.infoPanelScroll = Mth.clamp(this.infoPanelScroll, 0.0D, (double) this.infoPanelMaxScroll);
-        this.rememberInfoPanelScroll();
+        this.infoPanelState.maxScroll(contentHeight - viewportHeight);
 
-        int y = viewportTop - (int) Math.round(this.infoPanelScroll);
+        int y = viewportTop - (int) Math.round(this.infoPanelState.scroll());
         this.enableInfoPanelScissor(left, viewportTop, right, viewportBottom);
         for (InfoPanelItem item : items) {
             y = this.renderInfoPanelItem(guiGraphics, item, x, y, contentWidth, mouseX, mouseY);
@@ -659,22 +584,6 @@ public final class KonfigConfigScreen extends Screen {
             y = this.renderInfoParagraph(guiGraphics, infoText(item), x, y, width, 0xFFCFCFCF);
         }
         return y + INFO_PANEL_GAP;
-    }
-
-    private void setRenderedInfoPanelItems(List<InfoPanelItem> items) {
-        if (items == this.renderedInfoPanelItems) {
-            return;
-        }
-        this.rememberInfoPanelScroll();
-        this.renderedInfoPanelItems = items;
-        Double rememberedScroll = this.infoPanelScrollPositions.get(items);
-        this.infoPanelScroll = rememberedScroll == null ? 0.0D : rememberedScroll.doubleValue();
-    }
-
-    private void rememberInfoPanelScroll() {
-        if (!this.renderedInfoPanelItems.isEmpty()) {
-            this.infoPanelScrollPositions.put(this.renderedInfoPanelItems, this.infoPanelScroll);
-        }
     }
 
     private static Component infoLabel(InfoPanelItem item) {
@@ -728,16 +637,16 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void renderInfoPanelScrollbar(PoseStack guiGraphics, int right, int top, int bottom) {
-        if (this.infoPanelMaxScroll <= 0) {
+        if (this.infoPanelState.maxScroll() <= 0) {
             return;
         }
 
         int trackLeft = right - INFO_PANEL_SCROLLBAR_WIDTH - 4;
         int trackRight = right - 4;
         int viewportHeight = Math.max(1, bottom - top);
-        int contentHeight = viewportHeight + this.infoPanelMaxScroll;
+        int contentHeight = viewportHeight + this.infoPanelState.maxScroll();
         int thumbHeight = Mth.clamp((viewportHeight * viewportHeight) / contentHeight, 18, viewportHeight);
-        int thumbTop = top + (int) Math.round((viewportHeight - thumbHeight) * (this.infoPanelScroll / (double) this.infoPanelMaxScroll));
+        int thumbTop = top + (int) Math.round((viewportHeight - thumbHeight) * (this.infoPanelState.scroll() / (double) this.infoPanelState.maxScroll()));
         GuiComponent.fill(guiGraphics, trackLeft, top, trackRight, bottom, 0x44000000);
         GuiComponent.fill(guiGraphics, trackLeft, thumbTop, trackRight, thumbTop + thumbHeight, 0xAAFFFFFF);
     }
@@ -831,337 +740,78 @@ public final class KonfigConfigScreen extends Screen {
         }
     }
 
-    private static List<EntryRef> collectEntries(String modIdFilter) {
+    private static List<EntryRef> collectEntries(List<LegacyConfigEntry> legacyEntries) {
         List<EntryRef> result = new ArrayList<EntryRef>();
 
-        for (ConfigHandleImpl handle : KonfigManager.get().all()) {
-            if (modIdFilter != null && !modIdFilter.equals(handle.modId())) {
-                continue;
-            }
-            for (ConfigValueImpl<?> impl : handle.screenValues()) {
-                if (!isVisibleOnThisSide(impl)) {
-                    continue;
-                }
-
-                boolean editable = !impl.isDecoration() && impl.kind() != EntryKind.CUSTOM;
-                result.add(new EntryRef(handle, impl, editable));
-            }
+        for (LegacyConfigEntry entry : legacyEntries) {
+            result.add(new EntryRef(entry));
         }
 
-        Collections.sort(result, Comparator.comparing(entry -> entry.handle.id()));
         return result;
     }
 
-    private static boolean isVisibleOnThisSide(ConfigValueImpl<?> value) {
-        if (value.clientOnly() && !RuntimeEnvironment.isClient()) {
-            return false;
-        }
-        if (value.serverOnly() && RuntimeEnvironment.isClient()) {
-            return false;
-        }
-        return true;
-    }
-
-    private static Object parseDraft(ConfigValueImpl<?> value, Object draft) {
-        try {
-            switch (value.kind()) {
-                case BOOLEAN:
-                    return parseBoolean(draft, value.path());
-                case INTEGER:
-                    return Integer.valueOf(Integer.parseInt(stringValue(draft).trim()));
-                case LONG:
-                    return Long.valueOf(Long.parseLong(stringValue(draft).trim()));
-                case DOUBLE:
-                    return Double.valueOf(Double.parseDouble(stringValue(draft).trim()));
-                case STRING:
-                    return stringValue(draft);
-                case STRING_LIST:
-                    return parseStringList(draft, value.path());
-                case DROPDOWN:
-                    return stringValue(draft).trim();
-                case ENUM:
-                    return parseEnum(value, draft);
-                case COLOR_RGB:
-                    return Integer.valueOf(parseColor(value, draft));
-                case COLOR_ARGB:
-                    return Integer.valueOf(parseColor(value, draft));
-                case CUSTOM:
-                default:
-                    return value.get();
-            }
-        } catch (NumberFormatException numberFormatException) {
-            throw new IllegalArgumentException("Invalid number for '" + value.path() + "'.");
-        }
-    }
-
-    private static Boolean parseBoolean(Object draft, String path) {
-        if (draft instanceof Boolean) {
-            return (Boolean) draft;
-        }
-
-        String value = stringValue(draft).trim();
-        if ("true".equalsIgnoreCase(value)) {
-            return Boolean.TRUE;
-        }
-        if ("false".equalsIgnoreCase(value)) {
-            return Boolean.FALSE;
-        }
-        throw new IllegalArgumentException("Invalid boolean for '" + path + "' (expected true/false).");
-    }
-
-    private static Object parseEnum(ConfigValueImpl<?> value, Object draft) {
-        Object defaultValue = value.defaultValue();
-        if (!(defaultValue instanceof Enum<?>)) {
-            return defaultValue;
-        }
-
-        Class<?> enumClass = defaultValue.getClass();
-        if (enumClass.isInstance(draft)) {
-            return draft;
-        }
-
-        String target = stringValue(draft);
-        Object[] constants = enumClass.getEnumConstants();
-        for (Object constant : constants) {
-            if (((Enum<?>) constant).name().equalsIgnoreCase(target)) {
-                return constant;
-            }
-        }
-
-        throw new IllegalArgumentException("Invalid value for '" + value.path() + "'.");
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<String> parseStringList(Object draft, String path) {
-        if (draft instanceof List<?>) {
-            return StringListValueHelper.immutableCopy((List<String>) draft, path);
-        }
-        throw new IllegalArgumentException("Invalid list for '" + path + "'.");
-    }
-
-    private static int parseColor(ConfigValueImpl<?> value, Object draft) {
-        if (draft instanceof Number) {
-            int encoded = ((Number) draft).intValue();
-            if (value.kind() == EntryKind.COLOR_RGB) {
-                return ColorValueHelper.requireRgb(encoded, value.path());
-            }
-            return encoded;
-        }
-
-        String raw = stringValue(draft);
-        if (value.kind() == EntryKind.COLOR_ARGB) {
-            return ColorValueHelper.parseArgb(raw, value.path());
-        }
-        return ColorValueHelper.parseRgb(raw, value.path());
-    }
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    private static void setRawValue(ConfigValueImpl<?> value, Object parsed) {
-        ((ConfigValue) value).set(parsed);
-    }
-
     private static String stringValue(Object value) {
-        return value == null ? "" : String.valueOf(value);
-    }
-
-    private static boolean sameValue(Object left, Object right) {
-        return left == right || (left != null && left.equals(right));
-    }
-
-    private static Object snapshotValue(ConfigValueImpl<?> value, Object currentValue) {
-        if (value.kind() == EntryKind.STRING_LIST) {
-            return StringListValueHelper.immutableCopy(stringListValue(currentValue, value.path()), value.path());
-        }
-        return currentValue;
-    }
-
-    private static Object copyDraftValue(ConfigValueImpl<?> value, Object currentValue) {
-        if (value.kind() == EntryKind.STRING_LIST) {
-            return StringListValueHelper.mutableCopy(stringListValue(currentValue, value.path()));
-        }
-        return currentValue;
-    }
-
-    @SuppressWarnings("unchecked")
-    private static List<String> stringListValue(Object currentValue, String path) {
-        if (currentValue == null) {
-            return Collections.emptyList();
-        }
-        if (!(currentValue instanceof List<?>)) {
-            throw new IllegalArgumentException("Expected list value for '" + path + "'.");
-        }
-        return (List<String>) currentValue;
+        return LegacyDraftSession.stringValue(value);
     }
 
     private boolean readBoolean(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
-        if (current instanceof Boolean) {
-            return ((Boolean) current).booleanValue();
-        }
-        return ((Boolean) value.get()).booleanValue();
+        return this.draftSession.readBoolean(value);
     }
 
     private Enum<?> currentEnum(ConfigValueImpl<?> value) {
-        Object defaultValue = value.defaultValue();
-        if (!(defaultValue instanceof Enum<?>)) {
-            throw new IllegalStateException("Expected enum value for '" + value.path() + "'.");
-        }
-
-        Object current = this.drafts.get(value);
-        if (current != null && defaultValue.getClass().isInstance(current)) {
-            return (Enum<?>) current;
-        }
-
-        return (Enum<?>) defaultValue;
+        return this.draftSession.currentEnum(value);
     }
 
     private Enum<?> cycleEnum(ConfigValueImpl<?> value) {
-        Enum<?> current = currentEnum(value);
-        Object[] constants = current.getDeclaringClass().getEnumConstants();
-
-        int index = 0;
-        for (int i = 0; i < constants.length; i++) {
-            if (constants[i] == current) {
-                index = i;
-                break;
-            }
-        }
-
-        return (Enum<?>) constants[(index + 1) % constants.length];
+        return this.draftSession.cycleEnum(value);
     }
 
     private int currentColor(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
-        if (current instanceof Number) {
-            return ((Number) current).intValue();
-        }
-        return ((Number) value.get()).intValue();
+        return this.draftSession.currentColor(value);
     }
 
     private List<String> currentStringList(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
-        if (current instanceof List<?>) {
-            return StringListValueHelper.mutableCopy(stringListValue(current, value.path()));
-        }
-        return StringListValueHelper.mutableCopy(stringListValue(value.get(), value.path()));
+        return LegacyStringListState.current(this.draftSession, value);
     }
 
     private String currentDropdownValue(ConfigValueImpl<?> value) {
-        List<String> options = value.dropdownOptions();
-        Object current = this.drafts.get(value);
-        if (current instanceof String) {
-            String normalized = ((String) current).trim();
-            if (options.contains(normalized)) {
-                return normalized;
-            }
-        }
-
-        Object stored = value.get();
-        if (stored instanceof String) {
-            String normalized = ((String) stored).trim();
-            if (options.contains(normalized)) {
-                return normalized;
-            }
-        }
-
-        Object defaultValue = value.defaultValue();
-        if (defaultValue instanceof String) {
-            String normalized = ((String) defaultValue).trim();
-            if (options.contains(normalized)) {
-                return normalized;
-            }
-        }
-
-        return options.isEmpty() ? "" : options.get(0);
+        return this.draftSession.currentDropdownValue(value);
     }
 
     private Component booleanText(ConfigValueImpl<?> value) {
-        return translate(readBoolean(value) ? "options.on" : "options.off");
+        return LegacyValueText.booleanText(readBoolean(value), VALUE_TEXT_TRANSLATOR);
     }
 
     private Component enumText(EntryRef entry, Enum<?> value) {
-        String key = "konfig.value." + entry.handle.modId() + "." + entry.handle.name() + "." + entry.value.path() + "." + value.name().toLowerCase(Locale.ROOT);
-        Component translated = translationOrNull(key);
-        if (translated != null) {
-            return translated;
-        }
-
-        String legacyKey = entry.handle.modId() + ".config." + lastPathSegment(entry.value.path()) + "." + value.name().toLowerCase(Locale.ROOT);
-        translated = translationOrNull(legacyKey);
-        return translated == null ? text(prettySegment(value.name())) : translated;
+        return LegacyValueText.enumText(entry.legacyEntry, value, VALUE_TEXT_TRANSLATOR);
     }
 
     private Component dropdownText(EntryRef entry, String option) {
-        DropdownOptionMetadata metadata = entry.value.dropdownOption(option);
-        if (metadata != null) {
-            return translatedDropdownOption(entry, metadata);
-        }
-        return dropdownValueText(entry, option);
+        return LegacyValueText.dropdownText(entry.legacyEntry, option, VALUE_TEXT_TRANSLATOR);
     }
 
     private Component dropdownValueText(EntryRef entry, String option) {
-        String key = "konfig.value." + entry.handle.modId() + "." + entry.handle.name() + "." + entry.value.path() + "." + option;
-        Component translated = translationOrNull(key);
-        if (translated != null) {
-            return translated;
-        }
-
-        String legacyKey = entry.handle.modId() + ".config." + lastPathSegment(entry.value.path()) + "." + option;
-        translated = translationOrNull(legacyKey);
-        return translated == null ? text(prettySegment(option)) : translated;
+        return LegacyValueText.dropdownValueText(entry.legacyEntry, option, VALUE_TEXT_TRANSLATOR);
     }
 
     private Component translatedDropdownOption(EntryRef entry, DropdownOptionMetadata option) {
-        if (option == null) {
-            return dropdownValueText(entry, "");
-        }
-        if (!isBlank(option.label())) {
-            if (!option.labelTranslationKey()) {
-                return text(option.label());
-            }
-
-            Component translated = translationOrNull(option.label());
-            return translated == null ? text(option.label()) : translated;
-        }
-        return dropdownValueText(entry, option.value());
+        return LegacyValueText.translatedDropdownOption(entry.legacyEntry, option, VALUE_TEXT_TRANSLATOR);
     }
 
     private String translatedDropdownTooltip(DropdownOptionMetadata option) {
-        if (option == null || isBlank(option.tooltip())) {
-            return "";
-        }
-        if (!option.tooltipTranslationKey()) {
-            return option.tooltip();
-        }
-
-        Component translated = translationOrNull(option.tooltip());
-        return translated == null ? option.tooltip() : translated.getString();
+        return LegacyValueText.translatedDropdownTooltip(option, VALUE_TEXT_TRANSLATOR);
     }
 
     private Component colorText(ConfigValueImpl<?> value) {
-        int color = currentColor(value);
-        if (value.kind() == EntryKind.COLOR_ARGB) {
-            return text(ColorValueHelper.formatArgb(color));
-        }
-        return text(ColorValueHelper.formatRgb(color));
+        return text(LegacyValueText.colorText(value, currentColor(value)));
     }
 
     private Component stringListText(ConfigValueImpl<?> value) {
-        List<String> values = currentStringList(value);
-        if (values.isEmpty()) {
-            return translate("konfig.screen.list.empty");
-        }
-        if (values.size() == 1) {
-            return text(values.get(0));
-        }
-        if (values.size() == 2) {
-            return text(values.get(0) + ", " + values.get(1));
-        }
-        return translate("konfig.screen.list.summary", values.get(0), Integer.valueOf(values.size() - 1));
+        return LegacyValueText.stringListText(currentStringList(value), VALUE_TEXT_TRANSLATOR);
     }
 
     private String currentStringValue(ConfigValueImpl<?> value) {
-        Object current = this.drafts.get(value);
+        Object current = this.draftSession.draft(value);
         if (current instanceof String) {
             return (String) current;
         }
@@ -1352,9 +1002,9 @@ public final class KonfigConfigScreen extends Screen {
             return translated;
         }
 
-        String legacyKey = handle.modId() + ".config." + lastPathSegment(value.path());
+        String legacyKey = handle.modId() + ".config." + LegacyValueText.lastPathSegment(value.path());
         translated = translationOrNull(legacyKey);
-        return translated == null ? text(fallbackLabel(handle, value)) : translated;
+        return translated == null ? text(LegacyValueText.fallbackLabel(handle, value)) : translated;
     }
 
     private static Component translationOrNull(String key) {
@@ -1363,63 +1013,19 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private static String lastPathSegment(String path) {
-        int lastSeparator = path.lastIndexOf('.');
-        if (lastSeparator < 0) {
-            return path;
-        }
-        return path.substring(lastSeparator + 1);
+        return LegacyValueText.lastPathSegment(path);
     }
 
     private static Component contextLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
-        List<String> parts = new ArrayList<String>();
-        parts.add(prettySegment(handle.name()));
-        String[] pathParts = value.path().split("\\.");
-        for (int i = 0; i < pathParts.length - 1; i++) {
-            parts.add(prettySegment(pathParts[i]));
-        }
-        return text(String.join(" / ", parts));
+        return text(LegacyValueText.contextLabel(handle, value));
     }
 
     private static String fallbackLabel(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
-        List<String> parts = new ArrayList<String>();
-        parts.add(prettySegment(handle.name()));
-        String[] pathParts = value.path().split("\\.");
-        for (String pathPart : pathParts) {
-            parts.add(prettySegment(pathPart));
-        }
-        return String.join(" > ", parts);
+        return LegacyValueText.fallbackLabel(handle, value);
     }
 
     private static String prettySegment(String raw) {
-        if (raw == null || raw.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder builder = new StringBuilder(raw.length());
-        boolean capitalizeNext = true;
-        for (int i = 0; i < raw.length(); i++) {
-            char character = raw.charAt(i);
-            if (character == '_' || character == '-' || character == '.') {
-                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
-                    builder.append(' ');
-                }
-                capitalizeNext = true;
-                continue;
-            }
-
-            if (capitalizeNext) {
-                builder.append(Character.toUpperCase(character));
-                capitalizeNext = false;
-            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
-                builder.append(' ').append(character);
-            } else {
-                builder.append(Character.toLowerCase(character));
-            }
-        }
-        if (builder.length() > 0) {
-            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
-        }
-        return builder.toString().trim();
+        return LegacyValueText.prettySegment(raw);
     }
 
     private static List<Component> tooltipLines(String tooltip) {
@@ -1432,7 +1038,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
+        return LegacyValueText.isBlank(value);
     }
 
     private RegistryTextInputRow findFocusedRegistryRow() {
@@ -1524,64 +1130,11 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private static List<String> filterRegistrySuggestions(List<String> allSuggestions, String query) {
-        if (allSuggestions.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        List<String> exact = new ArrayList<String>();
-        List<String> prefix = new ArrayList<String>();
-        List<String> contains = new ArrayList<String>();
-
-        for (String candidate : allSuggestions) {
-            String lowerCandidate = candidate.toLowerCase(Locale.ROOT);
-            String pathCandidate = registryPath(lowerCandidate);
-            if (normalized.isEmpty()) {
-                prefix.add(candidate);
-                continue;
-            }
-            if (lowerCandidate.equals(normalized) || pathCandidate.equals(normalized)) {
-                exact.add(candidate);
-            } else if (lowerCandidate.startsWith(normalized) || pathCandidate.startsWith(normalized)) {
-                prefix.add(candidate);
-            } else if (lowerCandidate.contains(normalized) || pathCandidate.contains(normalized)) {
-                contains.add(candidate);
-            }
-        }
-
-        List<String> result = new ArrayList<String>(SUGGESTION_LIMIT);
-        appendSuggestions(result, exact);
-        appendSuggestions(result, prefix);
-        appendSuggestions(result, contains);
-        return result;
-    }
-
-    private static void appendSuggestions(List<String> target, List<String> source) {
-        for (String value : source) {
-            if (target.size() >= SUGGESTION_LIMIT) {
-                return;
-            }
-            target.add(value);
-        }
-    }
-
-    private static String registryPath(String registryId) {
-        int separator = registryId.indexOf(':');
-        return separator >= 0 ? registryId.substring(separator + 1) : registryId;
+        return LegacyRegistrySuggestions.filter(allSuggestions, query, SUGGESTION_LIMIT);
     }
 
     private static String suggestionSuffix(String currentValue, String suggestion) {
-        if (isBlank(suggestion)) {
-            return "";
-        }
-        String current = currentValue == null ? "" : currentValue;
-        if (current.isEmpty()) {
-            return suggestion;
-        }
-        if (suggestion.regionMatches(true, 0, current, 0, current.length())) {
-            return suggestion.substring(current.length());
-        }
-        return "";
+        return LegacyRegistrySuggestions.suffix(currentValue, suggestion);
     }
 
     private final class EntryList extends ContainerObjectSelectionList<ConfigRow> {
@@ -1682,7 +1235,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         protected void revertDraft(Object previousValue) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+            KonfigConfigScreen.this.draftSession.draft(this.entry.value, LegacyDraftSession.copyDraftValue(this.entry.value, previousValue));
         }
 
         protected void commitOrRevert(Object previousValue) {
@@ -1905,8 +1458,8 @@ public final class KonfigConfigScreen extends Screen {
         private BooleanRow(EntryRef entry) {
             super(entry);
             this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, booleanText(entry.value), button -> {
-                Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
-                KonfigConfigScreen.this.drafts.put(entry.value, Boolean.valueOf(!KonfigConfigScreen.this.readBoolean(entry.value)));
+                Object previousDraft = KonfigConfigScreen.this.draftSession.draft(entry.value);
+                KonfigConfigScreen.this.draftSession.draft(entry.value, Boolean.valueOf(!KonfigConfigScreen.this.readBoolean(entry.value)));
                 this.commitOrRevert(previousDraft);
                 this.syncFromDraft();
             });
@@ -1929,8 +1482,8 @@ public final class KonfigConfigScreen extends Screen {
         private EnumRow(EntryRef entry) {
             super(entry);
             this.button = new Button(0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, enumText(entry, KonfigConfigScreen.this.currentEnum(entry.value)), button -> {
-                Object previousDraft = KonfigConfigScreen.this.drafts.get(entry.value);
-                KonfigConfigScreen.this.drafts.put(entry.value, KonfigConfigScreen.this.cycleEnum(entry.value));
+                Object previousDraft = KonfigConfigScreen.this.draftSession.draft(entry.value);
+                KonfigConfigScreen.this.draftSession.draft(entry.value, KonfigConfigScreen.this.cycleEnum(entry.value));
                 this.commitOrRevert(previousDraft);
                 this.syncFromDraft();
             });
@@ -1949,9 +1502,7 @@ public final class KonfigConfigScreen extends Screen {
 
     private final class DropdownRow extends ConfigRow {
         private final Button button;
-        private boolean open;
-        private int selectedIndex;
-        private int scrollOffset;
+        private final LegacyDropdownState dropdownState = new LegacyDropdownState();
         private int lastButtonX;
         private int lastButtonY;
         private int lastButtonWidth = CONTROL_MIN_WIDTH;
@@ -1959,8 +1510,6 @@ public final class KonfigConfigScreen extends Screen {
         private int lastDropdownY;
         private int lastDropdownWidth;
         private int lastDropdownHeight;
-        private final StringBuilder typeSelectBuffer = new StringBuilder();
-        private long lastTypeSelectMillis;
 
         private DropdownRow(EntryRef entry) {
             super(entry);
@@ -1986,7 +1535,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected String rowTooltip() {
-            if (this.open) {
+            if (this.dropdownState.open()) {
                 return this.entry.tooltip;
             }
             String optionTooltip = translatedDropdownTooltip(this.currentOption());
@@ -2000,13 +1549,13 @@ public final class KonfigConfigScreen extends Screen {
             this.lastButtonY = this.button.y;
             this.lastButtonWidth = Math.min(CONTROL_MAX_WIDTH, Math.max(CONTROL_MIN_WIDTH, width / 2));
             this.renderButtonLabel(guiGraphics);
-            if (this.open) {
+            if (this.dropdownState.open()) {
                 KonfigConfigScreen.this.renderedDropdownRow = this;
             }
         }
 
         private void toggleDropdown() {
-            if (this.open) {
+            if (this.dropdownState.open()) {
                 this.closeDropdown();
             } else {
                 this.openDropdown();
@@ -2017,17 +1566,12 @@ public final class KonfigConfigScreen extends Screen {
             if (this.options().isEmpty()) {
                 return;
             }
-            this.open = true;
-            this.selectedIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
-            this.ensureSelectedVisible();
-            this.typeSelectBuffer.setLength(0);
-            this.lastTypeSelectMillis = 0L;
+            this.dropdownState.open(this.options(), KonfigConfigScreen.this.currentDropdownValue(this.entry.value), SUGGESTION_LIMIT);
             KonfigConfigScreen.this.setActiveDropdownRow(this);
         }
 
         private void closeDropdown() {
-            this.open = false;
-            this.typeSelectBuffer.setLength(0);
+            this.dropdownState.close();
             if (KonfigConfigScreen.this.activeDropdownRow == this) {
                 KonfigConfigScreen.this.activeDropdownRow = null;
             }
@@ -2054,7 +1598,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private DropdownOptionMetadata activeInfoOption(int mouseX, int mouseY) {
-            if (!this.open) {
+            if (!this.dropdownState.open()) {
                 return null;
             }
 
@@ -2063,39 +1607,23 @@ public final class KonfigConfigScreen extends Screen {
             if (hovered >= 0) {
                 return this.option(hovered);
             }
-            return this.option(this.selectedIndex);
+            return this.option(this.dropdownState.selectedIndex());
         }
 
         private int optionIndex(String option) {
-            List<String> options = this.options();
-            for (int index = 0; index < options.size(); index++) {
-                if (sameValue(options.get(index), option)) {
-                    return index;
-                }
-            }
-            return 0;
+            return this.dropdownState.optionIndex(this.options(), option);
         }
 
         private int visibleOptionCount() {
-            return Math.min(SUGGESTION_LIMIT, this.options().size());
+            return this.dropdownState.visibleOptionCount(this.options(), SUGGESTION_LIMIT);
         }
 
         private int maxScrollOffset() {
-            return Math.max(0, this.options().size() - this.visibleOptionCount());
+            return this.dropdownState.maxScrollOffset(this.options(), SUGGESTION_LIMIT);
         }
 
         private void ensureSelectedVisible() {
-            int visibleCount = this.visibleOptionCount();
-            if (visibleCount <= 0) {
-                this.scrollOffset = 0;
-                return;
-            }
-            if (this.selectedIndex < this.scrollOffset) {
-                this.scrollOffset = this.selectedIndex;
-            } else if (this.selectedIndex >= this.scrollOffset + visibleCount) {
-                this.scrollOffset = this.selectedIndex - visibleCount + 1;
-            }
-            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
+            this.dropdownState.ensureSelectedVisible(this.options(), SUGGESTION_LIMIT);
         }
 
         private void selectOption(int optionIndex) {
@@ -2104,15 +1632,15 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
-            Object previousDraft = KonfigConfigScreen.this.drafts.get(this.entry.value);
-            KonfigConfigScreen.this.drafts.put(this.entry.value, options.get(optionIndex));
+            Object previousDraft = KonfigConfigScreen.this.draftSession.draft(this.entry.value);
+            KonfigConfigScreen.this.draftSession.draft(this.entry.value, options.get(optionIndex));
             this.commitOrRevert(previousDraft);
             this.syncFromDraft();
             this.closeDropdown();
         }
 
         private boolean handleDropdownClick(double mouseX, double mouseY) {
-            if (!this.open) {
+            if (!this.dropdownState.open()) {
                 return false;
             }
             this.layoutDropdown();
@@ -2129,7 +1657,7 @@ public final class KonfigConfigScreen extends Screen {
 
         private boolean handleDropdownKey(int keyCode) {
             List<String> options = this.options();
-            if (!this.open || options.isEmpty()) {
+            if (!this.dropdownState.open() || options.isEmpty()) {
                 return false;
             }
 
@@ -2141,24 +1669,22 @@ public final class KonfigConfigScreen extends Screen {
                     || keyCode == GLFW.GLFW_KEY_KP_ENTER
                     || keyCode == GLFW.GLFW_KEY_SPACE
                     || keyCode == GLFW.GLFW_KEY_TAB) {
-                this.selectOption(this.selectedIndex);
+                this.selectOption(this.dropdownState.selectedIndex());
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_DOWN) {
-                this.selectedIndex = (this.selectedIndex + 1) % options.size();
-                this.ensureSelectedVisible();
+                this.dropdownState.selectNext(options, SUGGESTION_LIMIT);
                 return true;
             }
             if (keyCode == GLFW.GLFW_KEY_UP) {
-                this.selectedIndex = (this.selectedIndex + options.size() - 1) % options.size();
-                this.ensureSelectedVisible();
+                this.dropdownState.selectPrevious(options, SUGGESTION_LIMIT);
                 return true;
             }
             return false;
         }
 
         private boolean handleClosedDropdownKey(int keyCode) {
-            if (this.open || this.options().isEmpty()) {
+            if (this.dropdownState.open() || this.options().isEmpty()) {
                 return false;
             }
             if (keyCode == GLFW.GLFW_KEY_ENTER
@@ -2171,46 +1697,23 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private boolean handleDropdownChar(int codePoint) {
-            if (!this.open
-                    || this.options().isEmpty()
-                    || !Character.isValidCodePoint(codePoint)
-                    || Character.isISOControl(codePoint)) {
+            if (!this.dropdownState.open()) {
                 return false;
             }
 
-            long now = System.currentTimeMillis();
-            if (now - this.lastTypeSelectMillis > DROPDOWN_TYPE_SELECT_RESET_MS) {
-                this.typeSelectBuffer.setLength(0);
-            }
-            this.lastTypeSelectMillis = now;
-            int normalizedCodePoint = Character.toLowerCase(codePoint);
-            this.typeSelectBuffer.appendCodePoint(normalizedCodePoint);
-
-            if (!this.focusFirstTypeMatch(this.typeSelectBuffer.toString())) {
-                this.typeSelectBuffer.setLength(0);
-                this.typeSelectBuffer.appendCodePoint(normalizedCodePoint);
-                this.focusFirstTypeMatch(this.typeSelectBuffer.toString());
-            }
-            return true;
-        }
-
-        private boolean focusFirstTypeMatch(String query) {
-            if (isBlank(query)) {
-                return false;
-            }
-
-            String normalizedQuery = query.toLowerCase(Locale.ROOT);
-            List<String> options = this.options();
-            int start = Math.max(0, this.selectedIndex + 1);
-            for (int offset = 0; offset < options.size(); offset++) {
-                int index = (start + offset) % options.size();
-                if (this.optionSearchText(index).startsWith(normalizedQuery)) {
-                    this.selectedIndex = index;
-                    this.ensureSelectedVisible();
-                    return true;
-                }
-            }
-            return false;
+            return this.dropdownState.typeSelect(
+                    this.options(),
+                    SUGGESTION_LIMIT,
+                    codePoint,
+                    System.currentTimeMillis(),
+                    DROPDOWN_TYPE_SELECT_RESET_MS,
+                    new LegacyDropdownState.OptionSearchText() {
+                        @Override
+                        public String searchText(int index) {
+                            return DropdownRow.this.optionSearchText(index);
+                        }
+                    }
+            );
         }
 
         private String optionSearchText(int index) {
@@ -2224,7 +1727,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private boolean handleDropdownScroll(double mouseX, double mouseY, double scrollY) {
-            if (!this.open) {
+            if (!this.dropdownState.open()) {
                 return false;
             }
             this.layoutDropdown();
@@ -2232,16 +1735,7 @@ public final class KonfigConfigScreen extends Screen {
                 return false;
             }
 
-            int previousOffset = this.scrollOffset;
-            if (scrollY > 0.0D) {
-                this.scrollOffset--;
-            } else if (scrollY < 0.0D) {
-                this.scrollOffset++;
-            }
-            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
-            if (this.scrollOffset != previousOffset && this.visibleOptionCount() > 0) {
-                this.selectedIndex = Mth.clamp(this.selectedIndex, this.scrollOffset, this.scrollOffset + this.visibleOptionCount() - 1);
-            }
+            this.dropdownState.scroll(this.options(), SUGGESTION_LIMIT, scrollY);
             return true;
         }
 
@@ -2253,7 +1747,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private boolean isPointInsideDropdown(double mouseX, double mouseY) {
-            if (!this.open) {
+            if (!this.dropdownState.open()) {
                 return false;
             }
             this.layoutDropdown();
@@ -2273,7 +1767,7 @@ public final class KonfigConfigScreen extends Screen {
             int aboveY = this.lastButtonY - this.lastDropdownHeight - 2;
             boolean openAbove = belowY + this.lastDropdownHeight > KonfigConfigScreen.this.height - 32 && aboveY >= LIST_TOP;
             this.lastDropdownY = openAbove ? aboveY : belowY;
-            this.scrollOffset = Mth.clamp(this.scrollOffset, 0, this.maxScrollOffset());
+            this.ensureSelectedVisible();
         }
 
         private void renderButtonLabel(PoseStack guiGraphics) {
@@ -2284,9 +1778,9 @@ public final class KonfigConfigScreen extends Screen {
             Component valueText = this.fitDropdownText(dropdownText(this.entry, KonfigConfigScreen.this.currentDropdownValue(this.entry.value)), textMaxWidth);
             KonfigConfigScreen.this.font.draw(guiGraphics, valueText, (float) textX, (float) textY, 0xFFFFFFFF);
 
-            Component chevron = text(this.open ? "\u25B4" : "\u25BE");
+            Component chevron = text(this.dropdownState.open() ? "\u25B4" : "\u25BE");
             int chevronX = chevronLeft + Math.max(0, (DROPDOWN_CHEVRON_WIDTH - KonfigConfigScreen.this.font.width(chevron)) / 2);
-            KonfigConfigScreen.this.font.draw(guiGraphics, chevron, (float) chevronX, (float) textY, this.open ? 0xFFF8E38F : 0xFFCFCFCF);
+            KonfigConfigScreen.this.font.draw(guiGraphics, chevron, (float) chevronX, (float) textY, this.dropdownState.open() ? 0xFFF8E38F : 0xFFCFCFCF);
         }
 
         private Component fitDropdownText(Component value, int maxWidth) {
@@ -2308,21 +1802,22 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private int hoveredOptionIndex(int mouseX, int mouseY) {
-            if (mouseX < this.lastDropdownX
-                    || mouseX > this.lastDropdownX + this.lastDropdownWidth
-                    || mouseY < this.lastDropdownY + 2
-                    || mouseY > this.lastDropdownY + this.lastDropdownHeight - 2) {
-                return -1;
-            }
-
-            int visibleIndex = (mouseY - this.lastDropdownY - 2) / SUGGESTION_ROW_HEIGHT;
-            int index = this.scrollOffset + visibleIndex;
-            return index >= 0 && index < this.options().size() && visibleIndex < this.visibleOptionCount() ? index : -1;
+            return this.dropdownState.hoveredOptionIndex(
+                    mouseX,
+                    mouseY,
+                    this.lastDropdownX,
+                    this.lastDropdownY,
+                    this.lastDropdownWidth,
+                    this.lastDropdownHeight,
+                    SUGGESTION_ROW_HEIGHT,
+                    this.options(),
+                    SUGGESTION_LIMIT
+            );
         }
 
         private void renderDropdown(PoseStack guiGraphics, int mouseX, int mouseY) {
             List<String> options = this.options();
-            if (!this.open || options.isEmpty()) {
+            if (!this.dropdownState.open() || options.isEmpty()) {
                 return;
             }
 
@@ -2331,7 +1826,7 @@ public final class KonfigConfigScreen extends Screen {
             GuiComponent.fill(guiGraphics, this.lastDropdownX, this.lastDropdownY, this.lastDropdownX + this.lastDropdownWidth, this.lastDropdownY + this.lastDropdownHeight, 0xFF101010);
 
             int hovered = this.hoveredOptionIndex(mouseX, mouseY);
-            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.selectedIndex);
+            DropdownOptionMetadata tooltipOption = this.option(hovered >= 0 ? hovered : this.dropdownState.selectedIndex());
             String tooltip = translatedDropdownTooltip(tooltipOption);
             if (!isBlank(tooltip)) {
                 KonfigConfigScreen.this.queueTooltip(guiGraphics, tooltip, mouseX, mouseY);
@@ -2339,7 +1834,7 @@ public final class KonfigConfigScreen extends Screen {
             int visibleCount = this.visibleOptionCount();
             int currentIndex = this.optionIndex(KonfigConfigScreen.this.currentDropdownValue(this.entry.value));
             for (int visibleIndex = 0; visibleIndex < visibleCount; visibleIndex++) {
-                int optionIndex = this.scrollOffset + visibleIndex;
+                int optionIndex = this.dropdownState.scrollOffset() + visibleIndex;
                 if (optionIndex >= options.size()) {
                     break;
                 }
@@ -2347,7 +1842,7 @@ public final class KonfigConfigScreen extends Screen {
                 int rowY = this.lastDropdownY + 2 + (visibleIndex * SUGGESTION_ROW_HEIGHT);
                 int rowBottom = rowY + SUGGESTION_ROW_HEIGHT;
                 boolean rowHovered = optionIndex == hovered;
-                boolean focused = optionIndex == this.selectedIndex;
+                boolean focused = optionIndex == this.dropdownState.selectedIndex();
                 boolean current = optionIndex == currentIndex;
                 if (rowHovered || focused || current) {
                     int color = rowHovered ? 0x805C6FA8 : focused ? 0x60406080 : 0x50303030;
@@ -2366,7 +1861,7 @@ public final class KonfigConfigScreen extends Screen {
                 int trackBottom = this.lastDropdownY + this.lastDropdownHeight - 2;
                 int trackHeight = Math.max(1, trackBottom - trackTop);
                 int thumbHeight = Mth.clamp((trackHeight * visibleCount) / options.size(), 10, trackHeight);
-                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.scrollOffset / this.maxScrollOffset());
+                int thumbTop = trackTop + ((trackHeight - thumbHeight) * this.dropdownState.scrollOffset() / this.maxScrollOffset());
                 GuiComponent.fill(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, trackTop, this.lastDropdownX + this.lastDropdownWidth - 2, trackBottom, 0x44000000);
                 GuiComponent.fill(guiGraphics, this.lastDropdownX + this.lastDropdownWidth - 4, thumbTop, this.lastDropdownX + this.lastDropdownWidth - 2, thumbTop + thumbHeight, 0xAAFFFFFF);
             }
@@ -2503,7 +1998,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private int currentValue() {
-            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
+            Object draft = KonfigConfigScreen.this.draftSession.draft(this.entry.value);
             if (draft instanceof Number) {
                 return ((Number) draft).intValue();
             }
@@ -2511,7 +2006,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void updateDraftFromSlider(double progress) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(intFromProgress(progress, this.min, this.max)));
+            KonfigConfigScreen.this.draftSession.draft(this.entry.value, Integer.valueOf(intFromProgress(progress, this.min, this.max)));
         }
 
         private final class SliderWidget extends BaseSliderWidget {
@@ -2572,7 +2067,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private long currentValue() {
-            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
+            Object draft = KonfigConfigScreen.this.draftSession.draft(this.entry.value);
             if (draft instanceof Number) {
                 return ((Number) draft).longValue();
             }
@@ -2580,7 +2075,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void updateDraftFromSlider(double progress) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Long.valueOf(longFromProgress(progress, this.min, this.max)));
+            KonfigConfigScreen.this.draftSession.draft(this.entry.value, Long.valueOf(longFromProgress(progress, this.min, this.max)));
         }
 
         private final class SliderWidget extends BaseSliderWidget {
@@ -2641,7 +2136,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private double currentValue() {
-            Object draft = KonfigConfigScreen.this.drafts.get(this.entry.value);
+            Object draft = KonfigConfigScreen.this.draftSession.draft(this.entry.value);
             if (draft instanceof Number) {
                 return ((Number) draft).doubleValue();
             }
@@ -2649,7 +2144,7 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void updateDraftFromSlider(double progress) {
-            KonfigConfigScreen.this.drafts.put(this.entry.value, Double.valueOf(doubleFromProgress(progress, this.min, this.max)));
+            KonfigConfigScreen.this.draftSession.draft(this.entry.value, Double.valueOf(doubleFromProgress(progress, this.min, this.max)));
         }
 
         private final class SliderWidget extends BaseSliderWidget {
@@ -2679,7 +2174,7 @@ public final class KonfigConfigScreen extends Screen {
             public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
                 double previousValue = DoubleSliderRow.this.currentValue();
                 boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
-                if (handled && !sameValue(Double.valueOf(previousValue), Double.valueOf(DoubleSliderRow.this.currentValue()))) {
+                if (handled && !LegacyDraftSession.sameValue(Double.valueOf(previousValue), Double.valueOf(DoubleSliderRow.this.currentValue()))) {
                     DoubleSliderRow.this.commitOrRevert(Double.valueOf(previousValue));
                 }
                 return handled;
@@ -2709,14 +2204,14 @@ public final class KonfigConfigScreen extends Screen {
             super(entry);
             this.input = new EditBox(KonfigConfigScreen.this.font, 0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, entry.label);
             this.input.setMaxLength(256);
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
+            this.input.setValue(stringValue(KonfigConfigScreen.this.draftSession.draft(entry.value)));
             this.input.setResponder(value -> {
                 if (this.suppressResponder) {
                     return;
                 }
                 this.suggestionsDismissed = false;
                 this.dismissedValue = "";
-                KonfigConfigScreen.this.drafts.put(entry.value, value);
+                KonfigConfigScreen.this.draftSession.draft(entry.value, value);
                 KonfigConfigScreen.this.persistEntry(entry);
                 this.refreshSuggestions();
             });
@@ -2738,7 +2233,7 @@ public final class KonfigConfigScreen extends Screen {
         @Override
         protected void syncFromDraft() {
             this.suppressResponder = true;
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(this.entry.value)));
+            this.input.setValue(stringValue(KonfigConfigScreen.this.draftSession.draft(this.entry.value)));
             this.suppressResponder = false;
             this.suggestionsDismissed = false;
             this.dismissedValue = "";
@@ -2811,7 +2306,7 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             if (this.suggestionsDismissed) {
-                if (sameValue(this.input.getValue(), this.dismissedValue)) {
+                if (LegacyDraftSession.sameValue(this.input.getValue(), this.dismissedValue)) {
                     this.visibleSuggestions.clear();
                     this.selectedSuggestionIndex = 0;
                     this.input.setSuggestion("");
@@ -2944,7 +2439,7 @@ public final class KonfigConfigScreen extends Screen {
             this.suppressResponder = true;
             this.input.setValue(suggestion);
             this.suppressResponder = false;
-            KonfigConfigScreen.this.drafts.put(this.entry.value, suggestion);
+            KonfigConfigScreen.this.draftSession.draft(this.entry.value, suggestion);
             KonfigConfigScreen.this.persistEntry(this.entry);
             this.dismissSuggestions();
             this.input.setFocus(true);
@@ -2990,15 +2485,15 @@ public final class KonfigConfigScreen extends Screen {
             super(entry);
             this.input = new EditBox(KonfigConfigScreen.this.font, 0, 0, CONTROL_MIN_WIDTH, CONTROL_HEIGHT, entry.label);
             this.input.setMaxLength(256);
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(entry.value)));
+            this.input.setValue(stringValue(KonfigConfigScreen.this.draftSession.draft(entry.value)));
             this.input.setResponder(value -> {
-                KonfigConfigScreen.this.drafts.put(entry.value, value);
+                KonfigConfigScreen.this.draftSession.draft(entry.value, value);
                 try {
-                    parseDraft(entry.value, value);
+                    LegacyDraftSession.parseDraft(entry.value, value);
                     this.validationMessage = "";
                     KonfigConfigScreen.this.persistEntry(entry);
                 } catch (Exception exception) {
-                    this.validationMessage = exceptionMessage(exception);
+                    this.validationMessage = LegacyDraftSession.exceptionMessage(exception);
                 }
             });
         }
@@ -3019,7 +2514,7 @@ public final class KonfigConfigScreen extends Screen {
 
         @Override
         protected void syncFromDraft() {
-            this.input.setValue(stringValue(KonfigConfigScreen.this.drafts.get(this.entry.value)));
+            this.input.setValue(stringValue(KonfigConfigScreen.this.draftSession.draft(this.entry.value)));
         }
     }
 
@@ -3047,24 +2542,24 @@ public final class KonfigConfigScreen extends Screen {
 
         protected final boolean persistEditedValue(Object previousValue) {
             if (!KonfigConfigScreen.this.persistEntry(this.entry)) {
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+                KonfigConfigScreen.this.draftSession.draft(this.entry.value, LegacyDraftSession.copyDraftValue(this.entry.value, previousValue));
                 return false;
             }
             return true;
         }
 
         protected final boolean resetToSessionStart() {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
+            Object previousValue = LegacyDraftSession.snapshotValue(this.entry.value, this.entry.value.get());
             try {
-                Object resetValue = snapshotValue(this.entry.value, KonfigConfigScreen.this.sessionStartValues.get(this.entry.value));
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, resetValue));
-                setRawValue(this.entry.value, resetValue);
+                Object resetValue = LegacyDraftSession.snapshotValue(this.entry.value, KonfigConfigScreen.this.draftSession.sessionStartValue(this.entry.value));
+                KonfigConfigScreen.this.draftSession.draft(this.entry.value, LegacyDraftSession.copyDraftValue(this.entry.value, resetValue));
+                LegacyDraftSession.setRawValue(this.entry.value, resetValue);
                 this.entry.handle.save();
                 return true;
             } catch (Exception exception) {
-                setRawValue(this.entry.value, previousValue);
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
-                KonfigToastSupport.resetFailed(exceptionMessage(exception));
+                LegacyDraftSession.setRawValue(this.entry.value, previousValue);
+                KonfigConfigScreen.this.draftSession.draft(this.entry.value, LegacyDraftSession.copyDraftValue(this.entry.value, previousValue));
+                KonfigToastSupport.resetFailed(LegacyDraftSession.exceptionMessage(exception));
                 return false;
             }
         }
@@ -3173,10 +2668,10 @@ public final class KonfigConfigScreen extends Screen {
                 return;
             }
 
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
+            Object previousValue = LegacyDraftSession.snapshotValue(this.entry.value, this.entry.value.get());
             try {
-                int parsed = parseColor(this.entry.value, value);
-                KonfigConfigScreen.this.drafts.put(this.entry.value, Integer.valueOf(parsed));
+                int parsed = LegacyDraftSession.parseColor(this.entry.value, value);
+                KonfigConfigScreen.this.draftSession.draft(this.entry.value, Integer.valueOf(parsed));
                 if (this.persistEditedValue(previousValue)) {
                     this.validationMessage = "";
                     this.syncWidgetsFromDraft();
@@ -3184,7 +2679,7 @@ public final class KonfigConfigScreen extends Screen {
                     this.syncWidgetsFromDraft();
                 }
             } catch (Exception exception) {
-                KonfigConfigScreen.this.drafts.put(this.entry.value, copyDraftValue(this.entry.value, previousValue));
+                KonfigConfigScreen.this.draftSession.draft(this.entry.value, LegacyDraftSession.copyDraftValue(this.entry.value, previousValue));
                 this.validationMessage = exception.getMessage() == null
                         ? translate("konfig.screen.color.invalid", Integer.valueOf(expectedDigits)).getString()
                         : exception.getMessage();
@@ -3287,12 +2782,12 @@ public final class KonfigConfigScreen extends Screen {
 
             @Override
             protected void applyValue() {
-                KonfigConfigScreen.this.drafts.put(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, intFromProgress(this.value, 0, 255))));
+                KonfigConfigScreen.this.draftSession.draft(ColorEditorScreen.this.entry.value, Integer.valueOf(ColorEditorScreen.this.withChannel(this.channel, intFromProgress(this.value, 0, 255))));
             }
 
             @Override
             public void onRelease(double mouseX, double mouseY) {
-                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                Object previousValue = LegacyDraftSession.snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
                 super.onRelease(mouseX, mouseY);
                 if (ColorEditorScreen.this.persistEditedValue(previousValue)) {
                     ColorEditorScreen.this.syncWidgetsFromDraft();
@@ -3301,7 +2796,7 @@ public final class KonfigConfigScreen extends Screen {
 
             @Override
             public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-                Object previousValue = snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
+                Object previousValue = LegacyDraftSession.snapshotValue(ColorEditorScreen.this.entry.value, ColorEditorScreen.this.entry.value.get());
                 int before = ColorEditorScreen.this.currentChannel(this.channel);
                 boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
                 if (handled && before != ColorEditorScreen.this.currentChannel(this.channel)) {
@@ -3412,10 +2907,14 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         private void addValue() {
-            Object previousValue = snapshotValue(this.entry.value, this.entry.value.get());
-            List<String> values = KonfigConfigScreen.this.currentStringList(this.entry.value);
-            values.add(this.entry.value.hasBoundRegistry() ? "" : translate("konfig.screen.list.new_item").getString());
-            KonfigConfigScreen.this.drafts.put(this.entry.value, values);
+            Object previousValue = LegacyDraftSession.snapshotValue(this.entry.value, this.entry.value.get());
+            KonfigConfigScreen.this.draftSession.draft(
+                    this.entry.value,
+                    LegacyStringListState.withAdded(
+                            KonfigConfigScreen.this.currentStringList(this.entry.value),
+                            this.entry.value.hasBoundRegistry() ? "" : translate("konfig.screen.list.new_item").getString()
+                    )
+            );
             if (this.persistEditedValue(previousValue)) {
                 this.rebuildEditorWidgets();
             }
@@ -3545,10 +3044,15 @@ public final class KonfigConfigScreen extends Screen {
             }
 
             private boolean persistListValue(String value) {
-                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
-                List<String> values = KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value);
-                values.set(this.index, value);
-                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, values);
+                Object previousValue = LegacyDraftSession.snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                KonfigConfigScreen.this.draftSession.draft(
+                        StringListEditorScreen.this.entry.value,
+                        LegacyStringListState.withReplaced(
+                                KonfigConfigScreen.this.currentStringList(StringListEditorScreen.this.entry.value),
+                                this.index,
+                                value
+                        )
+                );
                 if (!StringListEditorScreen.this.persistEditedValue(previousValue)) {
                     this.suppressResponder = true;
                     this.input.setValue(currentStringList(StringListEditorScreen.this.entry.value).get(this.index));
@@ -3567,9 +3071,11 @@ public final class KonfigConfigScreen extends Screen {
                     return;
                 }
 
-                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
-                Collections.swap(current, this.index, targetIndex);
-                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, current);
+                Object previousValue = LegacyDraftSession.snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                KonfigConfigScreen.this.draftSession.draft(
+                        StringListEditorScreen.this.entry.value,
+                        LegacyStringListState.withMoved(current, this.index, delta)
+                );
                 if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
                     StringListEditorScreen.this.rebuildEditorWidgets();
                 }
@@ -3581,9 +3087,11 @@ public final class KonfigConfigScreen extends Screen {
                     return;
                 }
 
-                Object previousValue = snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
-                current.remove(this.index);
-                KonfigConfigScreen.this.drafts.put(StringListEditorScreen.this.entry.value, current);
+                Object previousValue = LegacyDraftSession.snapshotValue(StringListEditorScreen.this.entry.value, StringListEditorScreen.this.entry.value.get());
+                KonfigConfigScreen.this.draftSession.draft(
+                        StringListEditorScreen.this.entry.value,
+                        LegacyStringListState.withRemoved(current, this.index)
+                );
                 if (StringListEditorScreen.this.persistEditedValue(previousValue)) {
                     StringListEditorScreen.this.rebuildEditorWidgets();
                 }
@@ -3646,7 +3154,7 @@ public final class KonfigConfigScreen extends Screen {
                 }
 
                 if (this.suggestionsDismissed) {
-                    if (sameValue(this.input.getValue(), this.dismissedValue)) {
+                    if (LegacyDraftSession.sameValue(this.input.getValue(), this.dismissedValue)) {
                         this.visibleSuggestions.clear();
                         this.selectedSuggestionIndex = 0;
                         this.input.setSuggestion("");
@@ -3814,6 +3322,7 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private static final class EntryRef {
+        private final LegacyConfigEntry legacyEntry;
         private final ConfigHandleImpl handle;
         private final ConfigValueImpl<?> value;
         private final Component label;
@@ -3822,34 +3331,27 @@ public final class KonfigConfigScreen extends Screen {
         private final String categoryPath;
         private final boolean editable;
 
-        private EntryRef(ConfigHandleImpl handle, ConfigValueImpl<?> value, boolean editable) {
-            this.handle = handle;
-            this.value = value;
+        private EntryRef(LegacyConfigEntry entry) {
+            this.legacyEntry = entry;
+            this.handle = entry.handle();
+            this.value = entry.value();
             if (value.isDecoration()) {
                 this.label = text(value.inlineLabel());
                 this.contextLabel = text("");
-                this.tooltip = value.kind() == EntryKind.URL && !isBlank(value.inlineTarget()) ? value.inlineTarget() : handle.tooltip(value.path());
-                this.categoryPath = categoryPath(value.path());
+                this.tooltip = entry.tooltip();
+                this.categoryPath = entry.categoryPath();
                 this.editable = false;
             } else {
                 this.label = translatedLabel(handle, value);
                 this.contextLabel = contextLabel(handle, value);
-                this.tooltip = handle.tooltip(value.path());
-                this.categoryPath = categoryPath(value.path());
-                this.editable = editable;
+                this.tooltip = entry.tooltip();
+                this.categoryPath = entry.categoryPath();
+                this.editable = entry.editable();
             }
         }
 
         private Component displayLabel() {
             return this.label;
-        }
-
-        private static String categoryPath(String path) {
-            int lastSeparator = path.lastIndexOf('.');
-            if (lastSeparator < 0) {
-                return "";
-            }
-            return path.substring(0, lastSeparator);
         }
     }
 }

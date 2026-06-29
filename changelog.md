@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.6.0
+
+### Changed
+
+- Documented the public API and marked implementation types as internal so addon authors can more clearly distinguish supported APIs from implementation details.
+
 ## 0.5.0
 
 ### Added

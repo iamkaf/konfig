@@ -1,5 +1,7 @@
 package com.iamkaf.konfig.fabric.mixin;
 
+import org.jetbrains.annotations.ApiStatus;
+
 import com.iamkaf.konfig.fabric.KonfigLegacyModsScreen;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -13,6 +15,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(TitleScreen.class)
+@ApiStatus.Internal
+// Adds the fallback Mods button only when TeaKit is present and the title
+// screen did not already get one from Mod Menu or the loader.
 abstract class KonfigLegacyTitleScreenMixin extends Screen {
     protected KonfigLegacyTitleScreenMixin(Component title) {
         super(title);

@@ -1,12 +1,17 @@
 package com.iamkaf.konfig.fabric;
 
-import com.iamkaf.konfig.Constants;
+import org.jetbrains.annotations.ApiStatus;
+
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.fabric.api.v1.KonfigClientScreens;
 import io.github.prospector.modmenu.api.ModMenuApi;
 import net.minecraft.client.gui.screens.Screen;
 
 import java.util.function.Function;
 
+@ApiStatus.Internal
+// Prospector-era Mod Menu bridge for Fabric <=1.16.4. It is intentionally a
+// tiny adapter into the public Fabric screen factory.
 public final class KonfigModMenuApi implements ModMenuApi {
     @Override
     public String getModId() {

@@ -115,7 +115,6 @@ const fabricModern = {
     { action: "wait_for_screen", title: "Mods", timeoutMs: 5000, pollMs: 100 },
     { action: "click_list_entry", label: "Konfig", contains: false, nth: 0, listRole: "mod_list", waitAfterMs: 300 },
     { action: "activate_widget_class", widgetClass: "com.terraformersmc.modmenu.gui.widget.LegacyTexturedButtonWidget", nth: 1, waitAfterMs: 800 },
-    { action: "wait_for_screen", screenClass: "com.iamkaf.konfig.impl.v1.KonfigConfigScreen", timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Debug Settings", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "These entries exist to test Konfig's own screen", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Documentation", contains: true, timeoutMs: 5000, pollMs: 100 },
@@ -123,6 +122,7 @@ const fabricModern = {
     { action: "click_mouse", x: 313, y: 185 },
     { action: "wait_ms", durationMs: 300 },
     { action: "screenshot", name: "konfig-debug-dropdown-open", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
+    { action: "click_mouse", x: 8, y: 8 },
     { action: "screenshot", name: "konfig-debug-settings", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
   ],
   cleanup: [],
@@ -131,7 +131,7 @@ const fabricModern = {
 const fabricModernPre262 = {
   ...fabricModern,
   name: "konfig-title-config-fabric-pre262",
-  steps: replaceStep(fabricModern.steps, 11, { action: "click_mouse", x: 203, y: 185 }),
+  steps: replaceStep(fabricModern.steps, 10, { action: "click_mouse", x: 203, y: 185 }),
 } as ScenarioDefinition;
 
 const fabric117 = {
@@ -185,6 +185,10 @@ const fabricLegacy = {
     { action: "click_mouse", x: 203, y: 185 },
     { action: "wait_ms", durationMs: 300 },
     { action: "screenshot", name: "konfig-debug-dropdown-open", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
+    { action: "click_mouse", x: 8, y: 8 },
+    { action: "scroll_mouse", x: 120, y: 185, verticalAmount: -4 },
+    { action: "wait_ms", durationMs: 200 },
+    { action: "wait_for_list_entry", label: "Enable Debug Logging", contains: false, timeoutMs: 10000, pollMs: 100 },
     { action: "screenshot", name: "konfig-debug-settings", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
   ],
   cleanup: [],
@@ -199,7 +203,6 @@ const forgeModern = {
     { action: "wait_for_screen", title: "Mods", timeoutMs: 5000, pollMs: 100 },
     { action: "click_list_entry", label: "Konfig", contains: false, nth: 0, waitAfterMs: 300 },
     { action: "activate_widget", label: "Config", contains: false, waitAfterMs: 800 },
-    { action: "wait_for_screen", screenClass: "com.iamkaf.konfig.impl.v1.KonfigConfigScreen", timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Debug Settings", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "These entries exist to test Konfig's own screen", contains: true, timeoutMs: 5000, pollMs: 100 },
     { action: "wait_for_list_entry", label: "Konfig Documentation", contains: true, timeoutMs: 5000, pollMs: 100 },
@@ -207,7 +210,6 @@ const forgeModern = {
     { action: "click_mouse", x: 203, y: 185 },
     { action: "wait_ms", durationMs: 300 },
     { action: "screenshot", name: "konfig-debug-dropdown-open", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
-    { action: "screenshot", name: "konfig-debug-settings", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
   ],
   cleanup: [],
 } as ScenarioDefinition;
@@ -215,12 +217,23 @@ const forgeModern = {
 const forgeLegacy = {
   ...forgeModern,
   name: "konfig-title-config-forge-legacy",
-  steps: replaceStep(forgeModern.steps, 6, {
-    action: "wait_for_screen",
-    screenClass: "com.iamkaf.konfig.forge.KonfigConfigScreen",
-    timeoutMs: 10000,
-    pollMs: 100,
-  }).map((step, index) => index >= 7 && index <= 10 ? { ...step, timeoutMs: 10000 } : step),
+  steps: [
+    ...forgeModern.steps.slice(0, 6),
+    {
+      action: "wait_for_screen",
+      screenClass: "com.iamkaf.konfig.forge.KonfigConfigScreen",
+      timeoutMs: 10000,
+      pollMs: 100,
+    },
+    ...forgeModern.steps.slice(6, 14).map((step) =>
+      step.action === "wait_for_list_entry" ? { ...step, timeoutMs: 10000 } : step
+    ),
+    { action: "click_mouse", x: 8, y: 8 },
+    { action: "scroll_mouse", x: 120, y: 185, verticalAmount: -4 },
+    { action: "wait_ms", durationMs: 200 },
+    { action: "wait_for_list_entry", label: "Enable Debug Logging", contains: false, timeoutMs: 10000, pollMs: 100 },
+    { action: "screenshot", name: "konfig-debug-settings", hideOverlay: true, hideDecoration: true, hideWindowDecoration: true },
+  ],
 } as ScenarioDefinition;
 
 const neoforge = {
