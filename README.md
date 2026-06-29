@@ -14,19 +14,30 @@
   <strong>A multiloader configuration library for Minecraft mods.</strong>
 </p>
 
-<p align="center">
-  <a href="#quick-start">Quick Start</a> &middot;
-  <a href="#basic-usage">Basic Usage</a> &middot;
-  <a href="#generated-screens">Generated Screens</a> &middot;
-  <a href="#support-matrix">Support Matrix</a> &middot;
-  <a href="#development">Development</a>
-</p>
-
 ---
 
 Konfig lets Minecraft mods define typed config values in common code, persist them as commented TOML, sync selected values to clients, and generate config screens for Fabric, Forge, and NeoForge.
 
 It is built for shared common code. Loader-specific integration stays in the loader roots, while config declaration, validation, migration, and screen metadata can live beside the rest of your common mod logic.
+
+## Table of Contents
+
+- [What Konfig Provides](#what-konfig-provides)
+- [How It Works](#how-it-works)
+- [Quick Start](#quick-start)
+- [Basic Usage](#basic-usage)
+- [Builder API](#builder-api)
+- [Value Types](#value-types)
+- [Files And Sync](#files-and-sync)
+- [Generated Screens](#generated-screens)
+- [Inline Decorations](#inline-decorations)
+- [Migrations](#migrations)
+- [Support Matrix](#support-matrix)
+- [Development](#development)
+- [Runtime Validation](#runtime-validation)
+- [Repository Layout](#repository-layout)
+- [Notes](#notes)
+- [License](#license)
 
 ## What Konfig Provides
 
