@@ -11,7 +11,9 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 ### Changed
 
-- Documented the public API and marked implementation types as internal so addon authors can more clearly distinguish supported APIs from implementation details.
+- Completely reorganized Konfig's core to give configuration storage, migration, screens, synchronization, runtime setup, and loader integration clear boundaries. This makes behavior easier to keep consistent across every supported Minecraft version and loader.
+- Documented the supported `api.v1` addon API and marked implementation types as internal so addon authors can clearly distinguish stable APIs from details that may change between releases.
+- See the [Konfig README](https://github.com/iamkaf/konfig#quick-start) for a guide on how to add Konfig support to your mod.
 
 ## 0.5.0
 
