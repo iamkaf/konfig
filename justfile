@@ -289,7 +289,10 @@ teakit-boot-check node timeout="60":
   if [ "$version" = "1.18.1" ] && [ "$loader" = "forge" ] && [ "$effective_timeout" -lt 40 ]; then \
     effective_timeout=40; \
   fi; \
-  catalog="/home/kaf/code/modding/tooling/version-catalog/mc-$version/gradle/libs.versions.toml"; \
+  workspace_root=$(git rev-parse --show-superproject-working-tree 2>/dev/null || true); \
+  catalog_root="${KONFIG_VERSION_CATALOG_ROOT:-}"; \
+  if [ -z "$catalog_root" ] && [ -n "$workspace_root" ]; then catalog_root="$workspace_root/tooling/version-catalog"; fi; \
+  catalog="$catalog_root/mc-$version/gradle/libs.versions.toml"; \
   if [ ! -f "$catalog" ] || ! rg -q '^teakit = ' "$catalog"; then \
     echo "TeaKit is not configured in the shared catalog for $version"; \
     exit 1; \
@@ -337,7 +340,10 @@ teakit-boot-check node timeout="60":
 teakit-boot-check-all timeout="60":
   @for node in $(just list-nodes); do \
     version="${node%-*}"; \
-    catalog="/home/kaf/code/modding/tooling/version-catalog/mc-$version/gradle/libs.versions.toml"; \
+    workspace_root=$(git rev-parse --show-superproject-working-tree 2>/dev/null || true); \
+    catalog_root="${KONFIG_VERSION_CATALOG_ROOT:-}"; \
+    if [ -z "$catalog_root" ] && [ -n "$workspace_root" ]; then catalog_root="$workspace_root/tooling/version-catalog"; fi; \
+    catalog="$catalog_root/mc-$version/gradle/libs.versions.toml"; \
     if [ -f "$catalog" ] && rg -q '^teakit = ' "$catalog"; then \
       echo "==> $node"; \
       just teakit-boot-check "$node" "{{timeout}}"; \
@@ -350,7 +356,10 @@ scenario-check node timeout="240":
 scenario-check-all timeout="240":
   @for node in $(just list-nodes); do \
     version="${node%-*}"; \
-    catalog="/home/kaf/code/modding/tooling/version-catalog/mc-$version/gradle/libs.versions.toml"; \
+    workspace_root=$(git rev-parse --show-superproject-working-tree 2>/dev/null || true); \
+    catalog_root="${KONFIG_VERSION_CATALOG_ROOT:-}"; \
+    if [ -z "$catalog_root" ] && [ -n "$workspace_root" ]; then catalog_root="$workspace_root/tooling/version-catalog"; fi; \
+    catalog="$catalog_root/mc-$version/gradle/libs.versions.toml"; \
     if [ -f "$catalog" ] && rg -q '^teakit = ' "$catalog"; then \
       echo "==> $node"; \
       just scenario-check "$node" "{{timeout}}"; \
