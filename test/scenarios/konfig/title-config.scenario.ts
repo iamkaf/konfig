@@ -239,6 +239,11 @@ const forgeLegacy = {
 const neoforge = {
   ...forgeModern,
   name: "konfig-title-config-neoforge",
+  steps: [
+    ...forgeModern.steps.slice(0, 4),
+    { action: "activate_widget", label: "Z-A", contains: false, waitAfterMs: 300 },
+    ...forgeModern.steps.slice(4),
+  ],
 } as ScenarioDefinition;
 
 function replaceStep(steps: ScenarioStep[], index: number, step: ScenarioStep): ScenarioStep[] {
