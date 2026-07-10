@@ -20,7 +20,12 @@ version="${node%-*}"
 loader="${node##*-}"
 scenario_file="test/scenarios/konfig/title-config.scenario.ts"
 
-catalog="/home/kaf/code/modding/tooling/version-catalog/mc-$version/gradle/libs.versions.toml"
+workspace_root="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
+catalog_root="${KONFIG_VERSION_CATALOG_ROOT:-}"
+if [ -z "$catalog_root" ] && [ -n "$workspace_root" ]; then
+  catalog_root="$workspace_root/tooling/version-catalog"
+fi
+catalog="$catalog_root/mc-$version/gradle/libs.versions.toml"
 if [ ! -f "$catalog" ] || ! rg -q '^teakit = ' "$catalog"; then
   echo "TeaKit is not configured in the shared catalog for $version" >&2
   exit 1
