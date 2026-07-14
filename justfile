@@ -350,10 +350,10 @@ teakit-boot-check-all timeout="60":
     fi; \
   done
 
-scenario-check node timeout="240":
-  @./scripts/config-menu-scenario-node.sh "{{node}}" "{{timeout}}"
+teakit-check node timeout="240":
+  @./scripts/config-menu-test-node.sh "{{node}}" "{{timeout}}"
 
-scenario-check-all timeout="240":
+teakit-check-all timeout="240":
   @for node in $(just list-nodes); do \
     version="${node%-*}"; \
     workspace_root=$(git rev-parse --show-superproject-working-tree 2>/dev/null || true); \
@@ -362,6 +362,6 @@ scenario-check-all timeout="240":
     catalog="$catalog_root/mc-$version/gradle/libs.versions.toml"; \
     if [ -f "$catalog" ] && rg -q '^teakit = ' "$catalog"; then \
       echo "==> $node"; \
-      just scenario-check "$node" "{{timeout}}"; \
+      just teakit-check "$node" "{{timeout}}"; \
     fi; \
   done

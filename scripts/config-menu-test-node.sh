@@ -18,7 +18,7 @@ fi
 
 version="${node%-*}"
 loader="${node##*-}"
-scenario_file="test/scenarios/konfig/title-config.scenario.ts"
+test_file="test/teakit/title-config.test.ts"
 
 workspace_root="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
 catalog_root="${KONFIG_VERSION_CATALOG_ROOT:-}"
@@ -50,5 +50,5 @@ fi
 
 ./teakitw run \
   --node "$node" \
-  --scenario "$scenario_file" \
+  --test-file "$test_file" \
   --timeout "$timeout_seconds"

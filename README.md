@@ -412,7 +412,7 @@ Konfig has three useful runtime validation layers:
 |---------|----------------|
 | `just boot-check 1.21.11-forge 60` | Starts the client and confirms Konfig initializes from logs |
 | `just teakit-boot-check 1.21.11-forge 60` | Enables TeaKit as an optional dev runtime dependency when that Minecraft line has a TeaKit catalog entry, then confirms Konfig and TeaKit initialize |
-| `just scenario-check 1.21.11-forge 240` | Runs the checked-in TeaKit UI scenario, opens the title-screen Mods menu, opens Konfig's config screen, and asserts that `Enable Debug Logging` is present |
+| `just teakit-check 1.21.11-forge 240` | Runs the checked-in TeaKit UI test, opens the title-screen Mods menu, opens Konfig's config screen, and asserts that `Enable Debug Logging` is present |
 
 Matrix-wide helpers:
 
@@ -420,7 +420,7 @@ Matrix-wide helpers:
 |---------|---------|
 | `just boot-check-all 60` | Run boot checks across the matrix |
 | `just teakit-boot-check-all 60` | Run TeaKit boot checks across the matrix |
-| `just scenario-check-all 240` | Run UI scenario checks across the matrix |
+| `just teakit-check-all 240` | Run UI tests across the matrix |
 
 ## Repository Layout
 
