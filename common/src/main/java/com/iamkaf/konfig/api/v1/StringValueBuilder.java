@@ -33,6 +33,15 @@ public interface StringValueBuilder extends ValueBuilder<String> {
     StringValueBuilder tooltip(String tooltip);
 
     /**
+     * Adds a translated generated-screen tooltip for this value.
+     *
+     * @param translationKey the tooltip translation key
+     * @return this builder
+     */
+    @Override
+    StringValueBuilder tooltipKey(String translationKey);
+
+    /**
      * Adds information-panel content for this value.
      *
      * @param builder the information-panel builder callback

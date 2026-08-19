@@ -48,6 +48,12 @@ final class StringListValueBuilderImpl extends ValueBuilderImpl<List<String>> im
     }
 
     @Override
+    public StringListValueBuilder tooltipKey(String translationKey) {
+        super.tooltipKey(translationKey);
+        return this;
+    }
+
+    @Override
     public StringListValueBuilder info(Consumer<com.iamkaf.konfig.api.v1.InfoPanelBuilder> builder) {
         super.info(builder);
         return this;

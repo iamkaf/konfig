@@ -6,6 +6,7 @@ import com.iamkaf.konfig.api.v1.ConfigHandle;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.function.Function;
 
 @ApiStatus.Internal
 public interface ConfigScreenHandle extends ConfigHandle {
@@ -20,4 +21,6 @@ public interface ConfigScreenHandle extends ConfigHandle {
     String id();
 
     String tooltip(String path);
+
+    String tooltip(String path, Function<String, String> translationResolver);
 }

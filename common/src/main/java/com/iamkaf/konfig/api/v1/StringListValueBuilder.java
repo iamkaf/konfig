@@ -34,6 +34,15 @@ public interface StringListValueBuilder extends ValueBuilder<List<String>> {
     StringListValueBuilder tooltip(String tooltip);
 
     /**
+     * Adds a translated generated-screen tooltip for this value.
+     *
+     * @param translationKey the tooltip translation key
+     * @return this builder
+     */
+    @Override
+    StringListValueBuilder tooltipKey(String translationKey);
+
+    /**
      * Adds information-panel content for this value.
      *
      * @param builder the information-panel builder callback

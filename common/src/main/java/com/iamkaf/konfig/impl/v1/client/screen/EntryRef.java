@@ -28,13 +28,13 @@ public final class EntryRef {
             this.contextLabel = KonfigScreenSupport.text("");
             this.tooltip = value.kind() == EntryKind.URL && !KonfigScreenSupport.isBlank(value.inlineTarget())
                     ? value.inlineTarget()
-                    : handle.tooltip(value.path());
+                    : KonfigScreenSupport.translatedTooltip(handle, value.path());
             this.categoryPath = categoryPath(value.path());
             this.editable = false;
         } else {
             this.label = KonfigScreenSupport.translatedLabel(handle, value);
             this.contextLabel = KonfigScreenSupport.contextLabel(handle, value);
-            this.tooltip = handle.tooltip(value.path());
+            this.tooltip = KonfigScreenSupport.translatedTooltip(handle, value.path());
             this.categoryPath = categoryPath(value.path());
             this.editable = editable;
         }

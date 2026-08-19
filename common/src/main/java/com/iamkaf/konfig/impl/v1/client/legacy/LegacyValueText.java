@@ -117,6 +117,16 @@ public final class LegacyValueText {
         return translated == null ? option.tooltip() : translatorString(translator, translated);
     }
 
+    public static String translatedTooltip(LegacyConfigEntry entry, Translator<?> translator) {
+        if (entry.value().kind() == EntryKind.URL && !isBlank(entry.value().inlineTarget())) {
+            return entry.value().inlineTarget();
+        }
+        return entry.handle().tooltip(entry.value().path(), key -> {
+            Object translated = translator.translationOrNull(key);
+            return translated == null ? null : translatorString(translator, translated);
+        });
+    }
+
     public static String colorText(ConfigValueImpl<?> value, int color) {
         if (value.kind() == EntryKind.COLOR_ARGB) {
             return ColorValueHelper.formatArgb(color);

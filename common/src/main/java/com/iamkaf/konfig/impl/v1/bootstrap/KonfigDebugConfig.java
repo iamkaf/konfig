@@ -82,6 +82,7 @@ public final class KonfigDebugConfig {
                 .build();
         debugEnabled = builder.bool("enabled", false)
                 .comment("Enable verbose Konfig internal logs")
+                .tooltipKey("konfig.config.konfig.konfig.debug.enabled.tooltip")
                 .info(info -> info
                         .header("Enable Debug Logging")
                         .inlineText("When enabled, Konfig will write detailed diagnostic and debug information to the log files.")

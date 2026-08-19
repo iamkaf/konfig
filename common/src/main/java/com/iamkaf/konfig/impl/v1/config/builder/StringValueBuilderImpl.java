@@ -47,6 +47,12 @@ final class StringValueBuilderImpl extends ValueBuilderImpl<String> implements S
     }
 
     @Override
+    public StringValueBuilder tooltipKey(String translationKey) {
+        super.tooltipKey(translationKey);
+        return this;
+    }
+
+    @Override
     public StringValueBuilder info(Consumer<com.iamkaf.konfig.api.v1.InfoPanelBuilder> builder) {
         super.info(builder);
         return this;

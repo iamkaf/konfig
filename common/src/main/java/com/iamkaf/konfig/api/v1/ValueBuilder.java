@@ -26,6 +26,17 @@ public interface ValueBuilder<T> {
     ValueBuilder<T> tooltip(String tooltip);
 
     /**
+     * Adds a translated generated-screen tooltip for this value.
+     *
+     * <p>The translation is resolved when the config screen opens, after client
+     * resources are available.</p>
+     *
+     * @param translationKey the tooltip translation key
+     * @return this builder
+     */
+    ValueBuilder<T> tooltipKey(String translationKey);
+
+    /**
      * Adds information-panel content for this value.
      *
      * @param builder the information-panel builder callback

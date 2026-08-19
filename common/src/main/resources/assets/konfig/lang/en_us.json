@@ -24,6 +24,7 @@
   "konfig.toast.missing_url": "Missing link target",
   "konfig.config.konfig.title": "Konfig",
   "konfig.config.konfig.konfig.debug.enabled": "Enable Debug Logging",
+  "konfig.config.konfig.konfig.debug.enabled.tooltip": "Writes detailed Konfig diagnostics to the log.",
   "konfig.config.konfig.konfig.debug.mode": "Debug Mode",
   "konfig.value.konfig.konfig.debug.mode.quiet": "Quiet",
   "konfig.value.konfig.konfig.debug.mode.standard": "Standard",

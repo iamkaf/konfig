@@ -148,6 +148,13 @@ public final class KonfigScreenSupport {
         return translated == null ? option.tooltip() : translated.getString();
     }
 
+    public static String translatedTooltip(ConfigScreenHandle handle, String path) {
+        return handle.tooltip(path, key -> {
+            Component translated = translationOrNull(key);
+            return translated == null ? null : translated.getString();
+        });
+    }
+
     public static Component decorationLabel(ConfigScreenValue<?> value) {
         if (!value.inlineLabelTranslationKey()) {
             return text(value.inlineLabel());
