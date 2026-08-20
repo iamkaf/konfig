@@ -34,6 +34,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
 
     private String comment = "";
     private String tooltip = "";
+    private boolean tooltipTranslationKey;
     private java.util.List<InfoPanelItem> info = java.util.Collections.emptyList();
     private RestartRequirement restartRequirement = RestartRequirement.NONE;
     private boolean sync;
@@ -76,6 +77,18 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
     @Override
     public ValueBuilder<T> tooltip(String tooltip) {
         this.tooltip = tooltip == null ? "" : tooltip;
+        this.tooltipTranslationKey = false;
+        return this;
+    }
+
+    @Override
+    public ValueBuilder<T> tooltipKey(String translationKey) {
+        String normalized = translationKey == null ? "" : translationKey.trim();
+        if (normalized.isEmpty()) {
+            throw new IllegalArgumentException("translationKey cannot be blank");
+        }
+        this.tooltip = normalized;
+        this.tooltipTranslationKey = true;
         return this;
     }
 
@@ -172,7 +185,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
         );
 
         this.owner.addEntry(this.path, entry, this.comment);
-        this.owner.addEntryTooltip(this.path, this.tooltip);
+        this.owner.addEntryTooltip(this.path, this.tooltip, this.tooltipTranslationKey);
         this.owner.addEntryInfo(this.path, this.info);
         return entry;
     }

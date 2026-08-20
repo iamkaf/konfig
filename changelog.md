@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
-## 0.6.0
+## 0.6.1
+
+### Added
+
+- Added translated config value tooltips with `ValueBuilder.tooltipKey(String)`.
 
 ### Changed
 

@@ -95,8 +95,8 @@ Versioning is parity-based across supported Minecraft lines. The semantic releas
 
 | Example version | Meaning |
 |-----------------|---------|
-| `0.6.0+1.21.11` | Konfig `0.6.0` for Minecraft `1.21.11` |
-| `0.6.0+26.2` | Konfig `0.6.0` for Minecraft `26.2` |
+| `0.6.1+1.21.11` | Konfig `0.6.1` for Minecraft `1.21.11` |
+| `0.6.1+26.2` | Konfig `0.6.1` for Minecraft `26.2` |
 
 Do not depend on Konfig `common` directly. Use the loader-specific artifact.
 
@@ -127,7 +127,7 @@ public final class ExampleConfig {
 
         ENABLED = builder.bool("enabled", true)
                 .comment("Master toggle")
-                .tooltip("Enable example mod features")
+                .tooltipKey("examplemod.config.enabled.tooltip")
                 .sync(true)
                 .build();
 
@@ -189,6 +189,7 @@ Value builders share the same metadata methods:
 |--------------|---------|
 | `comment(String)` | TOML comment for the value |
 | `tooltip(String)` | Screen tooltip for the generated editor |
+| `tooltipKey(String)` | Translated screen tooltip, resolved when the editor opens |
 | `info(Consumer<InfoPanelBuilder>)` | Add richer generated-screen help |
 | `restart(RestartRequirement)` | Mark values that need a restart or reload |
 | `sync(boolean)` | Include or exclude a value from sync |

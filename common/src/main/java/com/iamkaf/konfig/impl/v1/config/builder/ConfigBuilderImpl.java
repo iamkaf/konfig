@@ -48,6 +48,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
     private final LinkedHashMap<String, String> entryComments = new LinkedHashMap<String, String>();
     private final LinkedHashMap<String, String> categoryComments = new LinkedHashMap<String, String>();
     private final LinkedHashMap<String, String> entryTooltips = new LinkedHashMap<String, String>();
+    private final LinkedHashSet<String> entryTooltipTranslationKeys = new LinkedHashSet<String>();
     private final LinkedHashMap<String, String> categoryTooltips = new LinkedHashMap<String, String>();
     private List<InfoPanelItem> globalInfo = java.util.Collections.emptyList();
     private final LinkedHashMap<String, List<InfoPanelItem>> categoryInfo = new LinkedHashMap<String, List<InfoPanelItem>>();
@@ -482,6 +483,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 new LinkedHashMap<String, String>(this.entryComments),
                 new LinkedHashMap<String, String>(this.categoryComments),
                 new LinkedHashMap<String, String>(this.entryTooltips),
+                new LinkedHashSet<String>(this.entryTooltipTranslationKeys),
                 new LinkedHashMap<String, String>(this.categoryTooltips),
                 this.globalInfo,
                 new LinkedHashMap<String, List<InfoPanelItem>>(this.categoryInfo),
@@ -507,11 +509,17 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         }
     }
 
-    void addEntryTooltip(String path, String tooltip) {
+    void addEntryTooltip(String path, String tooltip, boolean translationKey) {
         if (isBlank(tooltip)) {
             this.entryTooltips.remove(path);
+            this.entryTooltipTranslationKeys.remove(path);
         } else {
             this.entryTooltips.put(path, normalizeComment(tooltip));
+            if (translationKey) {
+                this.entryTooltipTranslationKeys.add(path);
+            } else {
+                this.entryTooltipTranslationKeys.remove(path);
+            }
         }
     }
 

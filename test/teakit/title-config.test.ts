@@ -21,7 +21,7 @@ describe("Konfig config screen", () => {
 
     await ctx.client.waitForScreen("Title", { timeoutMs: 30_000 });
     await ctx.runtime.wait(3500);
-    const screen = await openKonfig(ctx, loader, version);
+    let screen = await openKonfig(ctx, loader, version);
 
     for (const label of [
       "Konfig Debug Settings",
@@ -35,14 +35,29 @@ describe("Konfig config screen", () => {
     await screen.lists().entry({ label: "Debug Mode" }).activate();
     await ctx.runtime.wait(300);
     await ctx.client.screenshot("konfig-debug-dropdown-open");
+    screen = await ctx.client.screen();
+    const debugModeEntry = screen.lists().entries()
+      .find((entry) => entry.label.includes("Debug Mode"));
+    if (!debugModeEntry) throw new Error("Missing debug mode entry");
+    await ctx.client.click({
+      x: debugModeEntry.x + debugModeEntry.width * 0.75,
+      y: debugModeEntry.y - 20,
+      button: 0,
+    });
+    await ctx.runtime.wait(200);
 
-    if (loader === "fabric" && atMost(version, "1.16.5") || loader === "forge" && version === "1.16.5") {
-      const current = await ctx.client.screen();
-      await current.scroll({ vertical: -4 });
-      await ctx.runtime.wait(200);
-      await waitForEntry(ctx, "Enable Debug Logging");
-    }
-    await ctx.client.screenshot("konfig-debug-settings");
+    const tooltipScreen = await scrollToEntry(ctx, "Enable Debug Logging");
+    const tooltipEntry = tooltipScreen.lists().entries()
+      .find((entry) => entry.label.includes("Enable Debug Logging"));
+    if (!tooltipEntry) throw new Error("Missing translated tooltip test entry");
+    await ctx.client.scroll({
+      x: tooltipEntry.x + tooltipEntry.width / 2,
+      y: tooltipEntry.y + tooltipEntry.height / 2,
+      horizontalAmount: 0,
+      verticalAmount: 0,
+    });
+    await ctx.runtime.wait(300);
+    await ctx.client.screenshot("konfig-translated-value-tooltip");
   });
 });
 
@@ -53,6 +68,11 @@ async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, ver
   screen = await ctx.client.screen();
 
   if (loader === "fabric" && atMost(version, "1.16.5")) {
+    if (screen.screenClass === "com.iamkaf.konfig.fabric.KonfigLegacyModsScreen") {
+      await screen.widgets().activate({ label: "Configure...", nth: 0 });
+      return ctx.client.waitForScreen("com.iamkaf.konfig.fabric.KonfigConfigScreen", { timeoutMs: 10_000 });
+    }
+    screen = await selectKonfig(ctx);
     await screen.widgets().activate({ label: "Configure...", nth: 0 });
     return ctx.client.waitForScreen("com.iamkaf.konfig.fabric.KonfigConfigScreen", { timeoutMs: 10_000 });
   }
@@ -63,9 +83,13 @@ async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, ver
     await ctx.runtime.wait(300);
     screen = await ctx.client.screen();
   }
-  await screen.lists("mod_list").entry({ label: "Konfig", nth: 0 }).activate();
-  await ctx.runtime.wait(300);
-  screen = await ctx.client.screen();
+  if (loader === "forge" && atMost(version, "1.18.2")) {
+    await screen.lists("mod_list").entry({ label: "Konfig", nth: 0 }).activate();
+    await ctx.runtime.wait(200);
+    screen = await ctx.client.screen();
+  } else {
+    screen = await selectKonfig(ctx);
+  }
 
   if (loader === "fabric") {
     await activateFabricConfigure(screen, version);
@@ -76,6 +100,24 @@ async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, ver
   }
   await ctx.runtime.wait(800);
   return ctx.client.screen();
+}
+
+async function selectKonfig(ctx: TeaKitTestContext): Promise<ClientScreen> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 5_000) {
+    const screen = await ctx.client.screen();
+    const entries = screen.lists("mod_list").entries();
+    const konfig = entries.find((entry) => entry.label.includes("Konfig"));
+    if (konfig?.selected) return screen;
+    if (!konfig) throw new Error("Missing Konfig in the mod list");
+    await ctx.client.click({
+      x: konfig.x + konfig.width / 2,
+      y: konfig.y + konfig.height / 2,
+      button: 0,
+    });
+    await ctx.runtime.wait(200);
+  }
+  throw new Error("Timed out selecting Konfig in the mod list");
 }
 
 async function activateFabricConfigure(screen: ClientScreen, version: string) {
@@ -101,6 +143,17 @@ async function waitForEntry(ctx: TeaKitTestContext, label: string): Promise<Clie
     await ctx.runtime.wait(100);
   }
   throw new Error(`Timed out waiting for Konfig entry: ${label}`);
+}
+
+async function scrollToEntry(ctx: TeaKitTestContext, label: string): Promise<ClientScreen> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 10_000) {
+    const screen = await ctx.client.screen();
+    if (screen.lists().entries().some((entry) => entry.label.includes(label))) return screen;
+    await screen.scroll({ vertical: -2 });
+    await ctx.runtime.wait(100);
+  }
+  throw new Error(`Timed out scrolling to Konfig entry: ${label}`);
 }
 
 function atLeast(actual: string, expected: string): boolean {

@@ -3346,13 +3346,13 @@ public final class KonfigConfigScreen extends Screen {
             if (value.isDecoration()) {
                 this.label = text(value.inlineLabel());
                 this.contextLabel = text("");
-                this.tooltip = entry.tooltip();
+                this.tooltip = LegacyValueText.translatedTooltip(entry, VALUE_TEXT_TRANSLATOR);
                 this.categoryPath = entry.categoryPath();
                 this.editable = false;
             } else {
                 this.label = translatedLabel(handle, value);
                 this.contextLabel = contextLabel(handle, value);
-                this.tooltip = entry.tooltip();
+                this.tooltip = LegacyValueText.translatedTooltip(entry, VALUE_TEXT_TRANSLATOR);
                 this.categoryPath = entry.categoryPath();
                 this.editable = entry.editable();
             }
