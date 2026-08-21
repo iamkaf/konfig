@@ -19,7 +19,6 @@ import net.minecraft.resources.ResourceKey;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -44,11 +43,10 @@ public final class KonfigModels {
             String value,
             String label,
             boolean labelTranslationKey,
-            String tooltip,
-            boolean tooltipTranslationKey,
+            TooltipText tooltip,
             List<InfoPanelItem> info
     ) {
-        return new DropdownOptionMetadata(value, label, labelTranslationKey, tooltip, tooltipTranslationKey, info);
+        return new DropdownOptionMetadata(value, label, labelTranslationKey, tooltip, info);
     }
 
     public static <T> ConfigValueImpl<T> configValue(
@@ -143,8 +141,7 @@ public final class KonfigModels {
             LinkedHashMap<String, ConfigValueImpl<?>> entries,
             LinkedHashMap<String, String> entryComments,
             LinkedHashMap<String, String> categoryComments,
-            LinkedHashMap<String, String> entryTooltips,
-            LinkedHashSet<String> entryTooltipTranslationKeys,
+            LinkedHashMap<String, TooltipText> entryTooltips,
             LinkedHashMap<String, String> categoryTooltips,
             List<InfoPanelItem> globalInfo,
             LinkedHashMap<String, List<InfoPanelItem>> categoryInfo,
@@ -163,7 +160,6 @@ public final class KonfigModels {
                 entryComments,
                 categoryComments,
                 entryTooltips,
-                entryTooltipTranslationKeys,
                 categoryTooltips,
                 globalInfo,
                 categoryInfo,

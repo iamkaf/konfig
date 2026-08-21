@@ -137,15 +137,10 @@ public final class KonfigScreenSupport {
     }
 
     public static String translatedDropdownTooltip(DropdownOptionMetadata option) {
-        if (option == null || isBlank(option.tooltip())) {
-            return "";
-        }
-        if (!option.tooltipTranslationKey()) {
-            return option.tooltip();
-        }
-
-        Component translated = translationOrNull(option.tooltip());
-        return translated == null ? option.tooltip() : translated.getString();
+        return option == null ? "" : option.tooltip().resolve(key -> {
+            Component translated = translationOrNull(key);
+            return translated == null ? null : translated.getString();
+        });
     }
 
     public static String translatedTooltip(ConfigScreenHandle handle, String path) {
