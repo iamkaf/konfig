@@ -30,7 +30,6 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -49,8 +48,7 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
     private final LinkedHashMap<String, ConfigValueImpl<?>> entries;
     private final LinkedHashMap<String, String> entryComments;
     private final LinkedHashMap<String, String> categoryComments;
-    private final LinkedHashMap<String, String> entryTooltips;
-    private final LinkedHashSet<String> entryTooltipTranslationKeys;
+    private final LinkedHashMap<String, TooltipText> entryTooltips;
     private final LinkedHashMap<String, String> categoryTooltips;
     private final List<InfoPanelItem> globalInfo;
     private final LinkedHashMap<String, List<InfoPanelItem>> categoryInfo;
@@ -69,8 +67,7 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
             LinkedHashMap<String, ConfigValueImpl<?>> entries,
             LinkedHashMap<String, String> entryComments,
             LinkedHashMap<String, String> categoryComments,
-            LinkedHashMap<String, String> entryTooltips,
-            LinkedHashSet<String> entryTooltipTranslationKeys,
+            LinkedHashMap<String, TooltipText> entryTooltips,
             LinkedHashMap<String, String> categoryTooltips,
             List<InfoPanelItem> globalInfo,
             LinkedHashMap<String, List<InfoPanelItem>> categoryInfo,
@@ -88,7 +85,6 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
         this.entryComments = entryComments;
         this.categoryComments = categoryComments;
         this.entryTooltips = entryTooltips;
-        this.entryTooltipTranslationKeys = entryTooltipTranslationKeys;
         this.categoryTooltips = categoryTooltips;
         this.globalInfo = globalInfo == null ? Collections.emptyList() : Collections.unmodifiableList(globalInfo);
         this.categoryInfo = categoryInfo == null ? new LinkedHashMap<String, List<InfoPanelItem>>() : categoryInfo;
@@ -254,10 +250,6 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
         return this.modId + ":" + this.name;
     }
 
-    public String tooltip(String path) {
-        return tooltip(path, key -> key);
-    }
-
     public String tooltip(String path, Function<String, String> translationResolver) {
         StringBuilder builder = new StringBuilder();
         String[] parts = path.split("\\.");
@@ -269,12 +261,8 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
             categoryPath.append(parts[i]);
             appendComment(builder, this.categoryTooltips.get(categoryPath.toString()));
         }
-        String entryTooltip = this.entryTooltips.get(path);
-        if (entryTooltip != null && this.entryTooltipTranslationKeys.contains(path)) {
-            String translated = translationResolver.apply(entryTooltip);
-            entryTooltip = translated == null ? entryTooltip : translated;
-        }
-        appendComment(builder, entryTooltip);
+        TooltipText entryTooltip = this.entryTooltips.get(path);
+        appendComment(builder, entryTooltip == null ? "" : entryTooltip.resolve(translationResolver));
         return builder.toString();
     }
 

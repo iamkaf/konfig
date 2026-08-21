@@ -7,6 +7,7 @@ import com.iamkaf.konfig.api.v1.InfoPanelBuilder;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
+import com.iamkaf.konfig.impl.v1.config.model.TooltipText;
 
 import java.util.Collections;
 import java.util.List;
@@ -17,8 +18,7 @@ final class DropdownOptionBuilderImpl implements DropdownOptionBuilder {
     private final String value;
     private String label = "";
     private boolean labelTranslationKey;
-    private String tooltip = "";
-    private boolean tooltipTranslationKey;
+    private TooltipText tooltip = TooltipText.empty();
     private List<InfoPanelItem> info = Collections.emptyList();
 
     DropdownOptionBuilderImpl(String value) {
@@ -41,15 +41,13 @@ final class DropdownOptionBuilderImpl implements DropdownOptionBuilder {
 
     @Override
     public DropdownOptionBuilder tooltip(String tooltip) {
-        this.tooltip = normalizeOptionalText(tooltip);
-        this.tooltipTranslationKey = false;
+        this.tooltip = TooltipText.literal(tooltip);
         return this;
     }
 
     @Override
     public DropdownOptionBuilder tooltipKey(String translationKey) {
-        this.tooltip = requireText(translationKey, "translationKey");
-        this.tooltipTranslationKey = true;
+        this.tooltip = TooltipText.translationKey(translationKey);
         return this;
     }
 
@@ -65,7 +63,6 @@ final class DropdownOptionBuilderImpl implements DropdownOptionBuilder {
                 this.label,
                 this.labelTranslationKey,
                 this.tooltip,
-                this.tooltipTranslationKey,
                 this.info
         );
     }

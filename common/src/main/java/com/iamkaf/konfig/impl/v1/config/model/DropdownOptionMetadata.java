@@ -11,23 +11,20 @@ public final class DropdownOptionMetadata {
     private final String value;
     private final String label;
     private final boolean labelTranslationKey;
-    private final String tooltip;
-    private final boolean tooltipTranslationKey;
+    private final TooltipText tooltip;
     private final List<InfoPanelItem> info;
 
     DropdownOptionMetadata(
             String value,
             String label,
             boolean labelTranslationKey,
-            String tooltip,
-            boolean tooltipTranslationKey,
+            TooltipText tooltip,
             List<InfoPanelItem> info
     ) {
         this.value = value;
         this.label = label == null ? "" : label;
         this.labelTranslationKey = labelTranslationKey;
-        this.tooltip = tooltip == null ? "" : tooltip;
-        this.tooltipTranslationKey = tooltipTranslationKey;
+        this.tooltip = tooltip == null ? TooltipText.empty() : tooltip;
         this.info = info == null || info.isEmpty()
                 ? Collections.emptyList()
                 : Collections.unmodifiableList(new ArrayList<InfoPanelItem>(info));
@@ -45,12 +42,8 @@ public final class DropdownOptionMetadata {
         return this.labelTranslationKey;
     }
 
-    public String tooltip() {
+    public TooltipText tooltip() {
         return this.tooltip;
-    }
-
-    public boolean tooltipTranslationKey() {
-        return this.tooltipTranslationKey;
     }
 
     public List<InfoPanelItem> info() {

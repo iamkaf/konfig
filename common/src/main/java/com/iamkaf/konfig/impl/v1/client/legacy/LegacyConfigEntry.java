@@ -11,14 +11,12 @@ public final class LegacyConfigEntry {
     private final ConfigHandleImpl handle;
     private final ConfigValueImpl<?> value;
     private final boolean editable;
-    private final String tooltip;
     private final String categoryPath;
 
     LegacyConfigEntry(ConfigHandleImpl handle, ConfigValueImpl<?> value) {
         this.handle = handle;
         this.value = value;
         this.editable = !value.isDecoration() && value.kind() != EntryKind.CUSTOM;
-        this.tooltip = value.kind() == EntryKind.URL && !isBlank(value.inlineTarget()) ? value.inlineTarget() : handle.tooltip(value.path());
         this.categoryPath = categoryPath(value.path());
     }
 
@@ -34,10 +32,6 @@ public final class LegacyConfigEntry {
         return this.editable;
     }
 
-    public String tooltip() {
-        return this.tooltip;
-    }
-
     public String categoryPath() {
         return this.categoryPath;
     }
@@ -48,9 +42,5 @@ public final class LegacyConfigEntry {
             return "";
         }
         return path.substring(0, lastSeparator);
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
     }
 }

@@ -11,6 +11,7 @@ import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
+import com.iamkaf.konfig.impl.v1.config.model.TooltipText;
 //? if >=1.17 {
 // Modern registry binding stores ResourceKey values; legacy bindings stay as
 // string ids because the 1.16 registry API does not share the same type.
@@ -33,8 +34,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private final Function<T, JsonElement> encoder;
 
     private String comment = "";
-    private String tooltip = "";
-    private boolean tooltipTranslationKey;
+    private TooltipText tooltip = TooltipText.empty();
     private java.util.List<InfoPanelItem> info = java.util.Collections.emptyList();
     private RestartRequirement restartRequirement = RestartRequirement.NONE;
     private boolean sync;
@@ -76,19 +76,13 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
 
     @Override
     public ValueBuilder<T> tooltip(String tooltip) {
-        this.tooltip = tooltip == null ? "" : tooltip;
-        this.tooltipTranslationKey = false;
+        this.tooltip = TooltipText.literal(tooltip);
         return this;
     }
 
     @Override
     public ValueBuilder<T> tooltipKey(String translationKey) {
-        String normalized = translationKey == null ? "" : translationKey.trim();
-        if (normalized.isEmpty()) {
-            throw new IllegalArgumentException("translationKey cannot be blank");
-        }
-        this.tooltip = normalized;
-        this.tooltipTranslationKey = true;
+        this.tooltip = TooltipText.translationKey(translationKey);
         return this;
     }
 
@@ -185,7 +179,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
         );
 
         this.owner.addEntry(this.path, entry, this.comment);
-        this.owner.addEntryTooltip(this.path, this.tooltip, this.tooltipTranslationKey);
+        this.owner.addEntryTooltip(this.path, this.tooltip);
         this.owner.addEntryInfo(this.path, this.info);
         return entry;
     }

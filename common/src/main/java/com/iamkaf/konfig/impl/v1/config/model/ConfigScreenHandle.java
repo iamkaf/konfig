@@ -20,7 +20,5 @@ public interface ConfigScreenHandle extends ConfigHandle {
 
     String id();
 
-    String tooltip(String path);
-
     String tooltip(String path, Function<String, String> translationResolver);
 }

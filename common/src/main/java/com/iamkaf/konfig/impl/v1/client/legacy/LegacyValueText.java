@@ -106,15 +106,10 @@ public final class LegacyValueText {
     }
 
     public static String translatedDropdownTooltip(DropdownOptionMetadata option, Translator<?> translator) {
-        if (option == null || isBlank(option.tooltip())) {
-            return "";
-        }
-        if (!option.tooltipTranslationKey()) {
-            return option.tooltip();
-        }
-
-        Object translated = translator.translationOrNull(option.tooltip());
-        return translated == null ? option.tooltip() : translatorString(translator, translated);
+        return option == null ? "" : option.tooltip().resolve(key -> {
+            Object translated = translator.translationOrNull(key);
+            return translated == null ? null : translatorString(translator, translated);
+        });
     }
 
     public static String translatedTooltip(LegacyConfigEntry entry, Translator<?> translator) {
