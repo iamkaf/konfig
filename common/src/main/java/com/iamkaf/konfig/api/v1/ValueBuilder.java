@@ -2,6 +2,8 @@ package com.iamkaf.konfig.api.v1;
 
 import java.util.function.Predicate;
 import java.util.function.Consumer;
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * Configures one typed config value before the owning config is built.
@@ -73,6 +75,20 @@ public interface ValueBuilder<T> {
      * @return this builder
      */
     ValueBuilder<T> serverOnly();
+
+//? if >=1.21.11 {
+    /**
+     * Supplies a read-only screen value while connected to a remote authority.
+     *
+     * <p>The local stored value is neither replaced nor persisted. When the client disconnects,
+     * generated screens automatically return to the ordinary local value.</p>
+     *
+     * @param value remote value shown by generated screens
+     * @param available whether a remote view has been received
+     * @return this builder
+     */
+    ValueBuilder<T> remoteScreenView(Supplier<T> value, BooleanSupplier available);
+//?}
 
     /**
      * Adds a validation rule.

@@ -16,6 +16,7 @@ import com.iamkaf.konfig.impl.v1.config.io.PathToml;
 import com.iamkaf.konfig.impl.v1.config.migration.ConfigMigrationSupport;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
 //? if >=1.21.11 {
+import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditRequest;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditStatus;
@@ -33,6 +34,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+//? if >=1.21.11 {
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+//?}
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -320,6 +325,31 @@ final class HeadlessKonfigRegressionTest {
     }
 
 //? if >=1.21.11 {
+    @Test
+    void remoteScreenViewDoesNotReplaceTheStoredValue() {
+        AtomicReference<String> remote = new AtomicReference<>("server");
+        AtomicBoolean available = new AtomicBoolean();
+        ConfigBuilder builder = Konfig.builder("headless", uniqueName("remote_view"));
+        ConfigValue<String> value = builder.string("value", "local", 1, 20)
+                .remoteScreenView(remote::get, available::get)
+                .build();
+        builder.build();
+
+        @SuppressWarnings("unchecked")
+        ConfigScreenValue<String> screenValue = (ConfigScreenValue<String>) value;
+        assertFalse(screenValue.remoteScreenViewAvailable());
+        assertEquals("local", value.get());
+
+        available.set(true);
+        assertTrue(screenValue.remoteScreenViewAvailable());
+        assertEquals("server", screenValue.remoteScreenValue());
+        assertEquals("local", value.get());
+
+        value.set("changed locally");
+        assertEquals("server", screenValue.remoteScreenValue());
+        assertEquals("changed locally", value.get());
+    }
+
     @Test
     void registeredRemoteTargetAppliesCompleteDraftAtomically() throws IOException {
         String name = uniqueName("remote");

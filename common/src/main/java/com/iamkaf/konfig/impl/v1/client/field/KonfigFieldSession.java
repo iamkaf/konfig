@@ -32,6 +32,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+//? if >=1.21.11
+import java.util.function.Supplier;
 
 @ApiStatus.Internal
 public final class KonfigFieldSession implements AutoCloseable {
@@ -182,11 +184,14 @@ public final class KonfigFieldSession implements AutoCloseable {
     private static <T> ConfigSessionField<T> captureSessionField(EntryRef entry, boolean remote) {
         @SuppressWarnings("unchecked")
         ConfigScreenValue<T> value = (ConfigScreenValue<T>) entry.value;
+        Supplier<T> screenValue = KonfigSync.clientConnected() && value.remoteScreenViewAvailable()
+                ? value::remoteScreenValue
+                : value::get;
         return new ConfigSessionField<>(
                 value.path(),
                 value.defaultValue(),
-                value::get,
-                value::get,
+                screenValue,
+                screenValue,
                 remote ? ignored -> { } : value::set,
                 new ConfigValueSemantics<>(value),
                 () -> permission(entry, remote)

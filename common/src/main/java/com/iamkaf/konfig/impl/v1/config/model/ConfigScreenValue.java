@@ -29,6 +29,12 @@ public interface ConfigScreenValue<T> extends ConfigValue<T> {
 
     boolean synchronizedOverlayActive();
 
+//? if >=1.21.11 {
+    boolean remoteScreenViewAvailable();
+
+    T remoteScreenValue();
+//?}
+
     boolean clientOnly();
 
     boolean serverOnly();
