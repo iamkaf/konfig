@@ -10,12 +10,14 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetFieldKind;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValidationIssue;
+import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 //?} else {
 import net.minecraft.client.gui.GuiGraphics;
 //?}
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
@@ -23,7 +25,11 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +39,7 @@ import java.util.Optional;
 @ApiStatus.Internal
 final class KonfigFieldsetListScreen extends Screen {
     private static final int LIST_TOP = 64;
-    private static final int COLLAPSED_HEIGHT = 44;
+    private static final int COLLAPSED_HEIGHT = 40;
     private static final int FIELD_HEIGHT = 38;
     private static final int CONTROL_HEIGHT = 20;
     private static final int CARD_GAP = 4;
@@ -54,7 +60,8 @@ final class KonfigFieldsetListScreen extends Screen {
     private Button delete;
     private Button moveUp;
     private Button moveDown;
-    private Button save;
+    private EntryRow.TextControl activeRegistryControl;
+    private EntryRow.TextControl renderedRegistryControl;
     private Component message = Component.empty();
     private boolean suppressSearchResponder;
     private boolean rebuildPending;
@@ -82,7 +89,7 @@ final class KonfigFieldsetListScreen extends Screen {
     @Override
     protected void init() {
         this.clearWidgets();
-        int contentWidth = Math.min(500, Math.max(260, this.width - 28));
+        int contentWidth = Math.min(440, Math.max(260, this.width - 28));
         int contentX = (this.width - contentWidth) / 2;
 
         this.search = this.addRenderableWidget(new EditBox(
@@ -140,8 +147,7 @@ final class KonfigFieldsetListScreen extends Screen {
         ));
 
         int footerY = this.height - 26;
-        this.addRenderableWidget(button(this.width / 2 - 102, footerY, 100, 20, Component.literal("Cancel"), ignored -> this.closeToParent()));
-        this.save = this.addRenderableWidget(button(this.width / 2 + 2, footerY, 100, 20, Component.literal("Save"), ignored -> this.save()));
+        this.addRenderableWidget(button(this.width / 2 - 80, footerY, 160, 20, Component.literal("Done"), ignored -> this.closeToParent()));
         this.refreshControls();
     }
 
@@ -153,6 +159,9 @@ final class KonfigFieldsetListScreen extends Screen {
     @Override
     public void tick() {
         super.tick();
+        if (this.list != null) {
+            this.list.tickControls();
+        }
         if (!this.rebuildPending || this.list == null) {
             return;
         }
@@ -165,12 +174,6 @@ final class KonfigFieldsetListScreen extends Screen {
 
     private void searchChanged(String query) {
         if (this.suppressSearchResponder) {
-            return;
-        }
-        if (this.list != null && this.list.hasLocalErrors()) {
-            this.message = Component.literal("Fix the invalid field before changing the filter.");
-            this.setSearchValue(this.state.query());
-            this.refreshControls();
             return;
         }
         this.state.setQuery(query);
@@ -191,11 +194,6 @@ final class KonfigFieldsetListScreen extends Screen {
     }
 
     private void toggleEntry(String entryId) {
-        if (this.list.hasLocalErrors()) {
-            this.message = Component.literal("Fix the invalid field before closing this entry.");
-            this.refreshControls();
-            return;
-        }
         if (this.state.toggleExpanded(entryId)) {
             this.message = Component.empty();
             this.requestRebuild(true);
@@ -203,29 +201,14 @@ final class KonfigFieldsetListScreen extends Screen {
         }
     }
 
-    private void save() {
-        if (this.list.hasLocalErrors()) {
-            this.message = Component.literal("Fix the invalid field before saving.");
-            this.refreshControls();
-            return;
+    private KonfigFieldsetEditResult persistDraft() {
+        if (!this.session.dirty()) {
+            return KonfigFieldsetEditResult.noChange();
         }
         List<FieldsetValidationIssue> issues = this.session.draft().validate().issues();
         if (!issues.isEmpty()) {
-            FieldsetValidationIssue issue = issues.get(0);
-            this.state.setQuery("");
-            this.setSearchValue("");
-            this.state.select(issue.entryIdentity());
-            if (!this.state.isExpanded(issue.entryIdentity())) {
-                this.state.toggleExpanded(issue.entryIdentity());
-            }
-            this.message = Component.literal(issue.message());
-            this.requestRebuild(true);
-            this.refreshControls();
-            return;
-        }
-        if (!this.session.dirty()) {
-            this.closeToParent();
-            return;
+            this.session.restorePersisted();
+            return KonfigFieldsetEditResult.invalid(Component.literal(issues.get(0).message()));
         }
         KonfigFieldsetEditResult result;
         try {
@@ -235,20 +218,23 @@ final class KonfigFieldsetListScreen extends Screen {
             );
         } catch (RuntimeException exception) {
             String detail = exception.getMessage();
-            this.message = Component.literal(detail == null || detail.isBlank()
+            this.session.restorePersisted();
+            return KonfigFieldsetEditResult.invalid(Component.literal(detail == null || detail.isBlank()
                     ? "The fieldset could not be saved."
-                    : detail);
-            return;
+                    : detail));
         }
         if (result.accepted()) {
-            this.closeToParent();
-            return;
+            this.session.markPersisted();
+        } else {
+            this.session.restorePersisted();
         }
-        this.message = result.message();
-        this.refreshControls();
+        return result;
     }
 
     private void apply(KonfigFieldsetEditResult result, boolean revealSelection) {
+        if (result.accepted()) {
+            result = this.persistDraft();
+        }
         this.message = result.accepted() ? Component.empty() : result.message();
         this.state.refresh();
         if (!this.search.getValue().equals(this.state.query())) {
@@ -262,15 +248,11 @@ final class KonfigFieldsetListScreen extends Screen {
         if (this.add == null) {
             return;
         }
-        boolean hasLocalErrors = this.list != null && this.list.hasLocalErrors();
-        this.add.active = !hasLocalErrors && this.state.canAdd();
-        this.duplicate.active = !hasLocalErrors && this.state.canDuplicateSelected();
-        this.delete.active = !hasLocalErrors && this.state.canDeleteSelected();
-        this.moveUp.active = !hasLocalErrors && this.state.canMoveSelectedUp();
-        this.moveDown.active = !hasLocalErrors && this.state.canMoveSelectedDown();
-        this.save.active = this.adapter.fieldsetAccess().canEdit()
-                && !hasLocalErrors
-                && this.adapter.validation().isValid();
+        this.add.active = this.state.canAdd();
+        this.duplicate.active = this.state.canDuplicateSelected();
+        this.delete.active = this.state.canDeleteSelected();
+        this.moveUp.active = this.state.canMoveSelectedUp();
+        this.moveDown.active = this.state.canMoveSelectedDown();
     }
 
     private void closeToParent() {
@@ -285,23 +267,71 @@ final class KonfigFieldsetListScreen extends Screen {
 //?}
     }
 
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        EntryRow.TextControl active = this.activeRegistryControl;
+        if (active != null && active.handleSuggestionClick(event)) {
+            return true;
+        }
+
+        boolean handled = super.mouseClicked(event, doubleClick);
+        EntryRow.TextControl focused = this.list == null ? null : this.list.focusedRegistryControl();
+        if (focused != null) {
+            this.activeRegistryControl = focused;
+            focused.activateSuggestions();
+        } else if (active != null && !active.isPointInsideInput(event.x(), event.y())) {
+            active.closeSuggestions();
+            this.activeRegistryControl = null;
+        }
+        return handled;
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        EntryRow.TextControl active = this.activeRegistryControl;
+        if (active != null && active.hasVisibleSuggestions() && active.handleSuggestionKey(event)) {
+            return true;
+        }
+        boolean handled = super.keyPressed(event);
+        if (active != null && active.isFocused()) {
+            active.refreshSuggestions();
+        }
+        return handled;
+    }
+
 //? if >=26.1 {
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float partialTick) {
         KonfigRenderContext context = KonfigRenderContext.of(graphics);
         context.fill(0, 0, this.width, this.height, 0xC0101010);
+        this.renderedRegistryControl = null;
         super.extractRenderState(graphics, mouseX, mouseY, partialTick);
         this.renderChrome(context);
+        this.renderRegistrySuggestions(context, mouseX, mouseY);
     }
 //?} else {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         KonfigRenderContext context = KonfigRenderContext.of(graphics);
         context.fill(0, 0, this.width, this.height, 0xC0101010);
+        this.renderedRegistryControl = null;
         super.render(graphics, mouseX, mouseY, partialTick);
         this.renderChrome(context);
+        this.renderRegistrySuggestions(context, mouseX, mouseY);
     }
 //?}
+
+    private void renderRegistrySuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
+        EntryRow.TextControl rendered = this.renderedRegistryControl;
+        if (rendered == null) {
+            return;
+        }
+        context.renderFloatingLayers(
+                layer -> rendered.renderSuggestions(layer, mouseX, mouseY),
+                layer -> {
+                }
+        );
+    }
 
     private void renderChrome(KonfigRenderContext context) {
         context.drawCenteredText(this.font, this.title, this.width / 2, 8, 0xFFFFFFFF);
@@ -336,6 +366,8 @@ final class KonfigFieldsetListScreen extends Screen {
 
         private void rebuild(boolean revealSelection) {
             double previousScroll = this.scrollAmount();
+            KonfigFieldsetListScreen.this.activeRegistryControl = null;
+            KonfigFieldsetListScreen.this.renderedRegistryControl = null;
             this.setFocused(null);
             this.clearEntries();
             for (KonfigFieldsetListEditorState.VisibleEntry<FieldsetEntry> visible : KonfigFieldsetListScreen.this.state.visibleEntries()) {
@@ -362,13 +394,20 @@ final class KonfigFieldsetListScreen extends Screen {
             }
         }
 
-        private boolean hasLocalErrors() {
+        private void tickControls() {
             for (EntryRow row : this.children()) {
-                if (row.hasLocalErrors()) {
-                    return true;
+                row.tickControls();
+            }
+        }
+
+        private EntryRow.TextControl focusedRegistryControl() {
+            for (EntryRow row : this.children()) {
+                EntryRow.TextControl focused = row.focusedRegistryControl();
+                if (focused != null) {
+                    return focused;
                 }
             }
-            return false;
+            return null;
         }
 
         @Override
@@ -444,6 +483,21 @@ final class KonfigFieldsetListScreen extends Screen {
                 }
             }
             return false;
+        }
+
+        private void tickControls() {
+            for (FieldControl field : this.fields) {
+                field.tick();
+            }
+        }
+
+        private TextControl focusedRegistryControl() {
+            for (FieldControl field : this.fields) {
+                if (field instanceof TextControl text && text.hasRegistryBinding() && text.isFocused()) {
+                    return text;
+                }
+            }
+            return null;
         }
 
         private void renderRow(
@@ -591,13 +645,17 @@ final class KonfigFieldsetListScreen extends Screen {
                 this.field = field;
             }
 
-            final void apply(Object value) {
+            final boolean apply(Object value) {
                 KonfigFieldsetEditResult result = this.field.value().setDraft(value);
+                if (result.accepted()) {
+                    result = KonfigFieldsetListScreen.this.persistDraft();
+                }
                 this.localError = result.accepted() ? "" : result.message().getString();
                 KonfigFieldsetListScreen.this.message = result.accepted() ? Component.empty() : result.message();
                 this.sync();
                 EntryRow.this.refreshHeaderNarration();
                 KonfigFieldsetListScreen.this.refreshControls();
+                return result.accepted();
             }
 
             final String validationMessage() {
@@ -621,6 +679,7 @@ final class KonfigFieldsetListScreen extends Screen {
                 int controlWidth = Math.max(84, x + width - controlX);
                 context.drawText(KonfigFieldsetListScreen.this.font, this.field.label(), x + 4, y + 8, 0xFFE8E8E8);
                 this.layoutControls(controlX, y + 4, controlWidth);
+                this.renderDecoration(context, controlX, y, controlWidth);
                 for (AbstractWidget control : this.controls) {
                     context.renderWidget(control, mouseX, mouseY, partialTick);
                 }
@@ -634,6 +693,12 @@ final class KonfigFieldsetListScreen extends Screen {
                             0xFFFF7070
                     );
                 }
+            }
+
+            void tick() {
+            }
+
+            void renderDecoration(KonfigRenderContext context, int controlX, int y, int controlWidth) {
             }
 
             abstract void layoutControls(int x, int y, int width);
@@ -704,8 +769,8 @@ final class KonfigFieldsetListScreen extends Screen {
 
         private final class TextControl extends FieldControl {
             private final EditBox input;
-            private final Button suggest;
-            private int suggestionIndex;
+            private final KonfigRegistrySuggestionController suggestions;
+            private boolean suppressResponder;
 
             private TextControl(KonfigFieldsetEntryEditorState.FieldState<FieldsetField<?>> field) {
                 super(field);
@@ -719,22 +784,94 @@ final class KonfigFieldsetListScreen extends Screen {
                 );
                 this.input.setMaxLength(512);
                 this.input.setValue(this.textValue());
-                this.input.setEditable(field.value().access().canEdit());
+                boolean editable = field.value().access().canEdit();
+                this.input.setEditable(editable);
+                this.input.active = editable;
                 this.input.setResponder(this::changed);
                 this.controls.add(this.input);
 
                 if (field.field().kind() == FieldsetFieldKind.REGISTRY_STRING && field.field().registryKey().isPresent()) {
-                    this.suggest = button(0, 0, 58, CONTROL_HEIGHT, Component.literal("Suggest"), ignored -> this.suggest());
-                    this.suggest.active = field.value().access().canEdit();
-                    this.controls.add(this.suggest);
+                    this.suggestions = new KonfigRegistrySuggestionController(new KonfigRegistrySuggestionController.Owner() {
+                        @Override
+                        public boolean hasRegistryBinding() {
+                            return true;
+                        }
+
+                        @Override
+                        public ResourceKey<? extends Registry<?>> registryKey() {
+                            return TextControl.this.registryKey();
+                        }
+
+                        @Override
+                        public List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+                            List<String> matches = KonfigFieldsetListScreen.this.registrySuggestions.find(
+                                    registryKey,
+                                    TextControl.this.input.getValue(),
+                                    12
+                            );
+                            return matches == null ? List.of() : matches;
+                        }
+
+                        @Override
+                        public String inputValue() {
+                            return TextControl.this.input.getValue();
+                        }
+
+                        @Override
+                        public void setInlineSuggestion(String suggestion) {
+                            TextControl.this.input.setSuggestion(suggestion);
+                        }
+
+                        @Override
+                        public boolean applySuggestion(String suggestion) {
+                            TextControl.this.suppressResponder = true;
+                            TextControl.this.input.setValue(suggestion);
+                            TextControl.this.suppressResponder = false;
+                            return TextControl.this.apply(suggestion);
+                        }
+
+                        @Override
+                        public void focusInput() {
+                            TextControl.this.input.setFocused(true);
+                        }
+
+                        @Override
+                        public Font font() {
+                            return KonfigFieldsetListScreen.this.font;
+                        }
+
+                        @Override
+                        public int controlHeight() {
+                            return CONTROL_HEIGHT;
+                        }
+
+                        @Override
+                        public int suggestionRowHeight() {
+                            return 18;
+                        }
+
+                        @Override
+                        public int screenHeight() {
+                            return KonfigFieldsetListScreen.this.height;
+                        }
+
+                        @Override
+                        public int listTop() {
+                            return LIST_TOP;
+                        }
+                    });
                 } else {
-                    this.suggest = null;
+                    this.suggestions = null;
                 }
             }
 
             private void changed(String text) {
+                if (this.suppressResponder) {
+                    return;
+                }
                 try {
                     this.apply(this.parse(text));
+                    this.refreshSuggestions();
                 } catch (IllegalArgumentException exception) {
                     this.localError = exception.getMessage() == null ? "Invalid value" : exception.getMessage();
                     KonfigFieldsetListScreen.this.message = Component.literal(this.localError);
@@ -768,22 +905,56 @@ final class KonfigFieldsetListScreen extends Screen {
                 return text;
             }
 
-            private void suggest() {
-                this.field.field().registryKey().ifPresent(registryKey -> {
-                    List<String> suggestions = KonfigFieldsetListScreen.this.registrySuggestions.find(
-                            registryKey,
-                            this.input.getValue(),
-                            12
-                    );
-                    if (suggestions == null || suggestions.isEmpty()) {
-                        this.localError = "No matching registry values.";
-                        KonfigFieldsetListScreen.this.message = Component.literal(this.localError);
-                        KonfigFieldsetListScreen.this.refreshControls();
-                        return;
-                    }
-                    this.suggestionIndex %= suggestions.size();
-                    this.input.setValue(suggestions.get(this.suggestionIndex++));
-                });
+            private boolean hasRegistryBinding() {
+                return this.suggestions != null;
+            }
+
+            private ResourceKey<? extends Registry<?>> registryKey() {
+                return this.field.field().registryKey().orElseThrow();
+            }
+
+            private boolean isFocused() {
+                return this.input.isFocused();
+            }
+
+            private boolean isPointInsideInput(double mouseX, double mouseY) {
+                return this.suggestions != null && this.suggestions.isPointInsideInput(mouseX, mouseY);
+            }
+
+            private boolean hasVisibleSuggestions() {
+                return this.suggestions != null && this.suggestions.hasVisibleSuggestions();
+            }
+
+            private void refreshSuggestions() {
+                if (this.suggestions != null) {
+                    this.suggestions.refresh();
+                }
+            }
+
+            private void activateSuggestions() {
+                if (this.suggestions != null) {
+                    this.suggestions.activate();
+                }
+            }
+
+            private void closeSuggestions() {
+                if (this.suggestions != null) {
+                    this.suggestions.close();
+                }
+            }
+
+            private void renderSuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
+                if (this.suggestions != null) {
+                    this.suggestions.render(context, mouseX, mouseY);
+                }
+            }
+
+            private boolean handleSuggestionClick(MouseButtonEvent event) {
+                return this.suggestions != null && this.suggestions.handleClick(event.x(), event.y());
+            }
+
+            private boolean handleSuggestionKey(KeyEvent event) {
+                return this.suggestions != null && this.suggestions.handleKey(event.key());
             }
 
             private String textValue() {
@@ -796,19 +967,48 @@ final class KonfigFieldsetListScreen extends Screen {
 
             @Override
             void layoutControls(int x, int y, int width) {
-                int suggestWidth = this.suggest == null ? 0 : 62;
                 this.input.setX(x);
                 this.input.setY(y);
-                this.input.setWidth(width - suggestWidth);
-                if (this.suggest != null) {
-                    this.suggest.setX(x + width - 58);
-                    this.suggest.setY(y);
-                    this.suggest.setWidth(58);
+                this.input.setWidth(width);
+                if (this.suggestions != null) {
+                    this.suggestions.updateInputBounds(x, y, width);
                 }
             }
 
             @Override
             void sync() {
+                String value = this.textValue();
+                if (!this.input.getValue().equals(value)) {
+                    this.suppressResponder = true;
+                    this.input.setValue(value);
+                    this.suppressResponder = false;
+                }
+                this.refreshSuggestions();
+            }
+
+            @Override
+            void tick() {
+                if (this.suggestions != null && this.input.isFocused()) {
+                    KonfigFieldsetListScreen.this.activeRegistryControl = this;
+                    this.refreshSuggestions();
+                }
+            }
+
+            @Override
+            void renderDecoration(KonfigRenderContext context, int controlX, int y, int controlWidth) {
+                if (this.suggestions == null) {
+                    return;
+                }
+                if (supportsRegistryIcon(this.registryKey())) {
+                    context.renderRegistryIcon(this.registryKey(), this.input.getValue(), controlX - 22, y + 6);
+                }
+                if (this.input.isFocused()) {
+                    KonfigFieldsetListScreen.this.activeRegistryControl = this;
+                    this.refreshSuggestions();
+                }
+                if (KonfigFieldsetListScreen.this.activeRegistryControl == this && this.hasVisibleSuggestions()) {
+                    KonfigFieldsetListScreen.this.renderedRegistryControl = this;
+                }
             }
         }
     }

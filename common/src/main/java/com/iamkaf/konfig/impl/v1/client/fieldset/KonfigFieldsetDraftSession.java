@@ -9,7 +9,7 @@ import java.util.Objects;
 
 @ApiStatus.Internal
 final class KonfigFieldsetDraftSession {
-    private final FieldsetValue original;
+    private FieldsetValue original;
     private FieldsetValue draft;
 
     KonfigFieldsetDraftSession(FieldsetValue value) {
@@ -36,6 +36,14 @@ final class KonfigFieldsetDraftSession {
 
     boolean dirty() {
         return !this.original.equals(this.draft);
+    }
+
+    void markPersisted() {
+        this.original = this.draft;
+    }
+
+    void restorePersisted() {
+        this.draft = this.original;
     }
 }
 //?}

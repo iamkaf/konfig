@@ -74,6 +74,8 @@ async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
 
   const search = screen.widgets().all().find((widget) => widget.label.includes("Search"));
   if (!search) throw new Error("Missing fieldset search input");
+  await assertBuiltInFieldsDoNotTrapFocus(ctx, screen);
+  screen = await ctx.client.screen();
   screen = await removeUserFieldsetRows(ctx, screen);
   assertFieldsetRows(screen, 1, 0);
   await ctx.client.screenshot("konfig-fieldset-collapsed");
@@ -104,12 +106,22 @@ async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
   await ctx.runtime.wait(200);
   screen = await ctx.client.screen();
   const expandedCopy = assertExpandedFieldsetRow(screen, 1);
+  if (screen.widgets().all().some((widget) => widget.label === "Suggest")) {
+    throw new Error("Fieldset registry input still exposes the legacy Suggest button");
+  }
+  await clickInlineField(ctx, expandedCopy, 0);
+  await ctx.runtime.wait(200);
+  await ctx.client.screenshot("konfig-fieldset-registry-suggestions");
+  await ctx.client.key(256, { release: true });
   await clickInlineField(ctx, expandedCopy, 1);
   await ctx.runtime.wait(300);
   screen = await ctx.client.screen();
   assertExpandedFieldsetRow(screen, 1);
   await ctx.client.screenshot("konfig-fieldset-edited");
-  await screen.widgets().activate({ label: "Save" });
+  if (screen.widgets().all().some((widget) => widget.label === "Save" || widget.label === "Cancel")) {
+    throw new Error("Auto-saving Fieldset screen still exposes Save or Cancel");
+  }
+  await screen.widgets().activate({ label: "Done" });
 
   await ctx.client.waitForScreen("com.iamkaf.konfig.impl.v1.client.screen.KonfigConfigScreen", {
     timeoutMs: 10_000,
@@ -124,6 +136,24 @@ async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
   assertFieldsetRows(screen, 2, 0);
   await ctx.runtime.wait(300);
   await ctx.client.screenshot("konfig-fieldset-reopened");
+}
+
+async function assertBuiltInFieldsDoNotTrapFocus(
+  ctx: TeaKitTestContext,
+  initialScreen: ClientScreen,
+): Promise<void> {
+  const builtIn = initialScreen.lists().entries().find((row) => row.entryIndex === 0);
+  if (!builtIn) throw new Error("Missing built-in Fieldset card");
+  await clickFieldsetCardHeader(ctx, builtIn);
+  await ctx.runtime.wait(150);
+
+  let screen = await ctx.client.screen();
+  const expanded = assertExpandedFieldsetRow(screen, 0);
+  await clickInlineField(ctx, expanded, 0);
+  await clickFieldsetCardHeader(ctx, expanded);
+  await ctx.runtime.wait(150);
+  screen = await ctx.client.screen();
+  assertFieldsetRows(screen, screen.lists().entries().length, 0);
 }
 
 async function removeUserFieldsetRows(ctx: TeaKitTestContext, initialScreen: ClientScreen): Promise<ClientScreen> {
