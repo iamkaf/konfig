@@ -72,6 +72,15 @@ public final class KonfigField {
 //?}
     }
 
+    public String readOnlyMessage() {
+//? if >=1.21.11 {
+        var permission = this.session.field(this.entry.value.path()).permission();
+        return permission.editable() ? "" : permission.message();
+//?} else {
+        return this.entry.editable ? "" : "This field is read-only";
+//?}
+    }
+
     public Object draft() {
 //? if >=1.21.11 {
         return this.session.field(this.entry.value.path()).draftInput();

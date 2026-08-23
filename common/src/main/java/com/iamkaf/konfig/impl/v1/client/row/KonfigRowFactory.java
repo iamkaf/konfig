@@ -35,7 +35,7 @@ final class KonfigRowFactory {
             return new FieldsetRow(this.host, entry);
         }
 //?}
-        if (!entry.editable) {
+        if (entry.value.kind() == EntryKind.CUSTOM) {
             return new UnsupportedRow(this.host, entry);
         }
         if (entry.value.kind() == EntryKind.BOOLEAN) {

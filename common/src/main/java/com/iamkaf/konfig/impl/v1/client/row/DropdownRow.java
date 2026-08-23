@@ -64,10 +64,10 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
     @Override
     protected String rowTooltip() {
         if (this.dropdown.isOpen()) {
-            return this.entry.tooltip;
+            return this.withReadOnlyReason(this.entry.tooltip);
         }
         String optionTooltip = translatedDropdownTooltip(this.currentOption());
-        return isBlank(optionTooltip) ? this.entry.tooltip : optionTooltip;
+        return this.withReadOnlyReason(isBlank(optionTooltip) ? this.entry.tooltip : optionTooltip);
     }
 
     @Override

@@ -36,6 +36,16 @@ final class FieldsetRow extends KonfigConfigRow {
     }
 
     @Override
+    protected boolean controlAvailableWhenReadOnly() {
+        return true;
+    }
+
+    @Override
+    public void tick() {
+        this.syncFromDraft();
+    }
+
+    @Override
     protected void syncFromDraft() {
         this.button.setMessage(this.summaryText());
     }

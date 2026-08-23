@@ -205,8 +205,20 @@ public final class KonfigFieldSession implements AutoCloseable {
         if (entry.handle.newerSchemaReadOnly()) {
             return ConfigPermission.readOnly(ConfigPermission.Reason.RUNTIME_READ_ONLY, "This config uses a newer schema");
         }
+        if (KonfigSync.clientConnected() && entry.value.remoteScreenViewAvailable() && !remote) {
+            return ConfigPermission.readOnly(
+                    ConfigPermission.Reason.SERVER_AUTHORITY,
+                    "This value is controlled by the server"
+            );
+        }
         if (!remote || KonfigSync.remoteEditsAvailable(entry.handle.id())) {
             return ConfigPermission.editablePermission();
+        }
+        if (KonfigSync.clientRevision(entry.handle.id()) >= 0L) {
+            return ConfigPermission.readOnly(
+                    ConfigPermission.Reason.OPERATOR_REQUIRED,
+                    "Operator permission is required"
+            );
         }
         return ConfigPermission.readOnly(
                 ConfigPermission.Reason.UNSUPPORTED_PEER,

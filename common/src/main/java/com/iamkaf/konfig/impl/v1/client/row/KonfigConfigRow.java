@@ -20,6 +20,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 //?}
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 
@@ -54,7 +55,22 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
     }
 
     protected String rowTooltip() {
-        return this.entry.tooltip;
+        return this.withReadOnlyReason(this.entry.tooltip);
+    }
+
+    protected final String withReadOnlyReason(String tooltip) {
+        String readOnly = this.field().readOnlyMessage();
+        if (readOnly.isEmpty()) {
+            return tooltip;
+        }
+        if (tooltip.isEmpty()) {
+            return readOnly;
+        }
+        return tooltip + "\n" + readOnly;
+    }
+
+    protected boolean controlAvailableWhenReadOnly() {
+        return false;
     }
 
     protected final KonfigRowLayout rowLayout(int x, int y, int width, int height) {
@@ -69,6 +85,11 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
         }
 
         context.showTooltip(this.host.screen(), this.host.font(), this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+        boolean editable = this.field().editable();
+        this.control().active = editable || this.controlAvailableWhenReadOnly();
+        if (this.control() instanceof EditBox input) {
+            input.setEditable(editable);
+        }
         layoutControl(this.control(), layout.controlX, layout.controlY, layout.controlWidth);
         context.drawText(this.host.font(), this.entry.contextLabel, layout.x + 4, layout.y + 1, 0xFFA0A0A0);
         context.drawText(this.host.font(), this.entry.displayLabel(), layout.x + 4, layout.y + 12, labelColor);
@@ -84,7 +105,7 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
     }
 
     protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
-        this.renderStandardRow(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, this.entry.editable ? 0xFFFFFFFF : 0xFFA0A0A0);
+        this.renderStandardRow(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, this.field().editable() ? 0xFFFFFFFF : 0xFFA0A0A0);
     }
 
     private void renderRowContent(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {

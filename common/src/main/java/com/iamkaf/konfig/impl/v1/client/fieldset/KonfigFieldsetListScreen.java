@@ -3,7 +3,7 @@ package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.supportsRegistryIcon;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.hasRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
 
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
@@ -414,6 +414,18 @@ final class KonfigFieldsetListScreen extends Screen {
         public int getRowWidth() {
             return this.rowWidth;
         }
+
+//? if >=26.1 {
+        @Override
+        protected int scrollBarX() {
+            return this.getRight() - this.scrollbarWidth();
+        }
+//?} else {
+        @Override
+        protected int scrollBarX() {
+            return this.getRight() - 6;
+        }
+//?}
     }
 
     private final class EntryRow extends ContainerObjectSelectionList.Entry<EntryRow> {
@@ -565,7 +577,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
             int titleX = x + 22;
             Optional<KonfigFieldsetDraftAdapter.EntryIcon> icon = KonfigFieldsetListScreen.this.adapter.entryIcon(entry);
-            if (icon.isPresent() && supportsRegistryIcon(icon.get().registryKey())) {
+            if (icon.isPresent() && hasRegistryIcon(icon.get().registryKey(), icon.get().value())) {
                 int iconY = y + (COLLAPSED_HEIGHT - CARD_GAP - ICON_SIZE) / 2;
                 context.renderRegistryIcon(icon.get().registryKey(), icon.get().value(), titleX, iconY, ICON_SIZE);
                 titleX += ICON_SIZE + 6;
@@ -784,6 +796,7 @@ final class KonfigFieldsetListScreen extends Screen {
                 );
                 this.input.setMaxLength(512);
                 this.input.setValue(this.textValue());
+                this.input.moveCursorToStart(false);
                 boolean editable = field.value().access().canEdit();
                 this.input.setEditable(editable);
                 this.input.active = editable;
@@ -983,6 +996,9 @@ final class KonfigFieldsetListScreen extends Screen {
                     this.input.setValue(value);
                     this.suppressResponder = false;
                 }
+                if (!this.input.isFocused()) {
+                    this.input.moveCursorToStart(false);
+                }
                 this.refreshSuggestions();
             }
 
@@ -996,10 +1012,13 @@ final class KonfigFieldsetListScreen extends Screen {
 
             @Override
             void renderDecoration(KonfigRenderContext context, int controlX, int y, int controlWidth) {
+                if (!this.input.isFocused()) {
+                    this.input.moveCursorToStart(false);
+                }
                 if (this.suggestions == null) {
                     return;
                 }
-                if (supportsRegistryIcon(this.registryKey())) {
+                if (hasRegistryIcon(this.registryKey(), this.input.getValue())) {
                     context.renderRegistryIcon(this.registryKey(), this.input.getValue(), controlX - 22, y + 6);
                 }
                 if (this.input.isFocused()) {

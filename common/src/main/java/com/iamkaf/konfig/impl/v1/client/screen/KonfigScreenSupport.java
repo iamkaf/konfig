@@ -43,11 +43,6 @@ public final class KonfigScreenSupport {
                 }
 
                 boolean editable = !impl.isDecoration() && impl.kind() != EntryKind.CUSTOM;
-//? if >=1.21.11 {
-                editable = editable && (!(KonfigSync.clientConnected() && impl.sync() && !impl.clientOnly())
-                        || KonfigSync.remoteEditsAvailable(handle.id()));
-                editable = editable && !(KonfigSync.clientConnected() && impl.remoteScreenViewAvailable());
-//?}
                 result.add(new EntryRef(handle, impl, editable));
             }
         }

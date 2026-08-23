@@ -183,6 +183,10 @@ public final class KonfigRegistryAdapter {
         return iconStack(item);
     }
 
+    public static boolean hasRegistryIcon(ResourceKey<? extends Registry<?>> registryKey, String value) {
+        return !registryIconStack(registryKey, value).isEmpty();
+    }
+
 //? if >=26.1 {
     public static void renderRegistryIcon(GuiGraphicsExtractor guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
         renderRegistryIcon(guiGraphics, registryKey, value, x, y, DEFAULT_ICON_SIZE);
