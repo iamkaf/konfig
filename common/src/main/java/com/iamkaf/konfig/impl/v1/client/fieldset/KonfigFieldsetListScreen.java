@@ -37,7 +37,7 @@ final class KonfigFieldsetListScreen extends Screen {
     private static final int FIELD_HEIGHT = 38;
     private static final int CONTROL_HEIGHT = 20;
     private static final int CARD_GAP = 4;
-    private static final int ICON_SIZE = 16;
+    private static final int ICON_SIZE = 20;
 
     private final Screen parent;
     private final Component context;
@@ -511,7 +511,8 @@ final class KonfigFieldsetListScreen extends Screen {
             int titleX = x + 22;
             Optional<KonfigFieldsetDraftAdapter.EntryIcon> icon = KonfigFieldsetListScreen.this.adapter.entryIcon(entry);
             if (icon.isPresent() && supportsRegistryIcon(icon.get().registryKey())) {
-                context.renderRegistryIcon(icon.get().registryKey(), icon.get().value(), titleX, y + 5);
+                int iconY = y + (COLLAPSED_HEIGHT - CARD_GAP - ICON_SIZE) / 2;
+                context.renderRegistryIcon(icon.get().registryKey(), icon.get().value(), titleX, iconY, ICON_SIZE);
                 titleX += ICON_SIZE + 6;
             }
 

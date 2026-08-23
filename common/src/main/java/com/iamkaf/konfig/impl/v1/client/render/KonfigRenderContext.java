@@ -135,6 +135,12 @@ public final class KonfigRenderContext {
         KonfigRegistryAdapter.renderRegistryIcon(this.graphics, registryKey, value, x, y);
     }
 
+//? if >=1.21.11 {
+    public void renderRegistryIcon(ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
+        KonfigRegistryAdapter.renderRegistryIcon(this.graphics, registryKey, value, x, y, size);
+    }
+//?}
+
     public void renderFloatingLayers(RenderLayer floatingLayer, RenderLayer tooltipLayer) {
 //? if >=1.21.6 {
         this.graphics.nextStratum();
