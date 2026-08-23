@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.6.2
+
+### Added
+
+- Added an experimental Fieldset API and generated editor for ordered collections of structured config entries on Minecraft `1.21.11` and newer.
+- Added negotiated remote editing for synchronized common and server configs. Operators with permission level 2 can apply a complete config draft when both peers support editing; other peers keep the existing read-only synchronized view.
+
+### Fixed
+
+- Config saves preserve unknown TOML values and comments, preserve malformed files before restoring defaults, and refuse to overwrite files written with a newer schema.
+- Synchronized server values remain authoritative until the server updates them or the client disconnects.
+
 ## 0.6.1
 
 ### Added

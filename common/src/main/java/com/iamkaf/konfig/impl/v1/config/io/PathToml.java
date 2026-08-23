@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -48,7 +49,43 @@ public final class PathToml {
             content = header + System.lineSeparator() + content;
         }
 
-        Files.write(path, content.getBytes(StandardCharsets.UTF_8));
+        Path parent = path.getParent();
+        if (parent == null) {
+            throw new IOException("Config path has no parent: " + path);
+        }
+        Files.createDirectories(parent);
+        Path temporary = Files.createTempFile(parent, path.getFileName().toString() + '.', ".tmp");
+        try {
+            Files.write(temporary, content.getBytes(StandardCharsets.UTF_8));
+            try {
+                Files.move(temporary, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary, path, StandardCopyOption.REPLACE_EXISTING);
+            }
+        } finally {
+            Files.deleteIfExists(temporary);
+        }
+    }
+
+    public static Path preserveBroken(Path path) throws IOException {
+        Path parent = path.getParent();
+        if (parent == null) {
+            throw new IOException("Config path has no parent: " + path);
+        }
+        String fileName = path.getFileName().toString();
+        int suffix = 0;
+        Path backup;
+        do {
+            String ending = suffix == 0 ? ".broken" : ".broken." + suffix;
+            backup = parent.resolve(fileName + ending);
+            suffix++;
+        } while (Files.exists(backup));
+        try {
+            Files.move(path, backup, StandardCopyOption.ATOMIC_MOVE);
+        } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+            Files.move(path, backup);
+        }
+        return backup;
     }
 
     public static JsonElement get(UnmodifiableConfig root, String dottedPath) {

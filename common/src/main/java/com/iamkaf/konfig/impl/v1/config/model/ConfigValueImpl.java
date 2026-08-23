@@ -183,12 +183,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     }
 
     void setLocal(T value) {
-        T previousLocal = this.localValue;
-        T checked = validateOrThrow(value);
-        this.localValue = checked;
-        if (this.syncedValue != null && Objects.equals(this.syncedValue, previousLocal)) {
-            this.syncedValue = checked;
-        }
+        this.localValue = validateOrThrow(value);
     }
 
     void setSynced(T value) {
@@ -204,19 +199,55 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             if (element == null) {
                 return this.defaultValue;
             }
-            T decoded = this.decoder.apply(element);
-            return validateOrFallback(decoded);
+            return decodeStrict(element);
         } catch (Exception ignored) {
             return this.defaultValue;
         }
+    }
+
+    public T decodeStrict(JsonElement element) {
+        if (element == null) {
+            throw new IllegalArgumentException("Missing value for '" + this.path + "'.");
+        }
+        return validateOrThrow(this.decoder.apply(element));
+    }
+
+    @Override
+    public T normalizeAndValidate(T value) {
+        return validateOrThrow(value);
+    }
+
+    @Override
+    public T copyValue(T value) {
+        return decodeStrict(encodeValue(value));
     }
 
     JsonElement encodeCurrent() {
         return this.encoder.apply(this.localValue);
     }
 
+//? if >=1.21.11
+    @Override
+    public JsonElement encodeValue(T value) {
+        return this.encoder.apply(validateOrThrow(value));
+    }
+
+    public T localValue() {
+        return this.localValue;
+    }
+
+    public String validationMessage() {
+        return this.validationMessage;
+    }
+
+    @Override
     public boolean sync() {
         return this.sync;
+    }
+
+    @Override
+    public boolean synchronizedOverlayActive() {
+        return this.syncedValue != null;
     }
 
     public boolean clientOnly() {

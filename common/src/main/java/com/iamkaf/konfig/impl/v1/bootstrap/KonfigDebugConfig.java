@@ -8,6 +8,12 @@ import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.api.v1.SyncMode;
+//? if >=1.21.11 {
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetBuilder;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
+import net.minecraft.core.registries.Registries;
+//?}
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
@@ -15,6 +21,9 @@ import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
+//? if >=1.21.11 {
+import java.util.List;
+//?}
 
 @ApiStatus.Internal
 public final class KonfigDebugConfig {
@@ -89,6 +98,33 @@ public final class KonfigDebugConfig {
                         .inlineText("This can help diagnose issues but may produce a lot of log output.")
                         .inlineText("Default: OFF"))
                 .build();
+//? if >=1.21.11 {
+        FieldsetField<String> item = FieldsetField.registryString("item", "minecraft:iron_sword", Registries.ITEM);
+        FieldsetField<String> role = FieldsetField.dropdown(
+                "role",
+                "tool",
+                List.of("tool", "weapon", "utility")
+        );
+        FieldsetField<Integer> priority = FieldsetField.intRange("priority", 2, 1, 10);
+        FieldsetField<Boolean> active = FieldsetField.bool("active", true);
+
+        FieldsetEntry ironSword = FieldsetEntry.builtin("konfig:iron_sword")
+                .with(item, "minecraft:iron_sword")
+                .with(role, "weapon")
+                .with(priority, 4)
+                .with(active, true);
+
+        builder.fieldset("sample_rules", FieldsetBuilder.create()
+                        .field(item)
+                        .field(role)
+                        .field(priority)
+                        .field(active)
+                        .entry(ironSword)
+                        .build())
+                .comment("Sample item rules for exercising Konfig's structured entry editor.")
+                .tooltip("Open the sample rules editor.")
+                .build();
+//?}
         builder.pop();
 
         builder.build();

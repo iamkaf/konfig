@@ -18,6 +18,8 @@ import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
 import com.iamkaf.konfig.impl.v1.config.model.TooltipText;
 //? if >=1.21.11 {
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
+import com.iamkaf.konfig.impl.v1.fieldset.FieldsetCodec;
 import net.minecraft.resources.Identifier;
 //?} elif >=1.17 {
 import net.minecraft.resources.ResourceLocation;
@@ -460,6 +462,28 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         );
     }
 
+//? if >=1.21.11 {
+    @Override
+    public ValueBuilder<FieldsetValue> fieldset(String key, FieldsetValue defaultValue) {
+        Objects.requireNonNull(defaultValue, "defaultValue");
+        FieldsetCodec codec = new FieldsetCodec(defaultValue);
+        String path = path(key);
+        return new ValueBuilderImpl<FieldsetValue>(
+                this,
+                path,
+                defaultValue,
+                EntryKind.FIELDSET,
+                json -> codec.decode(new KonfigNode(json)),
+                value -> codec.encode(value).json()
+        ).validate(
+                value -> value != null
+                        && value.schema() == defaultValue.schema()
+                        && value.validate().valid(),
+                "Fieldset contains invalid entries"
+        );
+    }
+//?}
+
     @Override
     public ConfigHandle build() {
         for (Integer fromVersion : this.migrations.keySet()) {
@@ -491,14 +515,17 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 this.schemaVersion,
                 new LinkedHashMap<Integer, ConfigMigration>(this.migrations)
         );
-        KonfigManager.get().register(handle);
-        handle.load();
+        KonfigManager.get().registerAndLoad(handle);
         return handle;
     }
 
     void addEntry(String path, ConfigValueImpl<?> value, String comment) {
-        if (this.entries.containsKey(path)) {
-            throw new IllegalStateException("Duplicate config key: " + path);
+        for (String existing : this.entries.keySet()) {
+            if (existing.equals(path)
+                    || existing.startsWith(path + ".")
+                    || path.startsWith(existing + ".")) {
+                throw new IllegalStateException("Config key overlaps existing path: " + path);
+            }
         }
         this.entries.put(path, value);
         if (isBlank(comment)) {
@@ -573,8 +600,7 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         String prefix = currentCategoryPath();
         String path = (isBlank(prefix) ? "" : prefix + ".") + "__inline_" + String.format(Locale.ROOT, "%04d", ++this.inlineDecorationIndex);
         ConfigValueImpl<String> entry = KonfigModels.inlineDecorationValue(path, kind, normalizedLabel, target, imageOptions, labelTranslationKey);
-        this.entries.put(path, entry);
-        this.entryComments.remove(path);
+        addEntry(path, entry, "");
     }
 
     private static String normalizeFileName(String fileName) {

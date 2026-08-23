@@ -4,6 +4,14 @@ import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
+//? if >=1.21.11 {
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditCapabilities;
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditSnapshot;
+import com.iamkaf.konfig.impl.v1.sync.KonfigRemotePayloads;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import net.minecraft.server.permissions.Permissions;
+//?}
 //? if <=1.20.4 {
 import io.netty.buffer.Unpooled;
 //?}
@@ -44,6 +52,59 @@ public final class KonfigFabric implements ModInitializer {
         PayloadTypeRegistry.playS2C().register(KonfigNetwork.snapshotPayloadType(), KonfigNetwork.snapshotPayloadCodec());
 //?}
 
+//? if >=26.1 {
+        PayloadTypeRegistry.serverboundPlay().register(KonfigRemotePayloads.Hello.TYPE, KonfigRemotePayloads.Hello.STREAM_CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(KonfigRemotePayloads.EditRequest.TYPE, KonfigRemotePayloads.EditRequest.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(KonfigRemotePayloads.Capabilities.TYPE, KonfigRemotePayloads.Capabilities.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(KonfigRemotePayloads.Snapshot.TYPE, KonfigRemotePayloads.Snapshot.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(KonfigRemotePayloads.EditResult.TYPE, KonfigRemotePayloads.EditResult.STREAM_CODEC);
+//?} elif >=1.21.11 {
+        PayloadTypeRegistry.playC2S().register(KonfigRemotePayloads.Hello.TYPE, KonfigRemotePayloads.Hello.STREAM_CODEC);
+        PayloadTypeRegistry.playC2S().register(KonfigRemotePayloads.EditRequest.TYPE, KonfigRemotePayloads.EditRequest.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(KonfigRemotePayloads.Capabilities.TYPE, KonfigRemotePayloads.Capabilities.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(KonfigRemotePayloads.Snapshot.TYPE, KonfigRemotePayloads.Snapshot.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(KonfigRemotePayloads.EditResult.TYPE, KonfigRemotePayloads.EditResult.STREAM_CODEC);
+//?}
+
+//? if >=1.21.11 {
+        ServerPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.Hello.TYPE, (payload, context) -> {
+            if (!supportsRemoteResponses(context.player())) {
+                return;
+            }
+            KonfigSync.onClientHello(context.player(), payload.protocolVersion(), canEdit(context.player()));
+        });
+        ServerPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.EditRequest.TYPE, (payload, context) ->
+                KonfigSync.onRemoteEdit(
+                        context.player(),
+                        canEdit(context.player()),
+                        KonfigNetwork.editRequest(payload)
+                )
+        );
+
+        KonfigSync.setRemoteSender(new KonfigSync.RemoteSender() {
+            @Override
+            public void sendCapabilities(net.minecraft.server.level.ServerPlayer player, ConfigEditCapabilities capabilities) {
+                if (ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Capabilities.TYPE)) {
+                    ServerPlayNetworking.send(player, KonfigNetwork.remoteCapabilitiesPayload(capabilities));
+                }
+            }
+
+            @Override
+            public void sendSnapshot(net.minecraft.server.level.ServerPlayer player, ConfigEditSnapshot snapshot) {
+                if (ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Snapshot.TYPE)) {
+                    ServerPlayNetworking.send(player, KonfigNetwork.remoteSnapshotPayload(snapshot));
+                }
+            }
+
+            @Override
+            public void sendResult(net.minecraft.server.level.ServerPlayer player, ConfigEditResult result) {
+                if (ServerPlayNetworking.canSend(player, KonfigRemotePayloads.EditResult.TYPE)) {
+                    ServerPlayNetworking.send(player, KonfigNetwork.remoteResultPayload(result));
+                }
+            }
+        });
+//?}
+
 //? if >=1.20.5 {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
                 ServerPlayNetworking.send(player, KonfigNetwork.snapshotPayload(configId, jsonPayload))
@@ -69,4 +130,16 @@ public final class KonfigFabric implements ModInitializer {
                 KonfigRuntime.playerLeft(handler.player)
         );
     }
+
+//? if >=1.21.11 {
+    private static boolean canEdit(net.minecraft.server.level.ServerPlayer player) {
+        return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+    }
+
+    private static boolean supportsRemoteResponses(net.minecraft.server.level.ServerPlayer player) {
+        return ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Capabilities.TYPE)
+                && ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Snapshot.TYPE)
+                && ServerPlayNetworking.canSend(player, KonfigRemotePayloads.EditResult.TYPE);
+    }
+//?}
 }

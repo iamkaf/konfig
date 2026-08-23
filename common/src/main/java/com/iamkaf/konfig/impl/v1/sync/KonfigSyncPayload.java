@@ -28,9 +28,19 @@ public record KonfigSyncPayload(String configId, String jsonPayload) implements 
     public static final StreamCodec<FriendlyByteBuf, KonfigSyncPayload> STREAM_CODEC = StreamCodec.of(
             (buffer, payload) -> {
                 buffer.writeUtf(payload.configId(), 256);
+//? if >=1.21.11 {
+                buffer.writeUtf(payload.jsonPayload(), ConfigSyncAuthority.MAX_JSON_LENGTH);
+//?} else {
                 buffer.writeUtf(payload.jsonPayload());
+//?}
             },
-            buffer -> new KonfigSyncPayload(buffer.readUtf(256), buffer.readUtf())
+            buffer -> new KonfigSyncPayload(
+                    buffer.readUtf(256),
+//? if >=1.21.11
+                    buffer.readUtf(ConfigSyncAuthority.MAX_JSON_LENGTH)
+//? if <1.21.11
+                    /*buffer.readUtf()*/
+            )
     );
 
     @Override

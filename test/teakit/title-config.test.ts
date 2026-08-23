@@ -58,8 +58,100 @@ describe("Konfig config screen", () => {
     });
     await ctx.runtime.wait(300);
     await ctx.client.screenshot("konfig-translated-value-tooltip");
+
+    if (atLeast(version, "1.21.11")) {
+      await exerciseFieldset(ctx);
+    }
   });
 });
+
+async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
+  let screen = await scrollToVisibleEntry(ctx, "Sample Rules");
+  await clickEntryControl(ctx, screen, "Sample Rules");
+  await ctx.runtime.wait(300);
+  screen = await ctx.client.screen();
+  if (screen.screenClass !== "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetListScreen") {
+    throw new Error(`Fieldset control did not open its list screen: ${JSON.stringify(screen)}`);
+  }
+
+  const search = screen.widgets().all().find((widget) => widget.label.includes("Search"));
+  if (!search) throw new Error("Missing fieldset search input");
+  if (screen.lists().entries().length === 0) throw new Error("Missing built-in sample rule");
+
+  await screen.widgets().activate({ label: "Copy" });
+  screen = await ctx.client.screen();
+  await screen.widgets().activate({ label: "Add" });
+  screen = await ctx.client.screen();
+  await screen.widgets().activate({ label: "Up" });
+  screen = await ctx.client.screen();
+  await screen.widgets().activate({ label: "Delete" });
+  screen = await ctx.client.screen();
+  await screen.widgets().activate({ label: "Edit" });
+
+  screen = await ctx.client.waitForScreen(
+    "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetEntryScreen",
+    { timeoutMs: 10_000 },
+  );
+  const roleField = screen.lists().entries()[1];
+  if (!roleField) throw new Error("Missing sample rule role field");
+  await ctx.client.click({
+    x: roleField.x + roleField.width * 0.75,
+    y: roleField.y + roleField.height / 2,
+    button: 0,
+  });
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  await screen.widgets().activate({ label: "Done" });
+  screen = await ctx.client.waitForScreen(
+    "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetListScreen",
+    { timeoutMs: 10_000 },
+  );
+  await ctx.runtime.wait(300);
+  await ctx.client.screenshot("konfig-fieldset-edited");
+  await screen.widgets().activate({ label: "Save" });
+
+  await ctx.client.waitForScreen("com.iamkaf.konfig.impl.v1.client.screen.KonfigConfigScreen", {
+    timeoutMs: 10_000,
+  });
+  screen = await scrollToVisibleEntry(ctx, "Sample Rules");
+  await clickEntryControl(ctx, screen, "Sample Rules");
+  screen = await ctx.client.waitForScreen(
+    "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetListScreen",
+    { timeoutMs: 10_000 },
+  );
+
+  const savedRules = screen.lists().entries();
+  if (savedRules.length < 2) {
+    throw new Error(`Expected the saved user rule after reopening, found ${savedRules.length} rows`);
+  }
+  await ctx.runtime.wait(300);
+  await ctx.client.screenshot("konfig-fieldset-reopened");
+}
+
+async function clickEntryControl(ctx: TeaKitTestContext, screen: ClientScreen, label: string): Promise<void> {
+  const entry = screen.lists().entries().find((candidate) => candidate.label.includes(label));
+  if (!entry) throw new Error(`Missing Konfig entry control: ${label}`);
+  await ctx.client.click({
+    x: entry.x + entry.width * 0.75,
+    y: entry.y + entry.height / 2,
+    button: 0,
+  });
+}
+
+async function scrollToVisibleEntry(ctx: TeaKitTestContext, label: string): Promise<ClientScreen> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 10_000) {
+    const screen = await ctx.client.screen();
+    const list = screen.widgets().all().find((widget) => widget.widgetClass.includes("KonfigEntryList"));
+    const entry = screen.lists().entries().find((candidate) => candidate.label.includes(label));
+    if (list && entry && entry.y >= list.y && entry.y + entry.height <= list.y + list.height) {
+      return screen;
+    }
+    await screen.scroll({ vertical: -2 });
+    await ctx.runtime.wait(100);
+  }
+  throw new Error(`Timed out scrolling to visible Konfig entry: ${label}`);
+}
 
 async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, version: string): Promise<ClientScreen> {
   let screen = await ctx.client.screen();

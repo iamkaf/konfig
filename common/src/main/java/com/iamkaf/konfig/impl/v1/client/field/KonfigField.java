@@ -22,6 +22,11 @@ import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
+//? if >=1.21.11 {
+import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
+import com.iamkaf.konfig.impl.v1.state.ConfigMutation;
+import com.iamkaf.konfig.impl.v1.state.ConfigSession;
+//?}
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -30,15 +35,26 @@ import java.util.List;
 @ApiStatus.Internal
 public final class KonfigField {
     private final EntryRef entry;
+//? if >=1.21.11 {
+    private final ConfigSession session;
+//?} else {
     private final Object sessionStartValue;
     private Object draft;
+//?}
 
+//? if >=1.21.11 {
+    KonfigField(EntryRef entry, ConfigSession session) {
+        this.entry = entry;
+        this.session = session;
+    }
+//?} else {
     KonfigField(EntryRef entry) {
         this.entry = entry;
         Object value = entry.value.get();
         this.draft = copyDraftValue(entry.value, value);
         this.sessionStartValue = entry.editable ? snapshotValue(entry.value, value) : null;
     }
+//?}
 
     public EntryRef entry() {
         return this.entry;
@@ -48,24 +64,51 @@ public final class KonfigField {
         return this.entry.value;
     }
 
+    public boolean editable() {
+//? if >=1.21.11 {
+        return this.session.field(this.entry.value.path()).permission().editable();
+//?} else {
+        return this.entry.editable;
+//?}
+    }
+
     public Object draft() {
+//? if >=1.21.11 {
+        return this.session.field(this.entry.value.path()).draftInput();
+//?} else {
         return this.draft;
+//?}
     }
 
     public Object storedSnapshot() {
+//? if >=1.21.11 {
+        return this.session.field(this.entry.value.path()).storedValue();
+//?} else {
         return snapshotValue(this.entry.value, this.entry.value.get());
+//?}
     }
 
     public void setDraft(Object draft) {
+//? if >=1.21.11 {
+        this.session.mutate(new ConfigMutation.SetDraft(this.entry.value.path(), draft));
+//?} else {
         this.draft = copyDraftValue(this.entry.value, draft);
+//?}
     }
 
     public void validateDraft(Object draft) {
+//? if >=1.21.11 {
+        var validation = this.session.validateDraft(this.entry.value.path(), draft);
+        if (validation.hasErrors()) {
+            throw new IllegalArgumentException(validation.issues().get(0).message());
+        }
+//?} else {
         parseDraft(this.entry.value, draft);
+//?}
     }
 
     public boolean booleanValue() {
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof Boolean) {
             return ((Boolean) current).booleanValue();
         }
@@ -82,7 +125,7 @@ public final class KonfigField {
             throw new IllegalStateException("Expected enum value for '" + this.entry.value.path() + "'.");
         }
 
-        Object current = this.draft;
+        Object current = this.draft();
         if (current != null && defaultValue.getClass().isInstance(current)) {
             return (Enum<?>) current;
         }
@@ -106,7 +149,7 @@ public final class KonfigField {
     }
 
     public int colorValue() {
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof Number) {
             return ((Number) current).intValue();
         }
@@ -118,7 +161,7 @@ public final class KonfigField {
     }
 
     public List<String> stringListValue() {
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof List<?>) {
             return StringListValueHelper.mutableCopy(KonfigFieldValues.stringListValue(current, this.entry.value.path()));
         }
@@ -127,7 +170,7 @@ public final class KonfigField {
 
     public String dropdownValue() {
         List<String> options = this.entry.value.dropdownOptions();
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof String) {
             String normalized = ((String) current).trim();
             if (options.contains(normalized)) {
@@ -168,7 +211,7 @@ public final class KonfigField {
     }
 
     public String stringValue() {
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof String) {
             return (String) current;
         }
@@ -176,7 +219,7 @@ public final class KonfigField {
     }
 
     public int intValue() {
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof Number) {
             return ((Number) current).intValue();
         }
@@ -184,7 +227,7 @@ public final class KonfigField {
     }
 
     public long longValue() {
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof Number) {
             return ((Number) current).longValue();
         }
@@ -192,7 +235,7 @@ public final class KonfigField {
     }
 
     public double doubleValue() {
-        Object current = this.draft;
+        Object current = this.draft();
         if (current instanceof Number) {
             return ((Number) current).doubleValue();
         }
@@ -234,6 +277,19 @@ public final class KonfigField {
         return metadata == null ? translatedDropdownValue(this.entry, option) : translatedDropdownOption(this.entry, metadata);
     }
 
+//? if >=1.21.11 {
+    ConfigChangeResult persist() {
+        return this.session.apply(this.session.revision());
+    }
+
+    ConfigChangeResult restoreSessionStart() {
+        ConfigChangeResult changed = this.session.mutate(new ConfigMutation.RestoreField(this.entry.value.path()));
+        if (!changed.accepted()) {
+            return changed;
+        }
+        return this.session.apply(this.session.revision());
+    }
+//?} else {
     public void persist() {
         Object previousValue = this.entry.value.get();
         try {
@@ -272,5 +328,6 @@ public final class KonfigField {
     Object sessionStartValue() {
         return snapshotValue(this.entry.value, this.sessionStartValue);
     }
+//?}
 }
 //?}

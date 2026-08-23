@@ -64,6 +64,72 @@ public final class KonfigNetwork {
         KonfigRuntime.clientReceivedSnapshot(payload.configId(), payload.jsonPayload());
     }
 
+//? if >=1.21.11 {
+    public static KonfigRemotePayloads.Hello remoteHelloPayload(int protocolVersion) {
+        return new KonfigRemotePayloads.Hello(protocolVersion);
+    }
+
+    public static KonfigRemotePayloads.Capabilities remoteCapabilitiesPayload(ConfigEditCapabilities capabilities) {
+        return new KonfigRemotePayloads.Capabilities(capabilities.protocolVersion(), capabilities.canEdit());
+    }
+
+    public static KonfigRemotePayloads.Snapshot remoteSnapshotPayload(ConfigEditSnapshot snapshot) {
+        return new KonfigRemotePayloads.Snapshot(snapshot.configId(), snapshot.revision(), snapshot.jsonPayload());
+    }
+
+    public static KonfigRemotePayloads.EditRequest remoteEditPayload(ConfigEditRequest request) {
+        return new KonfigRemotePayloads.EditRequest(
+                request.requestId(),
+                request.configId(),
+                request.baseRevision(),
+                request.draftJson()
+        );
+    }
+
+    public static KonfigRemotePayloads.EditResult remoteResultPayload(ConfigEditResult result) {
+        return new KonfigRemotePayloads.EditResult(
+                result.requestId(),
+                result.configId(),
+                result.status(),
+                result.revision(),
+                result.snapshotJson(),
+                result.detail()
+        );
+    }
+
+    public static void receiveClientCapabilities(KonfigRemotePayloads.Capabilities payload) {
+        KonfigSync.onClientCapabilities(new ConfigEditCapabilities(payload.protocolVersion(), payload.canEdit()));
+    }
+
+    public static void receiveClientAuthoritySnapshot(KonfigRemotePayloads.Snapshot payload) {
+        KonfigSync.onClientAuthoritySnapshot(new ConfigEditSnapshot(
+                payload.configId(),
+                payload.revision(),
+                payload.jsonPayload()
+        ));
+    }
+
+    public static void receiveClientEditResult(KonfigRemotePayloads.EditResult payload) {
+        KonfigSync.onClientEditResult(new ConfigEditResult(
+                payload.requestId(),
+                payload.configId(),
+                payload.status(),
+                payload.revision(),
+                payload.snapshotJson(),
+                payload.detail()
+        ));
+    }
+
+    public static ConfigEditRequest editRequest(KonfigRemotePayloads.EditRequest payload) {
+        return new ConfigEditRequest(
+                payload.requestId(),
+                payload.configId(),
+                payload.baseRevision(),
+                payload.draftJson()
+        );
+    }
+//?}
+
 //? if >=1.20.5 {
     public static CustomPacketPayload.Type<KonfigSyncPayload> snapshotPayloadType() {
         return KonfigSyncPayload.TYPE;
@@ -79,11 +145,19 @@ public final class KonfigNetwork {
 // PacketBuffer handling in its loader root because the mapped type differs.
     public static void encodeSnapshot(SyncSnapshot snapshot, FriendlyByteBuf buffer) {
         buffer.writeUtf(snapshot.configId(), 256);
+//? if >=1.21.11 {
+        buffer.writeUtf(snapshot.jsonPayload(), ConfigSyncAuthority.MAX_JSON_LENGTH);
+//?} else {
         buffer.writeUtf(snapshot.jsonPayload());
+//?}
     }
 
     public static SyncSnapshot decodeSnapshot(FriendlyByteBuf buffer) {
+//? if >=1.21.11 {
+        return snapshot(buffer.readUtf(256), buffer.readUtf(ConfigSyncAuthority.MAX_JSON_LENGTH));
+//?} else {
         return snapshot(buffer.readUtf(256), buffer.readUtf());
+//?}
     }
 //?}
 }

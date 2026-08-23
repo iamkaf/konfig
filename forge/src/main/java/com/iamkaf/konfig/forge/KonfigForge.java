@@ -5,6 +5,19 @@ import org.jetbrains.annotations.ApiStatus;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
 import com.iamkaf.konfig.impl.v1.sync.SyncSnapshot;
+//? if >=1.21.11 {
+import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditCapabilities;
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditRequest;
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditSnapshot;
+import com.iamkaf.konfig.impl.v1.sync.ConfigSyncAuthority;
+import com.iamkaf.konfig.impl.v1.sync.KonfigRemotePayloads;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import net.minecraft.network.Connection;
+import net.minecraft.server.permissions.Permissions;
+import net.minecraftforge.network.NetworkDirection;
+//?}
 //? if >=1.17 {
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
@@ -60,6 +73,13 @@ public final class KonfigForge {
             .clientAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
             .serverAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
             .simpleChannel();
+//? if >=1.21.11 {
+    private static final SimpleChannel REMOTE_CHANNEL = ChannelBuilder
+            .named(Constants.resource("remote_edit_v1"))
+            .networkProtocolVersion(ConfigSyncAuthority.PROTOCOL_VERSION)
+            .optional()
+            .simpleChannel();
+//?}
 //?} else {
     private static final String PROTOCOL = KonfigNetwork.FORGE_PROTOCOL;
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
@@ -91,6 +111,43 @@ public final class KonfigForge {
                     }
                 })
                 .add();
+//? if >=1.21.11 {
+        REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.Hello.class, NetworkDirection.PLAY_TO_SERVER)
+                .encoder((message, buffer) -> KonfigRemotePayloads.Hello.STREAM_CODEC.encode(buffer, message))
+                .decoder(KonfigRemotePayloads.Hello.STREAM_CODEC::decode)
+                .consumerMainThread((message, context) -> {
+                    net.minecraft.server.level.ServerPlayer player = context.getSender();
+                    if (player != null) {
+                        KonfigSync.onClientHello(player, message.protocolVersion(), canEdit(player));
+                    }
+                })
+                .add();
+        REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.Capabilities.class, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder((message, buffer) -> KonfigRemotePayloads.Capabilities.STREAM_CODEC.encode(buffer, message))
+                .decoder(KonfigRemotePayloads.Capabilities.STREAM_CODEC::decode)
+                .consumerMainThread((message, context) -> KonfigNetwork.receiveClientCapabilities(message))
+                .add();
+        REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.Snapshot.class, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder((message, buffer) -> KonfigRemotePayloads.Snapshot.STREAM_CODEC.encode(buffer, message))
+                .decoder(KonfigRemotePayloads.Snapshot.STREAM_CODEC::decode)
+                .consumerMainThread((message, context) -> KonfigNetwork.receiveClientAuthoritySnapshot(message))
+                .add();
+        REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.EditRequest.class, NetworkDirection.PLAY_TO_SERVER)
+                .encoder((message, buffer) -> KonfigRemotePayloads.EditRequest.STREAM_CODEC.encode(buffer, message))
+                .decoder(KonfigRemotePayloads.EditRequest.STREAM_CODEC::decode)
+                .consumerMainThread((message, context) -> {
+                    net.minecraft.server.level.ServerPlayer player = context.getSender();
+                    if (player != null) {
+                        KonfigSync.onRemoteEdit(player, canEdit(player), KonfigNetwork.editRequest(message));
+                    }
+                })
+                .add();
+        REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.EditResult.class, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder((message, buffer) -> KonfigRemotePayloads.EditResult.STREAM_CODEC.encode(buffer, message))
+                .decoder(KonfigRemotePayloads.EditResult.STREAM_CODEC::decode)
+                .consumerMainThread((message, context) -> KonfigNetwork.receiveClientEditResult(message))
+                .add();
+//?}
 //?} else {
         CHANNEL.registerMessage(0, SyncMessage.class, SyncMessage::encode, SyncMessage::decode,
                 (message, contextSupplier) -> {
@@ -118,6 +175,31 @@ public final class KonfigForge {
         );
 //?}
 
+//? if >=1.21.11 {
+        KonfigSync.setRemoteSender(new KonfigSync.RemoteSender() {
+            @Override
+            public void sendCapabilities(net.minecraft.server.level.ServerPlayer player, ConfigEditCapabilities capabilities) {
+                if (supportsRemoteEditing(player.connection.getConnection())) {
+                    REMOTE_CHANNEL.send(KonfigNetwork.remoteCapabilitiesPayload(capabilities), PacketDistributor.PLAYER.with(player));
+                }
+            }
+
+            @Override
+            public void sendSnapshot(net.minecraft.server.level.ServerPlayer player, ConfigEditSnapshot snapshot) {
+                if (supportsRemoteEditing(player.connection.getConnection())) {
+                    REMOTE_CHANNEL.send(KonfigNetwork.remoteSnapshotPayload(snapshot), PacketDistributor.PLAYER.with(player));
+                }
+            }
+
+            @Override
+            public void sendResult(net.minecraft.server.level.ServerPlayer player, ConfigEditResult result) {
+                if (supportsRemoteEditing(player.connection.getConnection())) {
+                    REMOTE_CHANNEL.send(KonfigNetwork.remoteResultPayload(result), PacketDistributor.PLAYER.with(player));
+                }
+            }
+        });
+//?}
+
 //? if >=1.21.6 {
         PlayerEvent.PlayerLoggedInEvent.BUS.addListener(this::onPlayerJoin);
         PlayerEvent.PlayerLoggedOutEvent.BUS.addListener(this::onPlayerLeave);
@@ -126,6 +208,24 @@ public final class KonfigForge {
         MinecraftForge.EVENT_BUS.addListener(this::onPlayerLeave);
 //?}
     }
+
+//? if >=1.21.11 {
+    static boolean supportsRemoteEditing(Connection connection) {
+        return REMOTE_CHANNEL.isRemotePresent(connection);
+    }
+
+    static void sendRemoteHello(int protocolVersion) {
+        REMOTE_CHANNEL.send(KonfigNetwork.remoteHelloPayload(protocolVersion), PacketDistributor.SERVER.noArg());
+    }
+
+    static void sendRemoteEdit(ConfigEditRequest request) {
+        REMOTE_CHANNEL.send(KonfigNetwork.remoteEditPayload(request), PacketDistributor.SERVER.noArg());
+    }
+
+    private static boolean canEdit(net.minecraft.server.level.ServerPlayer player) {
+        return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+    }
+//?}
 
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
 //? if >=1.17 {

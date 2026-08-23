@@ -196,6 +196,11 @@ import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.impl.v1.bootstrap.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.impl.v1.client.editor.KonfigEditorScreens;
+//? if >=1.21.11 {
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
+import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetEditResult;
+import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetScreens;
+//?}
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelRenderer;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
@@ -312,6 +317,8 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void closeScreen() {
+//? if >=1.21.11
+        this.coordinator.closeSession();
         this.setScreen(this.parent);
     }
 
@@ -334,6 +341,50 @@ public final class KonfigConfigScreen extends Screen {
     void openStringListEditor(EntryRef entry) {
         this.setScreen(KonfigEditorScreens.stringList(this.editorHost, entry));
     }
+
+//? if >=1.21.11 {
+    void openFieldsetEditor(EntryRef entry) {
+        Object draft = this.coordinator.field(entry).draft();
+        if (!(draft instanceof FieldsetValue fieldset)) {
+            KonfigToastSupport.saveFailed("Invalid fieldset value");
+            return;
+        }
+        this.setScreen(KonfigFieldsetScreens.create(
+                this,
+                entry.label,
+                entry.contextLabel,
+                fieldset,
+                this.coordinator.field(entry).editable(),
+                (registryKey, query, limit) -> this.fieldsetRegistrySuggestions(registryKey, query, limit),
+                (previousValue, newValue) -> {
+                    this.coordinator.field(entry).setDraft(newValue);
+                    if (this.editorHost.persistEditedValue(entry, previousValue)) {
+                        return KonfigFieldsetEditResult.applied();
+                    }
+                    return KonfigFieldsetEditResult.invalid(text("The fieldset could not be saved."));
+                }
+        ));
+    }
+
+    private List<String> fieldsetRegistrySuggestions(
+            net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<?>> registryKey,
+            String query,
+            int limit
+    ) {
+        String normalized = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
+        List<String> matches = new java.util.ArrayList<String>();
+        for (String suggestion : this.coordinator.registrySuggestions(registryKey)) {
+            if (!normalized.isEmpty() && !suggestion.toLowerCase(java.util.Locale.ROOT).contains(normalized)) {
+                continue;
+            }
+            matches.add(suggestion);
+            if (matches.size() >= limit) {
+                break;
+            }
+        }
+        return matches;
+    }
+//?}
 
     void returnToMainScreen() {
         this.rebuildScreenWidgets();
