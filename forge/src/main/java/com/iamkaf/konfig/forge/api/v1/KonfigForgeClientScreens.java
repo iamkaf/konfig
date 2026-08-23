@@ -4,8 +4,8 @@ package com.iamkaf.konfig.forge.api.v1;
 import com.iamkaf.konfig.api.v1.KonfigClientScreens;
 //?}
 //? if >=26.1 {
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.fml.loading.LoadingModList;
+import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.fml.ModList;
 //?} elif >=1.19 {
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -35,12 +35,15 @@ public final class KonfigForgeClientScreens {
      */
     public static void register(String modId) {
 //? if >=26.1 {
-        String displayName = LoadingModList.getMods().stream()
-                .filter(info -> info.getModId().equals(modId))
-                .findFirst()
-                .map(info -> info.getDisplayName())
-                .orElse(modId);
-        MinecraftForge.registerConfigScreen(parent -> KonfigClientScreens.create(modId, displayName, parent));
+        var container = ModList.getModContainerById(modId)
+                .orElseThrow(() -> new IllegalArgumentException("No Forge mod container found for " + modId));
+        String displayName = container.getModInfo().getDisplayName();
+        container.registerExtensionPoint(
+                ConfigScreenHandler.ConfigScreenFactory.class,
+                () -> new ConfigScreenHandler.ConfigScreenFactory(
+                        (minecraft, parent) -> KonfigClientScreens.create(modId, displayName, parent)
+                )
+        );
 //?} elif >=1.19 {
         ModLoadingContext.get().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,
