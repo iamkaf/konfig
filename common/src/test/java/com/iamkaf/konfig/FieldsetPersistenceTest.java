@@ -11,6 +11,7 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetBuilder;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntryOwnership;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetValidationIssue;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.fieldset.FieldsetCodec;
@@ -119,12 +120,108 @@ final class FieldsetPersistenceTest {
                 .field(item)
                 .field(priority)
                 .title(item)
+                .key(item)
                 .summary(priority)
                 .build();
 
         assertEquals(Optional.of(item), value.schema().titleField());
         assertEquals(Optional.empty(), value.schema().iconField());
+        assertEquals(Optional.of(item), value.schema().keyField());
         assertEquals(List.of(priority), value.schema().summaryFields());
+    }
+
+    @Test
+    void keyedUserEntryReplacesBuiltinInVisibleViewsUntilDeleted() {
+        FieldsetField<String> item = FieldsetField.string("item", "minecraft:air");
+        FieldsetField<Integer> repairCap = FieldsetField.intRange("repair_cap", 10, 0, 100);
+        FieldsetEntry builtin = FieldsetEntry.builtin("diamond_builtin", "Bonded")
+                .with(item, "minecraft:diamond_pickaxe")
+                .with(repairCap, 25);
+        FieldsetEntry replacement = FieldsetEntry.user("diamond_override")
+                .with(item, "minecraft:diamond_pickaxe")
+                .with(repairCap, 40);
+        FieldsetValue defaults = FieldsetBuilder.create()
+                .field(item)
+                .field(repairCap)
+                .key(item)
+                .entry(builtin)
+                .build();
+        FieldsetCodec codec = new FieldsetCodec(defaults);
+        FieldsetValue value = defaults.add(replacement);
+
+        assertEquals(List.of(builtin), defaults.search("bonded"));
+        assertEquals(List.of(builtin, replacement), value.entries());
+        assertEquals(List.of(replacement), value.visibleEntries());
+        assertTrue(value.search("diamond_builtin").isEmpty());
+        assertTrue(value.search("bonded").isEmpty());
+        assertEquals(List.of(replacement), value.search("40"));
+
+        String encoded = codec.encode(value).json().toString();
+        assertTrue(encoded.contains("diamond_override"));
+        assertFalse(encoded.contains("diamond_builtin"));
+        assertFalse(encoded.contains("Bonded"));
+
+        value = codec.decode(codec.encode(value));
+        assertEquals(List.of(builtin, replacement), value.entries());
+        assertEquals(List.of(replacement), value.visibleEntries());
+
+        FieldsetValue revealed = value.deleteUserEntry(replacement.identity());
+        assertEquals(List.of(builtin), revealed.visibleEntries());
+        assertEquals(Optional.of("Bonded"), builtin.source());
+    }
+
+    @Test
+    void copyingSourcedBuiltinCopiesValuesButNotOwnershipOrSource() {
+        FieldsetField<String> item = FieldsetField.string("item", "minecraft:air");
+        FieldsetField<Integer> repairCap = FieldsetField.intRange("repair_cap", 10, 0, 100);
+        FieldsetEntry builtin = FieldsetEntry.builtin("basic_weapons_spear", "Basic Weapons")
+                .with(item, "basicweapons:iron_spear")
+                .with(repairCap, 18);
+        FieldsetValue value = FieldsetBuilder.create()
+                .field(item)
+                .field(repairCap)
+                .key(item)
+                .entry(builtin)
+                .build()
+                .duplicateAsUser(builtin.identity(), "spear_override");
+
+        FieldsetEntry copy = value.entry("spear_override").orElseThrow();
+        assertEquals(FieldsetEntryOwnership.USER, copy.ownership());
+        assertEquals(Optional.empty(), copy.source());
+        assertEquals("basicweapons:iron_spear", copy.value(item));
+        assertEquals(18, copy.value(repairCap));
+        assertEquals(List.of(copy), value.visibleEntries());
+    }
+
+    @Test
+    void fieldsetConfigKeepsSemanticallyInvalidRowsForConsumerIsolation() throws IOException {
+        FieldsetField<String> item = FieldsetField.string("item", "minecraft:air");
+        FieldsetField<Integer> repairCap = FieldsetField.intRange("repair_cap", 10, 0, 100);
+        FieldsetValue defaults = FieldsetBuilder.create()
+                .field(item)
+                .field(repairCap)
+                .build();
+        FieldsetEntry valid = FieldsetEntry.user("valid")
+                .with(item, "minecraft:iron_pickaxe")
+                .with(repairCap, 12);
+        FieldsetEntry invalid = FieldsetEntry.user("invalid")
+                .with(item, "minecraft:golden_pickaxe")
+                .with(repairCap, 101);
+
+        ConfigBuilder builder = Konfig.builder("headless", "fieldsets" + NEXT_ID.incrementAndGet());
+        ConfigValue<FieldsetValue> rules = builder.fieldset("gear", defaults).build();
+        ConfigHandle handle = builder.build();
+        rules.set(FieldsetValue.of(defaults.schema(), List.of(valid, invalid)));
+        handle.save();
+
+        rules.set(defaults);
+        handle.reload();
+
+        assertEquals(List.of(valid, invalid), rules.get().entries());
+        List<FieldsetValidationIssue> issues = rules.get().validate().issues();
+        assertEquals(1, issues.size());
+        assertEquals("invalid", issues.get(0).entryIdentity());
+        assertEquals(Optional.of("repair_cap"), issues.get(0).fieldKey());
     }
 
     @Test
@@ -138,6 +235,13 @@ final class FieldsetPersistenceTest {
                 .build());
 
         assertTrue(exception.getMessage().contains("title field is not declared"));
+
+        IllegalStateException keyException = assertThrows(IllegalStateException.class, () -> FieldsetBuilder.create()
+                .field(declared)
+                .key(foreign)
+                .build());
+
+        assertTrue(keyException.getMessage().contains("key field is not declared"));
     }
 
     private static KonfigNode node(String json) {

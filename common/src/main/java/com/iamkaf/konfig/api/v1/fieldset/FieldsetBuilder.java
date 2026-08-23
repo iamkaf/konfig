@@ -21,6 +21,7 @@ public final class FieldsetBuilder {
             new ArrayList<FieldsetSchema.EntryValidationRule>();
     private FieldsetField<?> titleField;
     private FieldsetField<?> iconField;
+    private FieldsetField<?> keyField;
     private final List<FieldsetField<?>> summaryFields = new ArrayList<FieldsetField<?>>();
 
     private FieldsetBuilder() {
@@ -67,6 +68,21 @@ public final class FieldsetBuilder {
     }
 
     /**
+     * Chooses the field that identifies replacement entries in generated views.
+     *
+     * <p>When a user entry has the same key value as a builtin entry, generated
+     * editors show the user entry in its place. The builtin remains part of the
+     * stored value and becomes visible again when the user entry is deleted.</p>
+     *
+     * @param field a field declared by this builder
+     * @return this builder
+     */
+    public <T> FieldsetBuilder key(FieldsetField<T> field) {
+        this.keyField = Objects.requireNonNull(field, "field");
+        return this;
+    }
+
+    /**
      * Chooses the fields shown beneath each entry's title in generated editors.
      *
      * @param fields fields declared by this builder
@@ -102,6 +118,7 @@ public final class FieldsetBuilder {
                 this.entryValidationRules,
                 this.titleField,
                 this.iconField,
+                this.keyField,
                 this.summaryFields
         );
         return FieldsetValue.of(schema, this.entries);

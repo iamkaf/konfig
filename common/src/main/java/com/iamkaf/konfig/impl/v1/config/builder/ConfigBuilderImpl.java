@@ -477,9 +477,8 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 value -> codec.encode(value).json()
         ).validate(
                 value -> value != null
-                        && value.schema() == defaultValue.schema()
-                        && value.validate().valid(),
-                "Fieldset contains invalid entries"
+                        && value.schema() == defaultValue.schema(),
+                "Fieldset uses a different schema"
         );
     }
 //?}

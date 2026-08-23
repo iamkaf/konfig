@@ -17,20 +17,38 @@ import java.util.UUID;
 public final class FieldsetEntry {
     private final String identity;
     private final FieldsetEntryOwnership ownership;
+    private final String source;
     private final Map<String, Object> values;
 
-    private FieldsetEntry(String identity, FieldsetEntryOwnership ownership, Map<String, Object> values) {
+    private FieldsetEntry(
+            String identity,
+            FieldsetEntryOwnership ownership,
+            String source,
+            Map<String, Object> values
+    ) {
         this.identity = requireIdentity(identity);
         this.ownership = Objects.requireNonNull(ownership, "ownership");
+        this.source = requireSource(ownership, source);
         this.values = Collections.unmodifiableMap(new LinkedHashMap<String, Object>(values));
     }
 
     public static FieldsetEntry builtin(String identity) {
-        return new FieldsetEntry(identity, FieldsetEntryOwnership.BUILTIN, Collections.emptyMap());
+        return new FieldsetEntry(identity, FieldsetEntryOwnership.BUILTIN, null, Collections.emptyMap());
+    }
+
+    /**
+     * Creates a read-only entry with the source shown by generated editors.
+     *
+     * @param identity stable internal identity
+     * @param source owner or compatibility source, such as {@code Bonded}
+     * @return a new empty builtin entry
+     */
+    public static FieldsetEntry builtin(String identity, String source) {
+        return new FieldsetEntry(identity, FieldsetEntryOwnership.BUILTIN, source, Collections.emptyMap());
     }
 
     public static FieldsetEntry user(String identity) {
-        return new FieldsetEntry(identity, FieldsetEntryOwnership.USER, Collections.emptyMap());
+        return new FieldsetEntry(identity, FieldsetEntryOwnership.USER, null, Collections.emptyMap());
     }
 
     /**
@@ -48,6 +66,10 @@ public final class FieldsetEntry {
 
     public FieldsetEntryOwnership ownership() {
         return this.ownership;
+    }
+
+    public Optional<String> source() {
+        return Optional.ofNullable(this.source);
     }
 
     public boolean editable() {
@@ -108,7 +130,7 @@ public final class FieldsetEntry {
         } else {
             changed.put(field.key(), value);
         }
-        return new FieldsetEntry(this.identity, this.ownership, changed);
+        return new FieldsetEntry(this.identity, this.ownership, this.source, changed);
     }
 
     Map<String, Object> explicitValues() {
@@ -116,11 +138,11 @@ public final class FieldsetEntry {
     }
 
     FieldsetEntry copyAsUser(String identity) {
-        return new FieldsetEntry(identity, FieldsetEntryOwnership.USER, this.values);
+        return new FieldsetEntry(identity, FieldsetEntryOwnership.USER, null, this.values);
     }
 
     static FieldsetEntry decoded(String identity, FieldsetEntryOwnership ownership, Map<String, Object> values) {
-        return new FieldsetEntry(identity, ownership, values);
+        return new FieldsetEntry(identity, ownership, null, values);
     }
 
     @Override
@@ -134,17 +156,21 @@ public final class FieldsetEntry {
         FieldsetEntry that = (FieldsetEntry) other;
         return this.identity.equals(that.identity)
                 && this.ownership == that.ownership
+                && Objects.equals(this.source, that.source)
                 && this.values.equals(that.values);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.identity, this.ownership, this.values);
+        return Objects.hash(this.identity, this.ownership, this.source, this.values);
     }
 
     @Override
     public String toString() {
-        return "FieldsetEntry{" + this.identity + ", " + this.ownership + ", " + this.values + '}';
+        if (this.source == null) {
+            return "FieldsetEntry{" + this.identity + ", " + this.ownership + ", " + this.values + '}';
+        }
+        return "FieldsetEntry{" + this.identity + ", " + this.ownership + ", " + this.source + ", " + this.values + '}';
     }
 
     private static String requireIdentity(String identity) {
@@ -152,6 +178,19 @@ public final class FieldsetEntry {
             throw new IllegalArgumentException("Fieldset entry identity cannot be blank");
         }
         return identity.trim();
+    }
+
+    private static String requireSource(FieldsetEntryOwnership ownership, String source) {
+        if (source == null) {
+            return null;
+        }
+        if (ownership != FieldsetEntryOwnership.BUILTIN) {
+            throw new IllegalArgumentException("Only builtin fieldset entries can declare a source");
+        }
+        if (source.trim().isEmpty()) {
+            throw new IllegalArgumentException("Fieldset entry source cannot be blank");
+        }
+        return source.trim();
     }
 }
 //?}

@@ -552,7 +552,7 @@ final class KonfigFieldsetListScreen extends Screen {
             KonfigFieldsetAccess access = KonfigFieldsetListScreen.this.adapter.entryAccess(entry);
             String status = !validation.isValid() || this.hasLocalErrors()
                     ? Math.max(1, validation.errorCount()) + " invalid"
-                    : access.isReadOnly() ? "Built in" : "";
+                    : access.isReadOnly() ? entry.source().orElse("Built in") : "";
             int statusWidth = status.isBlank() ? 0 : KonfigFieldsetListScreen.this.font.width(status) + 10;
 
             context.drawText(

@@ -22,6 +22,7 @@ public final class FieldsetSchema {
     private final List<EntryValidationRule> entryValidationRules;
     private final FieldsetField<?> titleField;
     private final FieldsetField<?> iconField;
+    private final FieldsetField<?> keyField;
     private final List<FieldsetField<?>> summaryFields;
 
     FieldsetSchema(
@@ -29,6 +30,7 @@ public final class FieldsetSchema {
             List<EntryValidationRule> entryValidationRules,
             FieldsetField<?> titleField,
             FieldsetField<?> iconField,
+            FieldsetField<?> keyField,
             List<FieldsetField<?>> summaryFields
     ) {
         if (fields.isEmpty()) {
@@ -49,6 +51,7 @@ public final class FieldsetSchema {
         this.entryValidationRules = Collections.unmodifiableList(new ArrayList<EntryValidationRule>(entryValidationRules));
         this.titleField = requireDeclared(titleField, byKey, "title");
         this.iconField = requireDeclared(iconField, byKey, "icon");
+        this.keyField = requireDeclared(keyField, byKey, "key");
 
         ArrayList<FieldsetField<?>> summaries = new ArrayList<FieldsetField<?>>(summaryFields.size());
         for (FieldsetField<?> field : summaryFields) {
@@ -75,6 +78,10 @@ public final class FieldsetSchema {
 
     public Optional<FieldsetField<?>> iconField() {
         return Optional.ofNullable(this.iconField);
+    }
+
+    public Optional<FieldsetField<?>> keyField() {
+        return Optional.ofNullable(this.keyField);
     }
 
     public List<FieldsetField<?>> summaryFields() {

@@ -13,9 +13,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 @ApiStatus.Internal
 final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<FieldsetEntry, FieldsetField<?>> {
@@ -29,7 +31,7 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
 
     @Override
     public List<FieldsetEntry> entries() {
-        return this.session.draft().entries();
+        return this.session.draft().visibleEntries();
     }
 
     @Override
@@ -100,6 +102,7 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
     public List<String> entrySearchTerms(FieldsetEntry entry) {
         List<String> terms = new ArrayList<>();
         terms.add(entry.identity());
+        entry.source().ifPresent(terms::add);
         for (FieldsetField<?> field : this.session.draft().schema().fields()) {
             terms.add(displayValue(read(entry, field)));
         }
@@ -137,13 +140,33 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
             return KonfigFieldsetEditResult.readOnly(this.access.reason());
         }
         try {
-            FieldsetValue next = FieldsetValue.of(this.session.draft().schema(), entries);
+            FieldsetValue next = FieldsetValue.of(
+                    this.session.draft().schema(),
+                    this.restoreHiddenBuiltins(entries)
+            );
             return this.session.update(next)
                     ? KonfigFieldsetEditResult.applied()
                     : KonfigFieldsetEditResult.noChange();
         } catch (RuntimeException exception) {
             return KonfigFieldsetEditResult.invalid(Component.literal(message(exception)));
         }
+    }
+
+    private List<FieldsetEntry> restoreHiddenBuiltins(List<FieldsetEntry> visibleEntries) {
+        ArrayList<FieldsetEntry> restored = new ArrayList<FieldsetEntry>(visibleEntries);
+        Set<String> visibleIdentities = new HashSet<String>();
+        for (FieldsetEntry entry : visibleEntries) {
+            visibleIdentities.add(entry.identity());
+        }
+        List<FieldsetEntry> storedEntries = this.session.draft().entries();
+        for (int index = 0; index < storedEntries.size(); index++) {
+            FieldsetEntry entry = storedEntries.get(index);
+            if (entry.editable() || visibleIdentities.contains(entry.identity())) {
+                continue;
+            }
+            restored.add(Math.min(index, restored.size()), entry);
+        }
+        return restored;
     }
 
     @Override

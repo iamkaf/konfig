@@ -51,6 +51,42 @@ public final class FieldsetValue {
         return this.entries;
     }
 
+    /**
+     * Returns entries after applying keyed user replacements to builtins.
+     *
+     * <p>Without a declared key field this is the same list returned by
+     * {@link #entries()}.</p>
+     *
+     * @return the entries shown by generated editors and search
+     */
+    public List<FieldsetEntry> visibleEntries() {
+        Optional<FieldsetField<?>> keyField = this.schema.keyField();
+        if (keyField.isEmpty()) {
+            return this.entries;
+        }
+
+        LinkedHashSet<Object> userKeys = new LinkedHashSet<Object>();
+        for (FieldsetEntry entry : this.entries) {
+            if (entry.editable()) {
+                userKeys.add(entryValue(entry, keyField.get()));
+            }
+        }
+        if (userKeys.isEmpty()) {
+            return this.entries;
+        }
+
+        ArrayList<FieldsetEntry> visible = new ArrayList<FieldsetEntry>(this.entries.size());
+        for (FieldsetEntry entry : this.entries) {
+            if (!entry.editable() && userKeys.contains(entryValue(entry, keyField.get()))) {
+                continue;
+            }
+            visible.add(entry);
+        }
+        return visible.size() == this.entries.size()
+                ? this.entries
+                : Collections.unmodifiableList(visible);
+    }
+
     public Optional<FieldsetEntry> entry(String identity) {
         int index = indexOf(identity);
         return index < 0 ? Optional.empty() : Optional.of(this.entries.get(index));
@@ -160,11 +196,12 @@ public final class FieldsetValue {
      */
     public List<FieldsetEntry> search(String query) {
         String needle = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        List<FieldsetEntry> visible = this.visibleEntries();
         if (needle.isEmpty()) {
-            return this.entries;
+            return visible;
         }
         ArrayList<FieldsetEntry> matches = new ArrayList<FieldsetEntry>();
-        for (FieldsetEntry entry : this.entries) {
+        for (FieldsetEntry entry : visible) {
             if (matches(entry, needle)) {
                 matches.add(entry);
             }
@@ -182,6 +219,11 @@ public final class FieldsetValue {
 
     private boolean matches(FieldsetEntry entry, String needle) {
         if (entry.identity().toLowerCase(Locale.ROOT).contains(needle)) {
+            return true;
+        }
+        if (entry.source()
+                .map(source -> source.toLowerCase(Locale.ROOT).contains(needle))
+                .orElse(false)) {
             return true;
         }
         for (FieldsetField<?> field : this.schema.fields()) {
