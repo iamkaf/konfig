@@ -24,6 +24,7 @@ public final class FieldsetSchema {
     private final FieldsetField<?> iconField;
     private final FieldsetField<?> keyField;
     private final List<FieldsetField<?>> summaryFields;
+    private final FieldsetCatalog catalog;
 
     FieldsetSchema(
             List<FieldsetField<?>> fields,
@@ -31,7 +32,8 @@ public final class FieldsetSchema {
             FieldsetField<?> titleField,
             FieldsetField<?> iconField,
             FieldsetField<?> keyField,
-            List<FieldsetField<?>> summaryFields
+            List<FieldsetField<?>> summaryFields,
+            FieldsetCatalog catalog
     ) {
         if (fields.isEmpty()) {
             throw new IllegalStateException("A fieldset must declare at least one field");
@@ -62,6 +64,10 @@ public final class FieldsetSchema {
             summaries.add(declared);
         }
         this.summaryFields = Collections.unmodifiableList(summaries);
+        this.catalog = catalog;
+        if (this.catalog != null) {
+            this.catalog.requireDeclaredFields(this.fieldsByKey);
+        }
     }
 
     public List<FieldsetField<?>> fields() {
@@ -86,6 +92,10 @@ public final class FieldsetSchema {
 
     public List<FieldsetField<?>> summaryFields() {
         return this.summaryFields;
+    }
+
+    public Optional<FieldsetCatalog> catalog() {
+        return Optional.ofNullable(this.catalog);
     }
 
     /**

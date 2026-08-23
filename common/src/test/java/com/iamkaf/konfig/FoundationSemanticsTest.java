@@ -2,6 +2,7 @@
 package com.iamkaf.konfig;
 
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
+import com.iamkaf.konfig.impl.v1.state.ConfigCommitResult;
 import com.iamkaf.konfig.impl.v1.state.ConfigMutation;
 import com.iamkaf.konfig.impl.v1.state.ConfigSession;
 import com.iamkaf.konfig.impl.v1.state.ConfigSessionField;
@@ -93,6 +94,41 @@ final class FoundationSemanticsTest {
         assertEquals(10, first.get());
         assertEquals(20, second.get());
         assertEquals(2, saveCalls.get());
+    }
+
+    @Test
+    void pendingSessionBlocksLaterDraftsUntilTheAuthoritativeResultArrives() {
+        AtomicReference<Integer> stored = new AtomicReference<Integer>(1);
+        ConfigSessionField<Integer> field = ConfigSessionField.local(
+                "value",
+                1,
+                stored::get,
+                stored::set,
+                StandardValueSemantics.integer()
+        );
+        ConfigSession session = new ConfigSession(
+                "headless:pending",
+                4L,
+                List.of(field),
+                request -> new ConfigCommitResult.Pending(19L)
+        );
+
+        assertEquals(
+                ConfigChangeResult.Status.ACCEPTED,
+                session.mutate(new ConfigMutation.SetDraft("value", 10)).status()
+        );
+        assertEquals(ConfigChangeResult.Status.PENDING, session.apply(4L).status());
+        assertEquals(
+                ConfigChangeResult.Status.PENDING,
+                session.mutate(new ConfigMutation.SetDraft("value", 20)).status()
+        );
+        assertEquals(10, session.field("value").draftInput());
+
+        stored.set(10);
+        ConfigChangeResult completed = session.completePending(19L, new ConfigCommitResult.Accepted(5L));
+        assertEquals(ConfigChangeResult.Status.ACCEPTED, completed.status());
+        assertEquals(10, session.field("value").storedValue());
+        assertEquals(10, session.field("value").draftInput());
     }
 }
 //?}

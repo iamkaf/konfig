@@ -42,6 +42,12 @@ final class KonfigFieldsetDraftSession {
         this.original = this.draft;
     }
 
+    void adoptPersisted(FieldsetValue value) {
+        FieldsetValue persisted = Objects.requireNonNull(value, "value");
+        this.original = persisted;
+        this.draft = persisted;
+    }
+
     void restorePersisted() {
         this.draft = this.original;
     }

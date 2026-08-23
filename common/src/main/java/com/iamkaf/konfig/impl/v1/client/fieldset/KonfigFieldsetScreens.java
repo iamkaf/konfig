@@ -10,6 +10,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 
 import java.util.List;
+import java.util.function.BiConsumer;
 
 @ApiStatus.Internal
 public final class KonfigFieldsetScreens {
@@ -50,6 +51,17 @@ public final class KonfigFieldsetScreens {
     ) {
         KonfigFieldsetDraftSession session = new KonfigFieldsetDraftSession(value);
         KonfigFieldsetDraftAdapter adapter = new KonfigFieldsetDraftAdapter(session, access);
+        if (value.schema().catalog().isPresent()) {
+            return new KonfigFieldsetCatalogScreen(
+                    parent,
+                    title,
+                    context,
+                    session,
+                    adapter,
+                    registrySuggestions,
+                    persistAction
+            );
+        }
         return new KonfigFieldsetListScreen(
                 parent,
                 title,
@@ -73,6 +85,15 @@ public final class KonfigFieldsetScreens {
     @FunctionalInterface
     public interface PersistAction {
         KonfigFieldsetEditResult persist(FieldsetValue previousValue, FieldsetValue newValue);
+
+        default Subscription observe(BiConsumer<KonfigFieldsetEditResult, FieldsetValue> observer) {
+            return () -> { };
+        }
+    }
+
+    @FunctionalInterface
+    public interface Subscription {
+        void unsubscribe();
     }
 }
 //?}

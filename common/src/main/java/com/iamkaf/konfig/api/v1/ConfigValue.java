@@ -30,6 +30,18 @@ public interface ConfigValue<T> extends Supplier<T> {
     T get();
 
     /**
+     * Returns the local value without applying a synchronized server overlay.
+     *
+     * <p>Server-side consumers should use this when the same process also hosts a client,
+     * since {@link #get()} intentionally exposes the effective synchronized value.</p>
+     *
+     * @return the local value
+     */
+    default T local() {
+        return get();
+    }
+
+    /**
      * Sets the current value.
      *
      * @param value the new value

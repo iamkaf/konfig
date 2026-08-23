@@ -97,13 +97,15 @@ public final class KonfigField {
 //?}
     }
 
-    public void setDraft(Object draft) {
 //? if >=1.21.11 {
-        this.session.mutate(new ConfigMutation.SetDraft(this.entry.value.path(), draft));
-//?} else {
-        this.draft = copyDraftValue(this.entry.value, draft);
-//?}
+    public ConfigChangeResult setDraft(Object draft) {
+        return this.session.mutate(new ConfigMutation.SetDraft(this.entry.value.path(), draft));
     }
+//?} else {
+    public void setDraft(Object draft) {
+        this.draft = copyDraftValue(this.entry.value, draft);
+    }
+//?}
 
     public void validateDraft(Object draft) {
 //? if >=1.21.11 {

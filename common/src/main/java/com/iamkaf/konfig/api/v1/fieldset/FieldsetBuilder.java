@@ -22,6 +22,7 @@ public final class FieldsetBuilder {
     private FieldsetField<?> titleField;
     private FieldsetField<?> iconField;
     private FieldsetField<?> keyField;
+    private FieldsetCatalog catalog;
     private final List<FieldsetField<?>> summaryFields = new ArrayList<FieldsetField<?>>();
 
     private FieldsetBuilder() {
@@ -97,6 +98,17 @@ public final class FieldsetBuilder {
     }
 
     /**
+     * Uses the large-collection catalog instead of the simple Fieldset list.
+     *
+     * @param catalog declarative catalog presentation
+     * @return this builder
+     */
+    public FieldsetBuilder catalog(FieldsetCatalog catalog) {
+        this.catalog = Objects.requireNonNull(catalog, "catalog");
+        return this;
+    }
+
+    /**
      * Adds validation that can compare several fields in the same entry.
      *
      * @param validator predicate that accepts valid entries
@@ -119,7 +131,8 @@ public final class FieldsetBuilder {
                 this.titleField,
                 this.iconField,
                 this.keyField,
-                this.summaryFields
+                this.summaryFields,
+                this.catalog
         );
         return FieldsetValue.of(schema, this.entries);
     }

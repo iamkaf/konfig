@@ -8,6 +8,7 @@ import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.api.v1.KonfigNode;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetBuilder;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetCatalog;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntryOwnership;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
@@ -15,6 +16,7 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetValidationIssue;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.fieldset.FieldsetCodec;
+import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetCatalogModel;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -77,6 +79,33 @@ final class FieldsetPersistenceTest {
         assertEquals("minecraft:netherite_pickaxe", restoredUser.value(fixture.item));
         assertEquals(42, restoredUser.value(fixture.repairCap));
         assertEquals(Optional.of("late game"), restoredUser.value(fixture.note));
+    }
+
+    @Test
+    void missingRegistryIdentifiersSurviveReloadAndUnrelatedEdits() throws IOException {
+        FieldsetFixture fixture = fixture();
+        ConfigBuilder builder = Konfig.builder("headless", "fieldsets" + NEXT_ID.incrementAndGet());
+        ConfigValue<FieldsetValue> rules = builder.fieldset("gear", fixture.defaults).build();
+        ConfigHandle handle = builder.build();
+        FieldsetEntry dormant = FieldsetEntry.user("removed-mod-rule")
+                .with(fixture.item, "removed_mod:old_hammer")
+                .with(fixture.repairCap, 42);
+
+        rules.set(FieldsetValue.of(fixture.defaults.schema(), List.of(fixture.builtin, dormant)));
+        handle.save();
+        rules.set(fixture.defaults);
+        handle.reload();
+
+        FieldsetEntry restored = rules.get().entry("removed-mod-rule").orElseThrow();
+        assertEquals("removed_mod:old_hammer", restored.value(fixture.item));
+        rules.set(rules.get().replaceUserEntry(restored.with(fixture.repairCap, 43)));
+        handle.save();
+        rules.set(fixture.defaults);
+        handle.reload();
+
+        FieldsetEntry edited = rules.get().entry("removed-mod-rule").orElseThrow();
+        assertEquals("removed_mod:old_hammer", edited.value(fixture.item));
+        assertEquals(43, edited.value(fixture.repairCap));
     }
 
     @Test
@@ -242,6 +271,72 @@ final class FieldsetPersistenceTest {
                 .build());
 
         assertTrue(keyException.getMessage().contains("key field is not declared"));
+    }
+
+    @Test
+    void catalogGroupsOnlyActiveSourcesAndKeepsUserDeclarationsSeparate() {
+        FieldsetField<String> item = FieldsetField.string("item", "minecraft:air");
+        FieldsetField<String> type = FieldsetField.dropdown(
+                "type",
+                "melee",
+                List.of("melee", "mining")
+        );
+        FieldsetCatalog catalog = FieldsetCatalog.create()
+                .editableProfile("User Overrides")
+                .filter(type)
+                .section("Rule", item, type)
+                .warning(entry -> entry.editable()
+                        ? Optional.of("Dormant until its item is available")
+                        : Optional.empty())
+                .build();
+        FieldsetEntry vanilla = FieldsetEntry.builtin("vanilla", "Vanilla")
+                .with(item, "minecraft:iron_sword")
+                .with(type, "melee");
+        FieldsetEntry basicWeapons = FieldsetEntry.builtin("basic", "Basic Weapons")
+                .with(item, "basicweapons:iron_spear")
+                .with(type, "melee");
+        FieldsetEntry tagOverride = FieldsetEntry.user("tag_override")
+                .with(item, "#c:tools/mining_tool")
+                .with(type, "mining");
+        FieldsetValue value = FieldsetBuilder.create()
+                .field(item)
+                .field(type)
+                .catalog(catalog)
+                .entry(vanilla)
+                .entry(basicWeapons)
+                .entry(tagOverride)
+                .build();
+
+        KonfigFieldsetCatalogModel model = new KonfigFieldsetCatalogModel(value);
+
+        assertEquals(List.of(
+                new KonfigFieldsetCatalogModel.Profile("source:Vanilla", "Vanilla", 1, false),
+                new KonfigFieldsetCatalogModel.Profile("source:Basic Weapons", "Basic Weapons", 1, false),
+                new KonfigFieldsetCatalogModel.Profile("user", "User Overrides", 1, true)
+        ), model.profiles());
+        assertEquals(List.of(basicWeapons), model.entries("source:Basic Weapons", "spear", "melee"));
+        assertEquals(List.of(tagOverride), model.entries("user", "#c:tools", "mining"));
+        assertEquals(List.of("melee"), model.filterValues("source:Basic Weapons"));
+        assertEquals(Optional.empty(), catalog.warning(vanilla));
+        assertEquals(Optional.of("Dormant until its item is available"), catalog.warning(tagOverride));
+    }
+
+    @Test
+    void catalogRejectsForeignFilterAndSectionFields() {
+        FieldsetField<String> declared = FieldsetField.string("declared", "value");
+        FieldsetField<String> foreign = FieldsetField.string("foreign", "value");
+
+        IllegalStateException filter = assertThrows(IllegalStateException.class, () -> FieldsetBuilder.create()
+                .field(declared)
+                .catalog(FieldsetCatalog.create().filter(foreign).build())
+                .build());
+        assertTrue(filter.getMessage().contains("catalog filter field is not declared"));
+
+        IllegalStateException section = assertThrows(IllegalStateException.class, () -> FieldsetBuilder.create()
+                .field(declared)
+                .catalog(FieldsetCatalog.create().section("Foreign", foreign).build())
+                .build());
+        assertTrue(section.getMessage().contains("catalog section field is not declared"));
     }
 
     private static KonfigNode node(String json) {

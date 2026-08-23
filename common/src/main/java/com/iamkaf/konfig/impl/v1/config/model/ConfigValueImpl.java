@@ -202,6 +202,11 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     }
 
     @Override
+    public T local() {
+        return this.localValue;
+    }
+
+    @Override
     public void set(T value) {
         setLocal(value);
     }
@@ -256,8 +261,8 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         return this.encoder.apply(validateOrThrow(value));
     }
 
-    public T localValue() {
-        return this.localValue;
+    T localValue() {
+        return local();
     }
 
     public String validationMessage() {

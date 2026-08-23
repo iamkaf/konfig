@@ -22,6 +22,10 @@ public record KonfigFieldsetEditResult(Status status, Component message) {
         return new KonfigFieldsetEditResult(Status.NO_CHANGE, Component.empty());
     }
 
+    public static KonfigFieldsetEditResult pending() {
+        return new KonfigFieldsetEditResult(Status.PENDING, Component.literal("Saving..."));
+    }
+
     public static KonfigFieldsetEditResult readOnly(Component reason) {
         Component message = reason.getString().isBlank()
                 ? Component.literal("This fieldset is read-only.")
@@ -68,6 +72,10 @@ public record KonfigFieldsetEditResult(Status status, Component message) {
         return this.status == Status.APPLIED || this.status == Status.NO_CHANGE;
     }
 
+    public boolean submitted() {
+        return accepted() || this.status == Status.PENDING;
+    }
+
     public boolean changed() {
         return this.status == Status.APPLIED;
     }
@@ -75,6 +83,7 @@ public record KonfigFieldsetEditResult(Status status, Component message) {
     public enum Status {
         APPLIED,
         NO_CHANGE,
+        PENDING,
         READ_ONLY,
         PERMISSION_DENIED,
         STALE_REVISION,

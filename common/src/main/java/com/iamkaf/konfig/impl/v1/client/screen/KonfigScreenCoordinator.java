@@ -21,6 +21,7 @@ import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 //? if >=1.21.11
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
+import com.iamkaf.konfig.impl.v1.state.ConfigSessionObserver;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.Registry;
@@ -96,7 +97,7 @@ final class KonfigScreenCoordinator {
     boolean persistEntry(EntryRef entry) {
         try {
 //? if >=1.21.11 {
-            ConfigChangeResult result = this.fields.persist(entry);
+            ConfigChangeResult result = persistEntryResult(entry);
             if (successful(result)) {
                 return true;
             }
@@ -111,6 +112,19 @@ final class KonfigScreenCoordinator {
             return false;
         }
     }
+
+//? if >=1.21.11 {
+    ConfigChangeResult persistEntryResult(EntryRef entry) {
+        return this.fields.persist(entry);
+    }
+
+    ConfigSessionObserver.Subscription observeEntry(
+            EntryRef entry,
+            java.util.function.Consumer<ConfigChangeResult> observer
+    ) {
+        return this.fields.observe(entry, observer);
+    }
+//?}
 
     void resetAll() {
         try {

@@ -413,10 +413,12 @@ final class HeadlessKonfigRegressionTest {
 
         handle.applySyncSnapshot("{\"rules\":{\"count\":9}}");
         assertEquals(9, synced.get());
+        assertEquals(5, synced.local());
         assertEquals("private", clientOnly.get());
 
         synced.set(6);
         assertEquals(9, synced.get());
+        assertEquals(6, synced.local());
         handle.clearSyncedValues();
         assertEquals(6, synced.get());
     }

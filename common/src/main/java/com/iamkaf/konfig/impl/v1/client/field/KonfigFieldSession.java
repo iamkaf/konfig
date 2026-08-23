@@ -18,6 +18,7 @@ import com.iamkaf.konfig.impl.v1.state.ConfigPermission;
 import com.iamkaf.konfig.impl.v1.state.ConfigSession;
 import com.iamkaf.konfig.impl.v1.state.ConfigSessionCommitter;
 import com.iamkaf.konfig.impl.v1.state.ConfigSessionField;
+import com.iamkaf.konfig.impl.v1.state.ConfigSessionObserver;
 import com.iamkaf.konfig.impl.v1.state.ConfigValidation;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditCapabilities;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
@@ -34,6 +35,8 @@ import java.util.Map;
 import java.util.Set;
 //? if >=1.21.11
 import java.util.function.Supplier;
+//? if >=1.21.11
+import java.util.function.Consumer;
 
 @ApiStatus.Internal
 public final class KonfigFieldSession implements AutoCloseable {
@@ -71,7 +74,16 @@ public final class KonfigFieldSession implements AutoCloseable {
         @Override
         public void onDisconnected() {
             for (ConfigSession session : KonfigFieldSession.this.remoteSessions.values()) {
-                if (!session.snapshot().applyPending()) {
+                var snapshot = session.snapshot();
+                if (snapshot.applyPending()) {
+                    session.completePending(
+                            snapshot.pendingRequestId(),
+                            new ConfigCommitResult.Failed(
+                                    "Disconnected before the config save completed",
+                                    new IllegalStateException("Remote connection closed")
+                            )
+                    );
+                } else {
                     session.refreshAuthoritative(session.revision());
                 }
             }
@@ -109,6 +121,20 @@ public final class KonfigFieldSession implements AutoCloseable {
     public ConfigChangeResult persist(EntryRef entry) {
         ConfigSession session = requireSession(entry);
         return session.apply(session.revision());
+    }
+
+    public ConfigSessionObserver.Subscription observe(
+            EntryRef entry,
+            Consumer<ConfigChangeResult> observer
+    ) {
+        ConfigSession session = requireSession(entry);
+        return session.observe(change -> {
+            if ((change.kind() == ConfigSessionObserver.Kind.APPLIED
+                    || change.kind() == ConfigSessionObserver.Kind.REJECTED)
+                    && change.result().changedFields().contains(entry.value.path())) {
+                observer.accept(change.result());
+            }
+        });
     }
 
     public ConfigChangeResult restoreEntry(EntryRef entry) {

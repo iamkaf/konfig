@@ -14,10 +14,20 @@ import java.util.Optional;
 public final class KonfigFieldsetEntryEditorState<E, F> {
     private final KonfigFieldsetUiAdapter<E, F> adapter;
     private final String entryId;
+    private final KonfigFieldsetValidation validation;
 
     public KonfigFieldsetEntryEditorState(KonfigFieldsetUiAdapter<E, F> adapter, String entryId) {
+        this(adapter, entryId, adapter.validation());
+    }
+
+    public KonfigFieldsetEntryEditorState(
+            KonfigFieldsetUiAdapter<E, F> adapter,
+            String entryId,
+            KonfigFieldsetValidation validation
+    ) {
         this.adapter = Objects.requireNonNull(adapter, "adapter");
         this.entryId = Objects.requireNonNull(entryId, "entryId");
+        this.validation = Objects.requireNonNull(validation, "validation");
     }
 
     public String entryId() {
@@ -47,7 +57,7 @@ public final class KonfigFieldsetEntryEditorState<E, F> {
     }
 
     public KonfigFieldsetValidation validation() {
-        return this.adapter.validation().forEntry(this.entryId);
+        return this.validation.forEntry(this.entryId);
     }
 
     public List<FieldState<F>> fields() {
@@ -66,7 +76,7 @@ public final class KonfigFieldsetEntryEditorState<E, F> {
                     this.adapter.fieldDescription(field),
                     fieldPath,
                     this.adapter.bind(resolvedEntry, field),
-                    this.adapter.validation().forField(this.entryId, fieldPath)
+                    this.validation.forField(this.entryId, fieldPath)
             ));
         }
         return List.copyOf(fields);

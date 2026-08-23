@@ -52,6 +52,7 @@ final class KonfigFieldsetListScreen extends Screen {
     private final KonfigFieldsetListEditorState<FieldsetEntry, FieldsetField<?>> state;
     private final KonfigFieldsetScreens.RegistrySuggestions registrySuggestions;
     private final KonfigFieldsetScreens.PersistAction persistAction;
+    private final KonfigFieldsetScreens.Subscription persistenceSubscription;
 
     private EditBox search;
     private EntryList list;
@@ -66,6 +67,7 @@ final class KonfigFieldsetListScreen extends Screen {
     private boolean suppressSearchResponder;
     private boolean rebuildPending;
     private boolean revealPending;
+    private boolean savePending;
 
     KonfigFieldsetListScreen(
             Screen parent,
@@ -84,6 +86,7 @@ final class KonfigFieldsetListScreen extends Screen {
         this.state = new KonfigFieldsetListEditorState<>(adapter);
         this.registrySuggestions = Objects.requireNonNull(registrySuggestions, "registrySuggestions");
         this.persistAction = Objects.requireNonNull(persistAction, "persistAction");
+        this.persistenceSubscription = this.persistAction.observe(this::completePersist);
     }
 
     @Override
@@ -153,7 +156,16 @@ final class KonfigFieldsetListScreen extends Screen {
 
     @Override
     public void onClose() {
+        if (this.savePending) {
+            return;
+        }
         this.closeToParent();
+    }
+
+    @Override
+    public void removed() {
+        this.persistenceSubscription.unsubscribe();
+        super.removed();
     }
 
     @Override
@@ -223,12 +235,27 @@ final class KonfigFieldsetListScreen extends Screen {
                     ? "The fieldset could not be saved."
                     : detail));
         }
-        if (result.accepted()) {
+        if (result.status() == KonfigFieldsetEditResult.Status.PENDING) {
+            this.savePending = true;
+            this.message = result.message();
+        } else if (result.accepted()) {
             this.session.markPersisted();
         } else {
             this.session.restorePersisted();
         }
         return result;
+    }
+
+    private void completePersist(KonfigFieldsetEditResult result, com.iamkaf.konfig.api.v1.fieldset.FieldsetValue authoritative) {
+        if (!this.savePending) {
+            return;
+        }
+        this.savePending = false;
+        this.session.adoptPersisted(authoritative);
+        this.message = result.accepted() ? Component.empty() : result.message();
+        this.state.refresh();
+        this.requestRebuild(false);
+        this.refreshControls();
     }
 
     private void apply(KonfigFieldsetEditResult result, boolean revealSelection) {
@@ -248,11 +275,11 @@ final class KonfigFieldsetListScreen extends Screen {
         if (this.add == null) {
             return;
         }
-        this.add.active = this.state.canAdd();
-        this.duplicate.active = this.state.canDuplicateSelected();
-        this.delete.active = this.state.canDeleteSelected();
-        this.moveUp.active = this.state.canMoveSelectedUp();
-        this.moveDown.active = this.state.canMoveSelectedDown();
+        this.add.active = !this.savePending && this.state.canAdd();
+        this.duplicate.active = !this.savePending && this.state.canDuplicateSelected();
+        this.delete.active = !this.savePending && this.state.canDeleteSelected();
+        this.moveUp.active = !this.savePending && this.state.canMoveSelectedUp();
+        this.moveDown.active = !this.savePending && this.state.canMoveSelectedDown();
     }
 
     private void closeToParent() {
@@ -269,6 +296,9 @@ final class KonfigFieldsetListScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (this.savePending) {
+            return true;
+        }
         EntryRow.TextControl active = this.activeRegistryControl;
         if (active != null && active.handleSuggestionClick(event)) {
             return true;
@@ -288,6 +318,9 @@ final class KonfigFieldsetListScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        if (this.savePending) {
+            return true;
+        }
         EntryRow.TextControl active = this.activeRegistryControl;
         if (active != null && active.hasVisibleSuggestions() && active.handleSuggestionKey(event)) {
             return true;
@@ -662,12 +695,12 @@ final class KonfigFieldsetListScreen extends Screen {
                 if (result.accepted()) {
                     result = KonfigFieldsetListScreen.this.persistDraft();
                 }
-                this.localError = result.accepted() ? "" : result.message().getString();
+                this.localError = result.submitted() ? "" : result.message().getString();
                 KonfigFieldsetListScreen.this.message = result.accepted() ? Component.empty() : result.message();
                 this.sync();
                 EntryRow.this.refreshHeaderNarration();
                 KonfigFieldsetListScreen.this.refreshControls();
-                return result.accepted();
+                return result.submitted();
             }
 
             final String validationMessage() {
