@@ -99,6 +99,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
         int listBottom = Math.max(LIST_TOP + COLLAPSED_HEIGHT, this.height - 60);
         this.list = this.addRenderableWidget(new EntryList(contentWidth, listBottom - LIST_TOP, LIST_TOP));
+        this.list.setX(contentX);
         this.list.rebuild(false);
 
         int actionY = this.height - 52;
