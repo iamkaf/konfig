@@ -15,11 +15,12 @@ public final class KonfigFieldsetListEditorState<E, F> {
     private final KonfigFieldsetUiAdapter<E, F> adapter;
     private String query = "";
     private String selectedEntryId = "";
+    private String expandedEntryId = "";
     private KonfigFieldsetEditResult lastResult = KonfigFieldsetEditResult.noChange();
 
     public KonfigFieldsetListEditorState(KonfigFieldsetUiAdapter<E, F> adapter) {
         this.adapter = Objects.requireNonNull(adapter, "adapter");
-        this.selectFirstEntry();
+        this.selectFirstVisibleEntry();
     }
 
     public List<VisibleEntry<E>> visibleEntries() {
@@ -49,6 +50,15 @@ public final class KonfigFieldsetListEditorState<E, F> {
 
     public void setQuery(String query) {
         this.query = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        Optional<E> selected = this.selectedEntry();
+        if (selected.isEmpty() || !this.adapter.matches(selected.get(), this.query)) {
+            this.selectFirstVisibleEntry();
+        }
+        if (this.entry(this.expandedEntryId)
+                .filter(entry -> this.adapter.matches(entry, this.query))
+                .isEmpty()) {
+            this.expandedEntryId = "";
+        }
     }
 
     public String selectedEntryId() {
@@ -65,6 +75,22 @@ public final class KonfigFieldsetListEditorState<E, F> {
             return false;
         }
         this.selectedEntryId = this.adapter.entryId(entry.get());
+        return true;
+    }
+
+    public String expandedEntryId() {
+        return this.expandedEntryId;
+    }
+
+    public boolean isExpanded(String entryId) {
+        return this.expandedEntryId.equals(entryId);
+    }
+
+    public boolean toggleExpanded(String entryId) {
+        if (!this.select(entryId)) {
+            return false;
+        }
+        this.expandedEntryId = this.expandedEntryId.equals(entryId) ? "" : entryId;
         return true;
     }
 
@@ -107,6 +133,7 @@ public final class KonfigFieldsetListEditorState<E, F> {
             return this.record(KonfigFieldsetEditResult.readOnly(access.reason()));
         }
 
+        this.query = "";
         E entry = Objects.requireNonNull(this.adapter.createEntry(), "adapter.createEntry()");
         String entryId = this.requireUniqueId(entry, "New fieldset entry");
         List<E> draft = new ArrayList<>(this.adapter.entries());
@@ -114,6 +141,7 @@ public final class KonfigFieldsetListEditorState<E, F> {
         KonfigFieldsetEditResult result = this.apply(draft);
         if (result.accepted()) {
             this.selectedEntryId = entryId;
+            this.expandedEntryId = entryId;
         }
         return result;
     }
@@ -133,6 +161,7 @@ public final class KonfigFieldsetListEditorState<E, F> {
             return this.record(KonfigFieldsetEditResult.readOnly(entryAccess.reason()));
         }
 
+        this.query = "";
         E duplicate = Objects.requireNonNull(this.adapter.duplicateEntry(source), "adapter.duplicateEntry(entry)");
         String duplicateId = this.requireUniqueId(duplicate, "Duplicated fieldset entry");
         List<E> draft = new ArrayList<>(this.adapter.entries());
@@ -141,6 +170,7 @@ public final class KonfigFieldsetListEditorState<E, F> {
         KonfigFieldsetEditResult result = this.apply(draft);
         if (result.accepted()) {
             this.selectedEntryId = duplicateId;
+            this.expandedEntryId = duplicateId;
         }
         return result;
     }
@@ -170,6 +200,13 @@ public final class KonfigFieldsetListEditorState<E, F> {
         KonfigFieldsetEditResult result = this.apply(draft);
         if (result.accepted()) {
             this.selectedEntryId = nextSelection;
+            if (this.expandedEntryId.equals(this.adapter.entryId(selected))) {
+                this.expandedEntryId = "";
+            }
+            Optional<E> next = this.selectedEntry();
+            if (next.isEmpty() || !this.adapter.matches(next.get(), this.query)) {
+                this.selectFirstVisibleEntry();
+            }
         }
         return result;
     }
@@ -202,7 +239,10 @@ public final class KonfigFieldsetListEditorState<E, F> {
 
     public void refresh() {
         if (this.selectedEntry().isEmpty()) {
-            this.selectFirstEntry();
+            this.selectFirstVisibleEntry();
+        }
+        if (this.entry(this.expandedEntryId).isEmpty()) {
+            this.expandedEntryId = "";
         }
     }
 
@@ -253,9 +293,14 @@ public final class KonfigFieldsetListEditorState<E, F> {
         return Optional.empty();
     }
 
-    private void selectFirstEntry() {
-        List<E> entries = this.adapter.entries();
-        this.selectedEntryId = entries.isEmpty() ? "" : this.adapter.entryId(entries.get(0));
+    private void selectFirstVisibleEntry() {
+        for (E entry : this.adapter.entries()) {
+            if (this.adapter.matches(entry, this.query)) {
+                this.selectedEntryId = this.adapter.entryId(entry);
+                return;
+            }
+        }
+        this.selectedEntryId = "";
     }
 
     private String requireUniqueId(E entry, String operation) {

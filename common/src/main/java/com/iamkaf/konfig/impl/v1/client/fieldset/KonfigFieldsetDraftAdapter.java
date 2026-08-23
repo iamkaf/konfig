@@ -8,7 +8,9 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetFieldKind;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValidationIssue;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
+import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +39,13 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
 
     @Override
     public Component entryLabel(FieldsetEntry entry) {
+        Optional<FieldsetField<?>> titleField = this.session.draft().schema().titleField();
+        if (titleField.isPresent()) {
+            String title = displayValue(read(entry, titleField.get()));
+            if (!title.isBlank()) {
+                return Component.literal(title);
+            }
+        }
         for (FieldsetField<?> field : this.session.draft().schema().fields()) {
             if (field.kind() != FieldsetFieldKind.STRING
                     && field.kind() != FieldsetFieldKind.OPTIONAL_STRING
@@ -56,17 +65,35 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
     @Override
     public Component entrySummary(FieldsetEntry entry) {
         List<String> parts = new ArrayList<>();
-        for (FieldsetField<?> field : this.session.draft().schema().fields()) {
+        List<FieldsetField<?>> configured = this.session.draft().schema().summaryFields();
+        List<FieldsetField<?>> fields = configured.isEmpty()
+                ? this.session.draft().schema().fields()
+                : configured;
+        for (FieldsetField<?> field : fields) {
             String value = displayValue(read(entry, field));
             if (value.isBlank() || value.equals(this.entryLabel(entry).getString())) {
                 continue;
             }
-            parts.add(pretty(field.key()) + ": " + value);
-            if (parts.size() == 2) {
+            parts.add(configured.isEmpty() ? pretty(field.key()) + ": " + value : value);
+            if (configured.isEmpty() && parts.size() == 2) {
                 break;
             }
         }
-        return Component.literal(String.join(", ", parts));
+        return Component.literal(String.join("  ·  ", parts));
+    }
+
+    Optional<EntryIcon> entryIcon(FieldsetEntry entry) {
+        Optional<FieldsetField<?>> configured = this.session.draft().schema().iconField();
+        if (configured.isEmpty()) {
+            return Optional.empty();
+        }
+        FieldsetField<?> field = configured.get();
+        Optional<ResourceKey<? extends Registry<?>>> registryKey = field.registryKey();
+        if (registryKey.isEmpty()) {
+            return Optional.empty();
+        }
+        String value = displayValue(read(entry, field));
+        return value.isBlank() ? Optional.empty() : Optional.of(new EntryIcon(registryKey.get(), value));
     }
 
     @Override
@@ -217,6 +244,13 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
     private static String message(RuntimeException exception) {
         String message = exception.getMessage();
         return message == null || message.isBlank() ? "The value could not be edited." : message;
+    }
+
+    record EntryIcon(ResourceKey<? extends Registry<?>> registryKey, String value) {
+        EntryIcon {
+            Objects.requireNonNull(registryKey, "registryKey");
+            Objects.requireNonNull(value, "value");
+        }
     }
 
     private static final class FieldBinding implements KonfigFieldsetValueBinding<Object> {

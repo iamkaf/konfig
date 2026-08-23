@@ -20,8 +20,17 @@ public final class FieldsetSchema {
     private final List<FieldsetField<?>> fields;
     private final Map<String, FieldsetField<?>> fieldsByKey;
     private final List<EntryValidationRule> entryValidationRules;
+    private final FieldsetField<?> titleField;
+    private final FieldsetField<?> iconField;
+    private final List<FieldsetField<?>> summaryFields;
 
-    FieldsetSchema(List<FieldsetField<?>> fields, List<EntryValidationRule> entryValidationRules) {
+    FieldsetSchema(
+            List<FieldsetField<?>> fields,
+            List<EntryValidationRule> entryValidationRules,
+            FieldsetField<?> titleField,
+            FieldsetField<?> iconField,
+            List<FieldsetField<?>> summaryFields
+    ) {
         if (fields.isEmpty()) {
             throw new IllegalStateException("A fieldset must declare at least one field");
         }
@@ -38,6 +47,18 @@ public final class FieldsetSchema {
         this.fields = Collections.unmodifiableList(ordered);
         this.fieldsByKey = Collections.unmodifiableMap(byKey);
         this.entryValidationRules = Collections.unmodifiableList(new ArrayList<EntryValidationRule>(entryValidationRules));
+        this.titleField = requireDeclared(titleField, byKey, "title");
+        this.iconField = requireDeclared(iconField, byKey, "icon");
+
+        ArrayList<FieldsetField<?>> summaries = new ArrayList<FieldsetField<?>>(summaryFields.size());
+        for (FieldsetField<?> field : summaryFields) {
+            FieldsetField<?> declared = requireDeclared(field, byKey, "summary");
+            if (summaries.contains(declared)) {
+                throw new IllegalStateException("Duplicate fieldset summary field: " + declared.key());
+            }
+            summaries.add(declared);
+        }
+        this.summaryFields = Collections.unmodifiableList(summaries);
     }
 
     public List<FieldsetField<?>> fields() {
@@ -46,6 +67,18 @@ public final class FieldsetSchema {
 
     public Optional<FieldsetField<?>> field(String key) {
         return Optional.ofNullable(this.fieldsByKey.get(key));
+    }
+
+    public Optional<FieldsetField<?>> titleField() {
+        return Optional.ofNullable(this.titleField);
+    }
+
+    public Optional<FieldsetField<?>> iconField() {
+        return Optional.ofNullable(this.iconField);
+    }
+
+    public List<FieldsetField<?>> summaryFields() {
+        return this.summaryFields;
     }
 
     /**
@@ -83,6 +116,20 @@ public final class FieldsetSchema {
             }
             field.requireValueType(value.getValue());
         }
+    }
+
+    private static FieldsetField<?> requireDeclared(
+            FieldsetField<?> field,
+            Map<String, FieldsetField<?>> fieldsByKey,
+            String role
+    ) {
+        if (field == null) {
+            return null;
+        }
+        if (fieldsByKey.get(field.key()) != field) {
+            throw new IllegalStateException("Fieldset " + role + " field is not declared: " + field.key());
+        }
+        return field;
     }
 
     private static void validateField(

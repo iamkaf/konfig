@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -107,6 +108,36 @@ final class FieldsetPersistenceTest {
         assertEquals(fixture.builtin, decoded.entries().get(0));
         assertEquals(FieldsetEntryOwnership.BUILTIN, decoded.entries().get(0).ownership());
         assertEquals(FieldsetEntryOwnership.USER, decoded.entries().get(1).ownership());
+    }
+
+    @Test
+    void keepsPresentationFieldsInTheSchema() {
+        FieldsetField<String> item = FieldsetField.string("item", "minecraft:air");
+        FieldsetField<Integer> priority = FieldsetField.intRange("priority", 1, 1, 10);
+
+        FieldsetValue value = FieldsetBuilder.create()
+                .field(item)
+                .field(priority)
+                .title(item)
+                .summary(priority)
+                .build();
+
+        assertEquals(Optional.of(item), value.schema().titleField());
+        assertEquals(Optional.empty(), value.schema().iconField());
+        assertEquals(List.of(priority), value.schema().summaryFields());
+    }
+
+    @Test
+    void rejectsPresentationFieldsNotDeclaredByTheBuilder() {
+        FieldsetField<String> declared = FieldsetField.string("declared", "value");
+        FieldsetField<String> foreign = FieldsetField.string("foreign", "value");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, () -> FieldsetBuilder.create()
+                .field(declared)
+                .title(foreign)
+                .build());
+
+        assertTrue(exception.getMessage().contains("title field is not declared"));
     }
 
     private static KonfigNode node(String json) {

@@ -115,12 +115,15 @@ public final class KonfigDebugConfig {
                 .with(active, true);
 
         builder.fieldset("sample_rules", FieldsetBuilder.create()
-                        .field(item)
-                        .field(role)
-                        .field(priority)
-                        .field(active)
-                        .entry(ironSword)
-                        .build())
+                .field(item)
+                .field(role)
+                .field(priority)
+                .field(active)
+                .title(item)
+                .icon(item)
+                .summary(role, priority)
+                .entry(ironSword)
+                .build())
                 .comment("Sample item rules for exercising Konfig's structured entry editor.")
                 .tooltip("Open the sample rules editor.")
                 .build();

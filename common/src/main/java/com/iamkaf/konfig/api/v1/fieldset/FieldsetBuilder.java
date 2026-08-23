@@ -19,6 +19,9 @@ public final class FieldsetBuilder {
     private final List<FieldsetEntry> entries = new ArrayList<FieldsetEntry>();
     private final List<FieldsetSchema.EntryValidationRule> entryValidationRules =
             new ArrayList<FieldsetSchema.EntryValidationRule>();
+    private FieldsetField<?> titleField;
+    private FieldsetField<?> iconField;
+    private final List<FieldsetField<?>> summaryFields = new ArrayList<FieldsetField<?>>();
 
     private FieldsetBuilder() {
     }
@@ -34,6 +37,46 @@ public final class FieldsetBuilder {
 
     public FieldsetBuilder entry(FieldsetEntry entry) {
         this.entries.add(Objects.requireNonNull(entry, "entry"));
+        return this;
+    }
+
+    /**
+     * Chooses the field shown as each entry's title in generated editors.
+     *
+     * @param field a field declared by this builder
+     * @return this builder
+     */
+    public FieldsetBuilder title(FieldsetField<?> field) {
+        this.titleField = Objects.requireNonNull(field, "field");
+        return this;
+    }
+
+    /**
+     * Chooses the registry-backed field rendered as each entry's icon.
+     *
+     * @param field a registry string field declared by this builder
+     * @return this builder
+     */
+    public FieldsetBuilder icon(FieldsetField<String> field) {
+        Objects.requireNonNull(field, "field");
+        if (field.kind() != FieldsetFieldKind.REGISTRY_STRING || field.registryKey().isEmpty()) {
+            throw new IllegalArgumentException("Fieldset icons require a registry string field");
+        }
+        this.iconField = field;
+        return this;
+    }
+
+    /**
+     * Chooses the fields shown beneath each entry's title in generated editors.
+     *
+     * @param fields fields declared by this builder
+     * @return this builder
+     */
+    public FieldsetBuilder summary(FieldsetField<?>... fields) {
+        Objects.requireNonNull(fields, "fields");
+        for (FieldsetField<?> field : fields) {
+            this.summaryFields.add(Objects.requireNonNull(field, "field"));
+        }
         return this;
     }
 
@@ -54,7 +97,13 @@ public final class FieldsetBuilder {
     }
 
     public FieldsetValue build() {
-        FieldsetSchema schema = new FieldsetSchema(this.fields, this.entryValidationRules);
+        FieldsetSchema schema = new FieldsetSchema(
+                this.fields,
+                this.entryValidationRules,
+                this.titleField,
+                this.iconField,
+                this.summaryFields
+        );
         return FieldsetValue.of(schema, this.entries);
     }
 }
