@@ -49,6 +49,7 @@ if [ "$loader" = "forge" ] || [ "$loader" = "neoforge" ]; then
 fi
 
 ./teakitw run \
+  --background \
   --node "$node" \
   --test-file "$test_file" \
   --timeout "$timeout_seconds"

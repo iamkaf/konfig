@@ -6,6 +6,8 @@ package com.iamkaf.konfig.impl.v1.client.field;
 import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.api.v1.ConfigValue;
+//? if >=1.21.11
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.config.model.ColorValueHelper;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
@@ -44,6 +46,13 @@ public final class KonfigFieldValues {
                     return Integer.valueOf(parseColor(value, draft));
                 case COLOR_ARGB:
                     return Integer.valueOf(parseColor(value, draft));
+//? if >=1.21.11 {
+                case FIELDSET:
+                    if (draft instanceof FieldsetValue) {
+                        return draft;
+                    }
+                    throw new IllegalArgumentException("Invalid fieldset for '" + value.path() + "'.");
+//?}
                 case CUSTOM:
                 default:
                     return value.get();

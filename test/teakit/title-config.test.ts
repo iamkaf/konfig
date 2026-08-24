@@ -1,5 +1,5 @@
 import { Capability, Readiness, describe, test } from "@teakit/test";
-import type { ClientScreen, LoaderId, TeaKitTestContext } from "@teakit/test";
+import type { ClientScreen, LoaderId, ScreenListEntrySnapshot, TeaKitTestContext } from "@teakit/test";
 
 describe.configure({
   timeout: "4m",
@@ -58,8 +58,208 @@ describe("Konfig config screen", () => {
     });
     await ctx.runtime.wait(300);
     await ctx.client.screenshot("konfig-translated-value-tooltip");
+
+    if (atLeast(version, "1.21.11")) {
+      await exerciseFieldset(ctx);
+    }
   });
 });
+
+async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
+  let screen = await scrollToVisibleEntry(ctx, "Sample Rules");
+  await clickEntryControl(ctx, screen, "Sample Rules");
+  await ctx.runtime.wait(300);
+  screen = await ctx.client.screen();
+  assertFieldsetListScreen(screen);
+
+  const search = screen.widgets().all().find((widget) => widget.label.includes("Search"));
+  if (!search) throw new Error("Missing fieldset search input");
+  await assertBuiltInFieldsDoNotTrapFocus(ctx, screen);
+  screen = await ctx.client.screen();
+  screen = await removeUserFieldsetRows(ctx, screen);
+  assertFieldsetRows(screen, 1, 0);
+  await ctx.client.screenshot("konfig-fieldset-collapsed");
+
+  await screen.widgets().activate({ label: "Copy" });
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  assertExpandedFieldsetRow(screen, 1);
+
+  await screen.widgets().activate({ label: "Add" });
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  assertExpandedFieldsetRow(screen, 2);
+
+  await screen.widgets().activate({ label: "Up" });
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  assertExpandedFieldsetRow(screen, 1);
+
+  await screen.widgets().activate({ label: "Delete" });
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  const remainingRows = assertFieldsetRows(screen, 2, 0);
+  const copiedRow = remainingRows.find((row) => row.entryIndex === 1);
+  if (!copiedRow) throw new Error("Missing copied sample rule after deleting the added rule");
+  await clickFieldsetCardHeader(ctx, copiedRow);
+
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  const expandedCopy = assertExpandedFieldsetRow(screen, 1);
+  if (screen.widgets().all().some((widget) => widget.label === "Suggest")) {
+    throw new Error("Fieldset registry input still exposes the legacy Suggest button");
+  }
+  await clickInlineField(ctx, expandedCopy, 0);
+  await ctx.runtime.wait(200);
+  await ctx.client.screenshot("konfig-fieldset-registry-suggestions");
+  await ctx.client.key(256, { release: true });
+  await clickInlineField(ctx, expandedCopy, 1);
+  await ctx.runtime.wait(300);
+  screen = await ctx.client.screen();
+  assertExpandedFieldsetRow(screen, 1);
+  await ctx.client.screenshot("konfig-fieldset-edited");
+  if (screen.widgets().all().some((widget) => widget.label === "Save" || widget.label === "Cancel")) {
+    throw new Error("Auto-saving Fieldset screen still exposes Save or Cancel");
+  }
+  await screen.widgets().activate({ label: "Done" });
+
+  await ctx.client.waitForScreen("com.iamkaf.konfig.impl.v1.client.screen.KonfigConfigScreen", {
+    timeoutMs: 10_000,
+  });
+  screen = await scrollToVisibleEntry(ctx, "Sample Rules");
+  await clickEntryControl(ctx, screen, "Sample Rules");
+  screen = await ctx.client.waitForScreen(
+    "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetListScreen",
+    { timeoutMs: 10_000 },
+  );
+
+  assertFieldsetRows(screen, 2, 0);
+  await ctx.runtime.wait(300);
+  await ctx.client.screenshot("konfig-fieldset-reopened");
+}
+
+async function assertBuiltInFieldsDoNotTrapFocus(
+  ctx: TeaKitTestContext,
+  initialScreen: ClientScreen,
+): Promise<void> {
+  const builtIn = initialScreen.lists().entries().find((row) => row.entryIndex === 0);
+  if (!builtIn) throw new Error("Missing built-in Fieldset card");
+  await clickFieldsetCardHeader(ctx, builtIn);
+  await ctx.runtime.wait(150);
+
+  let screen = await ctx.client.screen();
+  const expanded = assertExpandedFieldsetRow(screen, 0);
+  await clickInlineField(ctx, expanded, 0);
+  await clickFieldsetCardHeader(ctx, expanded);
+  await ctx.runtime.wait(150);
+  screen = await ctx.client.screen();
+  assertFieldsetRows(screen, screen.lists().entries().length, 0);
+}
+
+async function removeUserFieldsetRows(ctx: TeaKitTestContext, initialScreen: ClientScreen): Promise<ClientScreen> {
+  let screen = initialScreen;
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 10_000) {
+    const userRow = screen.lists().entries().find((row) => row.entryIndex === 1);
+    if (!userRow) return screen;
+
+    await clickFieldsetCardHeader(ctx, userRow);
+    await ctx.runtime.wait(100);
+    screen = await ctx.client.screen();
+    const deleteButton = screen.widgets().all().find((widget) => widget.label === "Delete");
+    if (!deleteButton?.active) throw new Error("Existing user Fieldset card could not be selected for deletion");
+    await screen.widgets().activate({ label: "Delete" });
+    await ctx.runtime.wait(100);
+    screen = await ctx.client.screen();
+  }
+  throw new Error("Timed out resetting saved user Fieldset cards");
+}
+
+function assertFieldsetListScreen(screen: ClientScreen): void {
+  if (screen.screenClass !== "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetListScreen") {
+    throw new Error(`Expected the Fieldset list screen, found ${JSON.stringify(screen)}`);
+  }
+}
+
+function assertFieldsetRows(
+  screen: ClientScreen,
+  expectedRows: number,
+  expectedExpanded: number,
+): ScreenListEntrySnapshot[] {
+  assertFieldsetListScreen(screen);
+  const rows = screen.lists().entries();
+  const expanded = rows.filter((row) => row.height > 80);
+  if (rows.length !== expectedRows || expanded.length !== expectedExpanded) {
+    throw new Error(
+      `Expected ${expectedRows} Fieldset cards with ${expectedExpanded} expanded, found ${rows.length} cards with ${expanded.length} expanded`,
+    );
+  }
+  return rows;
+}
+
+function assertExpandedFieldsetRow(
+  screen: ClientScreen,
+  expectedEntryIndex: number,
+): ScreenListEntrySnapshot {
+  assertFieldsetListScreen(screen);
+  const rows = screen.lists().entries();
+  const expandedRows = rows.filter((row) => row.height > 80);
+  if (expandedRows.length !== 1) {
+    throw new Error(`Expected one visible expanded Fieldset card, found ${expandedRows.length}`);
+  }
+  const expanded = expandedRows[0];
+  if (!expanded || expanded.entryIndex !== expectedEntryIndex) {
+    throw new Error(
+      `Expected Fieldset card ${expectedEntryIndex} to be the sole expanded card, found ${expanded?.entryIndex ?? "none"}`,
+    );
+  }
+  return expanded;
+}
+
+async function clickFieldsetCardHeader(ctx: TeaKitTestContext, row: ScreenListEntrySnapshot): Promise<void> {
+  await ctx.client.click({
+    x: row.x + row.width / 2,
+    y: row.y + 20,
+    button: 0,
+  });
+}
+
+async function clickInlineField(
+  ctx: TeaKitTestContext,
+  row: ScreenListEntrySnapshot,
+  fieldIndex: number,
+): Promise<void> {
+  await ctx.client.click({
+    x: row.x + row.width * 0.75,
+    y: row.y + 60 + fieldIndex * 38,
+    button: 0,
+  });
+}
+
+async function clickEntryControl(ctx: TeaKitTestContext, screen: ClientScreen, label: string): Promise<void> {
+  const entry = screen.lists().entries().find((candidate) => candidate.label.includes(label));
+  if (!entry) throw new Error(`Missing Konfig entry control: ${label}`);
+  await ctx.client.click({
+    x: entry.x + entry.width * 0.75,
+    y: entry.y + entry.height / 2,
+    button: 0,
+  });
+}
+
+async function scrollToVisibleEntry(ctx: TeaKitTestContext, label: string): Promise<ClientScreen> {
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 10_000) {
+    const screen = await ctx.client.screen();
+    const list = screen.widgets().all().find((widget) => widget.widgetClass.includes("KonfigEntryList"));
+    const entry = screen.lists().entries().find((candidate) => candidate.label.includes(label));
+    if (list && entry && entry.y >= list.y && entry.y + entry.height <= list.y + list.height) {
+      return screen;
+    }
+    await screen.scroll({ vertical: -2 });
+    await ctx.runtime.wait(100);
+  }
+  throw new Error(`Timed out scrolling to visible Konfig entry: ${label}`);
+}
 
 async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, version: string): Promise<ClientScreen> {
   let screen = await ctx.client.screen();

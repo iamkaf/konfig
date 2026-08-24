@@ -196,6 +196,13 @@ import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.impl.v1.bootstrap.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.impl.v1.client.editor.KonfigEditorScreens;
+//? if >=1.21.11 {
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
+import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetEditResult;
+import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetScreens;
+import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+//?}
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelRenderer;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
@@ -294,6 +301,8 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     protected void init() {
+//? if >=1.21.11
+        KonfigSync.refreshRemoteCapabilities();
         this.rebuildScreenWidgets();
     }
 
@@ -312,6 +321,8 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void closeScreen() {
+//? if >=1.21.11
+        this.coordinator.closeSession();
         this.setScreen(this.parent);
     }
 
@@ -334,6 +345,94 @@ public final class KonfigConfigScreen extends Screen {
     void openStringListEditor(EntryRef entry) {
         this.setScreen(KonfigEditorScreens.stringList(this.editorHost, entry));
     }
+
+//? if >=1.21.11 {
+    void openFieldsetEditor(EntryRef entry) {
+        Object draft = this.coordinator.field(entry).draft();
+        if (!(draft instanceof FieldsetValue fieldset)) {
+            KonfigToastSupport.saveFailed("Invalid fieldset value");
+            return;
+        }
+        this.setScreen(KonfigFieldsetScreens.create(
+                this,
+                entry.label,
+                entry.contextLabel,
+                fieldset,
+                this.coordinator.field(entry).editable(),
+                (registryKey, query, limit) -> this.fieldsetRegistrySuggestions(registryKey, query, limit),
+                new KonfigFieldsetScreens.PersistAction() {
+                    @Override
+                    public KonfigFieldsetEditResult persist(FieldsetValue previousValue, FieldsetValue newValue) {
+                        ConfigChangeResult changed = KonfigConfigScreen.this.coordinator.field(entry).setDraft(newValue);
+                        if (!changed.accepted()) {
+                            return fieldsetResult(changed);
+                        }
+                        return fieldsetResult(KonfigConfigScreen.this.coordinator.persistEntryResult(entry));
+                    }
+
+                    @Override
+                    public KonfigFieldsetScreens.Subscription observe(
+                            java.util.function.BiConsumer<KonfigFieldsetEditResult, FieldsetValue> observer
+                    ) {
+                        var subscription = KonfigConfigScreen.this.coordinator.observeEntry(entry, result -> {
+                            Object authoritative = KonfigConfigScreen.this.coordinator.field(entry).storedSnapshot();
+                            if (!(authoritative instanceof FieldsetValue fieldsetValue)) {
+                                observer.accept(
+                                        KonfigFieldsetEditResult.invalid(text("The server returned an invalid fieldset.")),
+                                        KonfigConfigScreen.this.previousFieldsetValue(entry)
+                                );
+                                return;
+                            }
+                            if (!result.accepted()) {
+                                KonfigConfigScreen.this.coordinator.field(entry).setDraft(fieldsetValue);
+                            }
+                            observer.accept(fieldsetResult(result), fieldsetValue);
+                        });
+                        return subscription::unsubscribe;
+                    }
+                }
+        ));
+    }
+
+    private FieldsetValue previousFieldsetValue(EntryRef entry) {
+        Object stored = this.coordinator.field(entry).storedSnapshot();
+        if (stored instanceof FieldsetValue fieldsetValue) {
+            return fieldsetValue;
+        }
+        throw new IllegalStateException("Invalid stored Fieldset for " + entry.value.path());
+    }
+
+    private static KonfigFieldsetEditResult fieldsetResult(ConfigChangeResult result) {
+        return switch (result.status()) {
+            case ACCEPTED -> KonfigFieldsetEditResult.applied();
+            case NO_OP -> KonfigFieldsetEditResult.noChange();
+            case PENDING -> KonfigFieldsetEditResult.pending();
+            case REJECTED_PERMISSION -> KonfigFieldsetEditResult.permissionDenied();
+            case REJECTED_STALE -> KonfigFieldsetEditResult.staleRevision();
+            case REJECTED_VALIDATION -> KonfigFieldsetEditResult.invalid(text(result.message()));
+            case REJECTED_CLOSED, FAILED -> KonfigFieldsetEditResult.invalid(text(result.message()));
+        };
+    }
+
+    private List<String> fieldsetRegistrySuggestions(
+            net.minecraft.resources.ResourceKey<? extends net.minecraft.core.Registry<?>> registryKey,
+            String query,
+            int limit
+    ) {
+        String normalized = query == null ? "" : query.trim().toLowerCase(java.util.Locale.ROOT);
+        List<String> matches = new java.util.ArrayList<String>();
+        for (String suggestion : this.coordinator.registrySuggestions(registryKey)) {
+            if (!normalized.isEmpty() && !suggestion.toLowerCase(java.util.Locale.ROOT).contains(normalized)) {
+                continue;
+            }
+            matches.add(suggestion);
+            if (matches.size() >= limit) {
+                break;
+            }
+        }
+        return matches;
+    }
+//?}
 
     void returnToMainScreen() {
         this.rebuildScreenWidgets();

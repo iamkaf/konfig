@@ -11,6 +11,8 @@ import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
+//? if >=1.21.11
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import net.minecraft.network.chat.Component;
 //? if <=1.18.2 {
 import net.minecraft.network.chat.TextComponent;
@@ -36,7 +38,7 @@ public final class KonfigScreenSupport {
                 continue;
             }
             for (ConfigScreenValue<?> impl : handle.screenEntries()) {
-                if (!isVisibleOnThisSide(impl)) {
+                if (!isVisibleOnThisSide(handle, impl)) {
                     continue;
                 }
 
@@ -49,11 +51,14 @@ public final class KonfigScreenSupport {
         return result;
     }
 
-    private static boolean isVisibleOnThisSide(ConfigScreenValue<?> value) {
+    private static boolean isVisibleOnThisSide(ConfigScreenHandle handle, ConfigScreenValue<?> value) {
         if (value.clientOnly() && !KonfigRuntime.isClient()) {
             return false;
         }
-        if (value.serverOnly() && KonfigRuntime.isClient()) {
+        if (value.serverOnly() && KonfigRuntime.isClient()
+//? if >=1.21.11
+                && !(KonfigSync.clientConnected() && value.sync())
+        ) {
             return false;
         }
         return true;

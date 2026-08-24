@@ -154,7 +154,11 @@ final class RegistryTextInputRow extends KonfigConfigRow implements RegistryText
             context.fill(x, y, x + width, y + height, 0x22000000);
         }
 
-        context.showTooltip(this.host.screen(), this.host.font(), this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+        context.showTooltip(this.host.screen(), this.host.font(), this.rowTooltip(), mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+
+        boolean editable = this.field().editable();
+        this.input.active = editable;
+        this.input.setEditable(editable);
 
         int controlWidth = Math.min(this.host.controlMaxWidth(), Math.max(this.host.controlMinWidth(), width / 2));
         int controlX = x + width - controlWidth;
@@ -163,7 +167,7 @@ final class RegistryTextInputRow extends KonfigConfigRow implements RegistryText
         this.suggestions.updateInputBounds(controlX, controlY, controlWidth);
 
         context.drawText(this.host.font(), this.entry.contextLabel, x + 4, y + 1, 0xFFA0A0A0);
-        context.drawText(this.host.font(), this.entry.displayLabel(), x + 4, y + 12, 0xFFFFFFFF);
+        context.drawText(this.host.font(), this.entry.displayLabel(), x + 4, y + 12, editable ? 0xFFFFFFFF : 0xFFA0A0A0);
         if (renderIcon && this.entry.value.boundRegistryKey() != null && supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
             context.renderRegistryIcon(
                     this.entry.value.boundRegistryKey(),

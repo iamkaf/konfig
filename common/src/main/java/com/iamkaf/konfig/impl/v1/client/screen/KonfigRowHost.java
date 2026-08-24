@@ -113,6 +113,12 @@ public final class KonfigRowHost {
         this.screen.openStringListEditor(entry);
     }
 
+//? if >=1.21.11 {
+    public void openFieldsetEditor(EntryRef entry) {
+        this.screen.openFieldsetEditor(entry);
+    }
+//?}
+
     public void setActiveRegistryRow(RegistryTextInputRowHandle row) {
         this.coordinator.setActiveRegistryRow(row);
     }

@@ -20,5 +20,9 @@ public interface ConfigScreenHandle extends ConfigHandle {
 
     String id();
 
+    long revision();
+
+    boolean newerSchemaReadOnly();
+
     String tooltip(String path, Function<String, String> translationResolver);
 }

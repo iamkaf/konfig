@@ -18,5 +18,7 @@ public enum EntryKind {
     ENUM,
     COLOR_RGB,
     COLOR_ARGB,
-    CUSTOM
+    CUSTOM,
+//? if >=1.21.11
+    FIELDSET,
 }

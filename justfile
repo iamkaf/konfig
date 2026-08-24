@@ -212,6 +212,14 @@ run-client node:
 build-all:
   @./gradlew build --console=plain
 
+headless-test version="1.21.11" *args:
+  @case "{{version}}" in \
+    1.21.11|26.*) ;; \
+    *) echo "Headless tests support Minecraft 1.21.11 and newer; got {{version}}" >&2; exit 1 ;; \
+  esac
+  @test -f "versions/{{version}}/gradle.properties" || (echo "Version {{version}} not found" >&2; exit 1)
+  @just run "{{version}}" ":common:{{version}}:test" --rerun-tasks {{args}}
+
 publish-version version *args:
   @tasks=(":common:{{version}}:publishAllPublicationsToKafMavenRepository"); for loader in $(just list-loaders "{{version}}"); do tasks+=(":$loader:{{version}}:publishAllPublicationsToKafMavenRepository"); done; ./gradlew --configure-on-demand "${tasks[@]}" {{args}} --console=plain
 

@@ -19,6 +19,9 @@ import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
+//? if >=1.21.11
+import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
+import com.iamkaf.konfig.impl.v1.state.ConfigSessionObserver;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.Registry;
@@ -93,17 +96,48 @@ final class KonfigScreenCoordinator {
 
     boolean persistEntry(EntryRef entry) {
         try {
+//? if >=1.21.11 {
+            ConfigChangeResult result = persistEntryResult(entry);
+            if (successful(result)) {
+                return true;
+            }
+            KonfigToastSupport.saveFailed(result.message());
+            return false;
+//?} else {
             this.field(entry).persist();
             return true;
+//?}
         } catch (RuntimeException exception) {
             KonfigToastSupport.saveFailed(exceptionMessage(exception));
             return false;
         }
     }
 
+//? if >=1.21.11 {
+    ConfigChangeResult persistEntryResult(EntryRef entry) {
+        return this.fields.persist(entry);
+    }
+
+    ConfigSessionObserver.Subscription observeEntry(
+            EntryRef entry,
+            java.util.function.Consumer<ConfigChangeResult> observer
+    ) {
+        return this.fields.observe(entry, observer);
+    }
+//?}
+
     void resetAll() {
         try {
+//? if >=1.21.11 {
+            for (ConfigChangeResult result : this.fields.restoreAll()) {
+                if (!successful(result)) {
+                    KonfigToastSupport.resetFailed(result.message());
+                    return;
+                }
+            }
+//?} else {
             this.fields.resetAll();
+//?}
         } catch (RuntimeException exception) {
             KonfigToastSupport.resetFailed(exceptionMessage(exception));
         }
@@ -111,13 +145,32 @@ final class KonfigScreenCoordinator {
 
     boolean resetEntry(EntryRef entry) {
         try {
+//? if >=1.21.11 {
+            ConfigChangeResult result = this.fields.restoreEntry(entry);
+            if (successful(result)) {
+                return true;
+            }
+            KonfigToastSupport.resetFailed(result.message());
+            return false;
+//?} else {
             this.field(entry).resetToSessionStart();
             return true;
+//?}
         } catch (RuntimeException exception) {
             KonfigToastSupport.resetFailed(exceptionMessage(exception));
             return false;
         }
     }
+
+//? if >=1.21.11 {
+    void closeSession() {
+        this.fields.close();
+    }
+
+    private static boolean successful(ConfigChangeResult result) {
+        return result.accepted() || result.status() == ConfigChangeResult.Status.PENDING;
+    }
+//?}
 
     KonfigField field(EntryRef entry) {
         return this.fields.field(entry);

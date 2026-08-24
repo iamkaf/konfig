@@ -4,8 +4,6 @@
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a78bfa?style=for-the-badge&labelColor=0d1117" alt="MIT License" /></a>
-  <img src="https://img.shields.io/badge/minecraft-1.14.4%E2%86%9226.2-5eead4?style=for-the-badge&labelColor=0d1117" alt="Minecraft 1.14.4 to 26.2" />
-  <img src="https://img.shields.io/badge/loaders-Fabric%20%7C%20Forge%20%7C%20NeoForge-fbbf24?style=for-the-badge&labelColor=0d1117" alt="Fabric, Forge, and NeoForge" />
 </p>
 
 <h1 align="center">Konfig</h1>
@@ -16,7 +14,7 @@
 
 ---
 
-Konfig lets Minecraft mods define typed config values in common code, persist them as commented TOML, sync selected values to clients, and generate config screens for Fabric, Forge, and NeoForge.
+Konfig lets Minecraft mods define typed config values and structured rule collections in common code, persist them as commented TOML, synchronize selected values, and generate in-game config screens.
 
 It is built for shared common code. Loader-specific integration stays in the loader roots, while config declaration, validation, migration, and screen metadata can live beside the rest of your common mod logic.
 
@@ -30,9 +28,9 @@ It is built for shared common code. Loader-specific integration stays in the loa
 - [Value Types](#value-types)
 - [Files And Sync](#files-and-sync)
 - [Generated Screens](#generated-screens)
+- [Fieldsets And Catalogs](#fieldsets-and-catalogs)
 - [Inline Decorations](#inline-decorations)
 - [Migrations](#migrations)
-- [Support Matrix](#support-matrix)
 - [Development](#development)
 - [Runtime Validation](#runtime-validation)
 - [Repository Layout](#repository-layout)
@@ -44,14 +42,14 @@ It is built for shared common code. Loader-specific integration stays in the loa
 | Area | Details |
 |------|---------|
 | Typed values | Booleans, ranged integers, ranged longs, ranged doubles, dropdowns, enums, strings, string lists, RGB colors, ARGB colors, and custom codecs |
+| Structured values | Fieldsets for ordered, validated collections of typed entries, with simple list and large catalog presentations |
 | Side-aware scopes | `CLIENT`, `COMMON`, and `SERVER` configs |
 | Files | Commented TOML under `config/<modid>/<name>.toml` |
-| Sync | `NONE`, `LOGIN`, and `LOGIN_AND_RELOAD` sync modes |
+| Sync | `NONE`, `LOGIN`, and `LOGIN_AND_RELOAD` sync modes, synchronized client views, and server-authoritative remote editing |
 | Migrations | Explicit schema versions and step-by-step migration functions |
-| Screens | Generated config screens for registered handles |
+| Screens | Generated config screens for registered handles, including adaptive catalog screens for large collections |
 | Screen content | Value editors, category headers, images, inline text, links, and info panels |
 | Loader hooks | Fabric Mod Menu integration plus Forge and NeoForge mod-list config button helpers |
-| Version graph | Stonecutter-backed Fabric, Forge, and NeoForge nodes across many Minecraft lines |
 
 ## How It Works
 
@@ -61,7 +59,7 @@ common mod code
     v
 Konfig.builder(modid, name)
     |
-    +-- typed values, comments, validators, migration steps
+    +-- typed values, structured Fieldsets, validators, migration steps
     |
     v
 ConfigHandle
@@ -91,12 +89,9 @@ Use the loader artifact for the Minecraft line you target:
 | Forge | `com.iamkaf.konfig:konfig-forge:<version>` |
 | NeoForge | `com.iamkaf.konfig:konfig-neoforge:<version>` |
 
-Versioning is parity-based across supported Minecraft lines. The semantic release is shared, and the `+<mc>` suffix identifies the target line.
+Published artifacts share a semantic release, and the `+<mc>` suffix identifies the target Minecraft line.
 
-| Example version | Meaning |
-|-----------------|---------|
-| `0.6.1+1.21.11` | Konfig `0.6.1` for Minecraft `1.21.11` |
-| `0.6.1+26.2` | Konfig `0.6.1` for Minecraft `26.2` |
+For example, a version shaped like `0.7.0+<minecraft-version>` identifies Konfig `0.7.0` and its target Minecraft line.
 
 Do not depend on Konfig `common` directly. Use the loader-specific artifact.
 
@@ -154,12 +149,18 @@ public final class ExampleConfig {
 }
 ```
 
-Use `ConfigValue#get()` when reading a value and `ConfigValue#set(value)` when changing it programmatically.
+Use `ConfigValue#get()` when reading the effective value and `ConfigValue#set(value)` when changing it programmatically.
 
 ```java
 if (ExampleConfig.ENABLED.get()) {
     int radius = ExampleConfig.RANGE.get();
 }
+```
+
+Synchronized values return the server overlay from `get()` while connected. Code that owns the authoritative local value, including an integrated server, can read `local()` instead:
+
+```java
+int serverRadius = ExampleConfig.RANGE.local();
 ```
 
 ## Builder API
@@ -195,6 +196,7 @@ Value builders share the same metadata methods:
 | `sync(boolean)` | Include or exclude a value from sync |
 | `clientOnly()` | Restrict the value to client-side use |
 | `serverOnly()` | Restrict the value to server-side use |
+| `remoteScreenView(value, available)` | Supply a derived read-only value for generated screens while connected to a remote authority |
 | `validate(Predicate<T>, String)` | Reject invalid values with an error message |
 | `build()` | Register the value and return `ConfigValue<T>` |
 
@@ -206,15 +208,16 @@ Value builders share the same metadata methods:
 | `intRange(key, defaultValue, min, max)` | `Integer` | Enforces and displays an integer range |
 | `longRange(key, defaultValue, min, max)` | `Long` | Enforces and displays a long range |
 | `doubleRange(key, defaultValue, min, max)` | `Double` | Enforces and displays a double range |
-| `string(key, defaultValue, minLen, maxLen)` | `String` | Supports length bounds and registry autocomplete |
-| `stringList(key, defaultValue)` | `List<String>` | Supports registry autocomplete per entry |
+| `string(key, defaultValue, minLen, maxLen)` | `String` | Provides length bounds and registry autocomplete |
+| `stringList(key, defaultValue)` | `List<String>` | Provides registry autocomplete per entry |
 | `dropdown(key, defaultValue, options)` | `String` | Restricts values to a fixed option list and renders as a dropdown |
 | `enumValue(key, defaultValue)` | enum | Uses the enum constants as choices |
 | `colorRgb(key, defaultValue)` | `Integer` | RGB color value |
 | `colorArgb(key, defaultValue)` | `Integer` | ARGB color value |
 | `custom(key, defaultValue, codec)` | custom | Uses a `KonfigCodec<T>` |
+| `fieldset(key, defaultValue)` | `FieldsetValue` | Stores an ordered collection of typed structured entries |
 
-String and string-list values can be connected to a registry for autocomplete. On newer lines, use a `ResourceKey<? extends Registry<?>>`. On older lines, use the registry id string overload.
+String and string-list values can be connected to a registry for autocomplete. Use a `ResourceKey<? extends Registry<?>>` where the consumer source has one, or the registry id string overload where it does not.
 
 Dropdown values are stored as strings and must always match one of the declared options. For simple menus, pass a list:
 
@@ -255,6 +258,10 @@ Konfig writes TOML files under `config/<modid>/<name>.toml`. Comments from the b
 
 Sync is opt-in per value. Set the config-level sync mode first, then mark the individual values that should cross the wire.
 
+Synchronized `COMMON` and `SERVER` configs remain server-authoritative. After the client and server negotiate remote editing, an operator with permission level 2 can edit those values through Konfig's generated screen. Konfig validates the complete draft, rejects stale revisions, persists the accepted draft on the server, and broadcasts the new snapshot. Other players receive the synchronized read-only view.
+
+Use `remoteScreenView(...)` when the generated screen should display a consumer-owned projection of remote state instead of the value's ordinary synchronized overlay. The supplier does not replace or persist the local value, and Konfig returns to the local screen value after disconnecting.
+
 ## Generated Screens
 
 Konfig generates screens from the registered config handles. The screen uses the value metadata from your config declarations, including comments, tooltips, restart requirements, validators, categories, and info panels.
@@ -266,8 +273,9 @@ Konfig generates screens from the registered config handles. The screen uses the
 | Dropdowns | Dropdown menu with fixed string options, option labels, option tooltips, scrolling, and keyboard navigation |
 | Enums | Choice editor |
 | String lists | List editor |
+| Fieldsets | Structured entry editor or adaptive catalog screen |
 | RGB and ARGB colors | Color editor |
-| Registry-backed strings | Autocomplete where supported |
+| Registry-backed strings | Autocomplete when a registry source is bound |
 
 Fabric exposes consumer config screens through Mod Menu automatically.
 
@@ -293,6 +301,69 @@ Consumers can pass a display title when creating a screen directly:
 ```java
 KonfigClientScreens.create(modId, title, parent);
 ```
+
+## Fieldsets And Catalogs
+
+Fieldsets store ordered entries that share one typed schema. A field can be a boolean, ranged number, string, optional string, dropdown, or registry-backed string. Fieldsets provide per-field validation, whole-entry validation, stable entry identities, read-only built-in entries, editable user entries, and keyed user overrides.
+
+```java
+import com.iamkaf.konfig.api.v1.ConfigValue;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetBuilder;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetCatalog;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
+import net.minecraft.core.registries.Registries;
+
+ConfigBuilder builder = Konfig.builder("examplemod", "common")
+        .scope(ConfigScope.COMMON)
+        .syncMode(SyncMode.LOGIN_AND_RELOAD);
+
+FieldsetField<String> item = FieldsetField.registryString(
+        "item",
+        "minecraft:iron_sword",
+        Registries.ITEM
+);
+FieldsetField<String> role = FieldsetField.dropdown(
+        "role",
+        "weapon",
+        java.util.Arrays.asList("weapon", "tool", "armor")
+);
+FieldsetField<Integer> power = FieldsetField.intRange("power", 1, 0, 100);
+
+FieldsetCatalog catalog = FieldsetCatalog.create()
+        .editableProfile("User Rules")
+        .newEntryLabel("Add Rule")
+        .overrideLabel("Override")
+        .filter(role)
+        .section("Rule", item, role, power)
+        .build();
+
+FieldsetValue defaults = FieldsetBuilder.create()
+        .field(item)
+        .field(role)
+        .field(power)
+        .key(item)
+        .title(item)
+        .icon(item)
+        .summary(role, power)
+        .catalog(catalog)
+        .entry(FieldsetEntry.builtin("iron_sword", "Example Mod")
+                .with(item, "minecraft:iron_sword")
+                .with(role, "weapon")
+                .with(power, 4))
+        .build();
+
+ConfigValue<FieldsetValue> rules = builder.fieldset("rules", defaults)
+        .sync(true)
+        .build();
+```
+
+Without `.catalog(...)`, Konfig uses the simple Fieldset list and entry screens. A catalog groups built-in entries by source profile and keeps user entries in a dedicated editable profile. It adds search, an optional declared-field filter, compact summaries, grouped detail sections, registry icons, contextual Add, Override, and Delete actions, autosave, and Undo. The layout adapts between side-by-side details and a separate detail page according to the available width.
+
+Declaring a key field gives user entries replacement semantics. A user entry with the same key hides the matching built-in entry in generated views; deleting the override reveals the built-in entry again. Built-in defaults never become writable.
+
+Fieldsets and catalogs are experimental in `api.v1`. They use Konfig's normal persistence, validation, sync, and generated-screen lifecycle, but their source API may still change before `1.0.0`.
 
 ## Inline Decorations
 
@@ -336,7 +407,7 @@ builder.categoryInfo(info -> info
 
 ## Migrations
 
-Konfig supports explicit schema migrations:
+Konfig provides explicit schema migrations:
 
 ```java
 ConfigBuilder builder = Konfig.builder("examplemod", "common")
@@ -360,30 +431,6 @@ ConfigBuilder builder = Konfig.builder("examplemod", "common")
 
 Migration functions operate on the stored config data before the handle is finalized. Use them for renames, default insertion, and shape changes between releases.
 
-## Support Matrix
-
-The source of truth is the build graph generated from `versions/*/gradle.properties`. At the time of this README, `just list-nodes` reports:
-
-| Loader | Supported lines |
-|--------|-----------------|
-| Fabric | Every line from `1.14.4` through `26.2` |
-| Forge | `1.16.5`; `1.17.1`; `1.18`, `1.18.1`, `1.18.2`; `1.19`, `1.19.1`, `1.19.2`, `1.19.3`, `1.19.4`; `1.20`, `1.20.1`, `1.20.2`, `1.20.3`, `1.20.4`, `1.20.6`; `1.21`, `1.21.1`; `1.21.3` through `26.2` |
-| NeoForge | `1.21.1` through `26.2` |
-
-Notable floors:
-
-| Loader | First supported line |
-|--------|----------------------|
-| Fabric | `1.14.4` |
-| Forge | `1.16.5` |
-| NeoForge | `1.21.1` |
-
-If you need the exact current matrix, run:
-
-```bash
-just list-nodes
-```
-
 ## Development
 
 Common commands:
@@ -392,17 +439,16 @@ Common commands:
 |---------|---------|
 | `./gradlew build` | Build the full Gradle graph |
 | `just list-nodes` | Print every enabled Minecraft/loader node |
-| `just run 1.21.11 forge runClient` | Run the Forge client for `1.21.11` |
-| `just run 1.16.5 forge runClient` | Run the legacy Forge client helper for `1.16.5` |
-| `just run 26.1 publish` | Publish all enabled loaders for `26.1` |
+| `just run <mc> forge runClient` | Run the Forge client for one Minecraft line |
+| `just run <mc> publish` | Publish all enabled loader artifacts for one Minecraft line |
 | `just run downloadTranslations` | Download translations |
 
 `just run` accepts three forms:
 
 | Form | Example |
 |------|---------|
-| `just run <version> <loader> <task...>` | `just run 1.21.11 fabric build` |
-| `just run <version> <aggregate-task...>` | `just run 1.21.11 publishMod` |
+| `just run <version> <loader> <task...>` | `just run <mc> fabric build` |
+| `just run <version> <aggregate-task...>` | `just run <mc> publishMod` |
 | `just run <root-task...>` | `just run downloadTranslations` |
 
 ## Runtime Validation
@@ -411,9 +457,9 @@ Konfig has three useful runtime validation layers:
 
 | Command | What it checks |
 |---------|----------------|
-| `just boot-check 1.21.11-forge 60` | Starts the client and confirms Konfig initializes from logs |
-| `just teakit-boot-check 1.21.11-forge 60` | Enables TeaKit as an optional dev runtime dependency when that Minecraft line has a TeaKit catalog entry, then confirms Konfig and TeaKit initialize |
-| `just teakit-check 1.21.11-forge 240` | Runs the checked-in TeaKit UI test, opens the title-screen Mods menu, opens Konfig's config screen, and asserts that `Enable Debug Logging` is present |
+| `just boot-check <mc>-forge 60` | Starts the client and confirms Konfig initializes from logs |
+| `just teakit-boot-check <mc>-forge 60` | Enables TeaKit as an optional dev runtime dependency, then confirms Konfig and TeaKit initialize |
+| `just teakit-check <mc>-forge 240` | Runs the checked-in TeaKit UI test, opens the title-screen Mods menu, opens Konfig's config screen, and asserts that `Enable Debug Logging` is present |
 
 Matrix-wide helpers:
 
@@ -443,7 +489,7 @@ The effective source for a node comes from the shared roots plus the matching `v
 
 ## Notes
 
-- Konfig keeps one semantic release across all supported Minecraft lines.
+- Published Konfig artifacts share one semantic release.
 - Loader- and version-specific divergence is isolated in `versions/<mc>/` or loader roots rather than split into independent per-version repos.
 - The checked-in debug config exists specifically to exercise Konfig's own screen, sync, and editor paths during runtime validation.
 

@@ -4,6 +4,11 @@ import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
+//? if >=1.21.11 {
+import com.iamkaf.konfig.impl.v1.sync.ConfigEditRequest;
+import com.iamkaf.konfig.impl.v1.sync.KonfigRemotePayloads;
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+//?}
 //? if <=1.20.4 {
 //? if <=1.16.5 {
 import net.minecraft.resources.ResourceLocation;
@@ -32,6 +37,33 @@ public final class KonfigFabricClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(KonfigNetwork.snapshotPayloadType(), (payload, context) ->
                 KonfigNetwork.receiveClientSnapshot(payload)
         );
+//? if >=1.21.11 {
+        ClientPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.Capabilities.TYPE, (payload, context) ->
+                KonfigNetwork.receiveClientCapabilities(payload)
+        );
+        ClientPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.Snapshot.TYPE, (payload, context) ->
+                KonfigNetwork.receiveClientAuthoritySnapshot(payload)
+        );
+        ClientPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.EditResult.TYPE, (payload, context) ->
+                KonfigNetwork.receiveClientEditResult(payload)
+        );
+
+        KonfigSync.setClientRequestSender(new KonfigSync.ClientRequestSender() {
+            @Override
+            public void sendHello(int protocolVersion) {
+                if (ClientPlayNetworking.canSend(KonfigRemotePayloads.Hello.TYPE)) {
+                    ClientPlayNetworking.send(KonfigNetwork.remoteHelloPayload(protocolVersion));
+                }
+            }
+
+            @Override
+            public void sendEdit(ConfigEditRequest request) {
+                if (ClientPlayNetworking.canSend(KonfigRemotePayloads.EditRequest.TYPE)) {
+                    ClientPlayNetworking.send(KonfigNetwork.remoteEditPayload(request));
+                }
+            }
+        });
+//?}
 //?} else {
         ClientPlayNetworking.registerGlobalReceiver(SYNC_CHANNEL, (client, handler, buffer, responseSender) -> {
 //? if <=1.16.5 {
@@ -42,6 +74,14 @@ public final class KonfigFabricClient implements ClientModInitializer {
         });
 //?}
 
+//? if >=1.21.11 {
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+                KonfigSync.onClientConnected(
+                        ClientPlayNetworking.canSend(KonfigRemotePayloads.Hello.TYPE)
+                                && ClientPlayNetworking.canSend(KonfigRemotePayloads.EditRequest.TYPE)
+                )
+        );
+//?}
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> KonfigRuntime.clientDisconnected());
     }
 }

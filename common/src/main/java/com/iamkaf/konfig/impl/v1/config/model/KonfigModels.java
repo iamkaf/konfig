@@ -23,6 +23,10 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+//? if >=1.21.11 {
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+//?}
 
 @ApiStatus.Internal
 public final class KonfigModels {
@@ -65,6 +69,10 @@ public final class KonfigModels {
             Number rangeMin,
             Number rangeMax,
             List<DropdownOptionMetadata> dropdownOptions,
+//? if >=1.21.11 {
+            Supplier<T> remoteScreenValue,
+            BooleanSupplier remoteScreenViewAvailable,
+//?}
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -87,6 +95,10 @@ public final class KonfigModels {
                 rangeMin,
                 rangeMax,
                 dropdownOptions,
+//? if >=1.21.11 {
+                remoteScreenValue,
+                remoteScreenViewAvailable,
+//?}
 //? if <=1.16.5 {
                 boundRegistryId
 //?} else {
@@ -124,6 +136,10 @@ public final class KonfigModels {
                 labelTranslationKey,
                 target,
                 imageOptions,
+//? if >=1.21.11 {
+                null,
+                null,
+//?}
 //? if <=1.16.5 {
                 null
 //?} else {

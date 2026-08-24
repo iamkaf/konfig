@@ -19,6 +19,10 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+//? if >=1.21.11 {
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+//?}
 
 @ApiStatus.Internal
 public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
@@ -33,6 +37,10 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     private final boolean sync;
     private final boolean clientOnly;
     private final boolean serverOnly;
+//? if >=1.21.11 {
+    private final Supplier<T> remoteScreenValue;
+    private final BooleanSupplier remoteScreenViewAvailable;
+//?}
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
@@ -73,6 +81,10 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             boolean inlineLabelTranslationKey,
             String inlineTarget,
             ImageOptions imageOptions,
+//? if >=1.21.11 {
+            Supplier<T> remoteScreenValue,
+            BooleanSupplier remoteScreenViewAvailable,
+//?}
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -90,6 +102,10 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         this.sync = sync;
         this.clientOnly = clientOnly;
         this.serverOnly = serverOnly;
+//? if >=1.21.11 {
+        this.remoteScreenValue = remoteScreenValue;
+        this.remoteScreenViewAvailable = remoteScreenViewAvailable == null ? () -> false : remoteScreenViewAvailable;
+//?}
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
@@ -126,6 +142,10 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             Number rangeMin,
             Number rangeMax,
             List<DropdownOptionMetadata> dropdownOptions,
+//? if >=1.21.11 {
+            Supplier<T> remoteScreenValue,
+            BooleanSupplier remoteScreenViewAvailable,
+//?}
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -153,6 +173,10 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
                 false,
                 null,
                 null,
+//? if >=1.21.11 {
+                remoteScreenValue,
+                remoteScreenViewAvailable,
+//?}
 //? if <=1.16.5 {
                 boundRegistryId
 //?} else {
@@ -178,17 +202,17 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     }
 
     @Override
+    public T local() {
+        return this.localValue;
+    }
+
+    @Override
     public void set(T value) {
         setLocal(value);
     }
 
     void setLocal(T value) {
-        T previousLocal = this.localValue;
-        T checked = validateOrThrow(value);
-        this.localValue = checked;
-        if (this.syncedValue != null && Objects.equals(this.syncedValue, previousLocal)) {
-            this.syncedValue = checked;
-        }
+        this.localValue = validateOrThrow(value);
     }
 
     void setSynced(T value) {
@@ -204,20 +228,71 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             if (element == null) {
                 return this.defaultValue;
             }
-            T decoded = this.decoder.apply(element);
-            return validateOrFallback(decoded);
+            return decodeStrict(element);
         } catch (Exception ignored) {
             return this.defaultValue;
         }
+    }
+
+    public T decodeStrict(JsonElement element) {
+        if (element == null) {
+            throw new IllegalArgumentException("Missing value for '" + this.path + "'.");
+        }
+        return validateOrThrow(this.decoder.apply(element));
+    }
+
+    @Override
+    public T normalizeAndValidate(T value) {
+        return validateOrThrow(value);
+    }
+
+    @Override
+    public T copyValue(T value) {
+        return decodeStrict(encodeValue(value));
     }
 
     JsonElement encodeCurrent() {
         return this.encoder.apply(this.localValue);
     }
 
+//? if >=1.21.11
+    @Override
+    public JsonElement encodeValue(T value) {
+        return this.encoder.apply(validateOrThrow(value));
+    }
+
+    T localValue() {
+        return local();
+    }
+
+    public String validationMessage() {
+        return this.validationMessage;
+    }
+
+    @Override
     public boolean sync() {
         return this.sync;
     }
+
+    @Override
+    public boolean synchronizedOverlayActive() {
+        return this.syncedValue != null;
+    }
+
+//? if >=1.21.11 {
+    @Override
+    public boolean remoteScreenViewAvailable() {
+        return this.remoteScreenValue != null && this.remoteScreenViewAvailable.getAsBoolean();
+    }
+
+    @Override
+    public T remoteScreenValue() {
+        if (!remoteScreenViewAvailable()) {
+            return get();
+        }
+        return validateOrFallback(this.remoteScreenValue.get());
+    }
+//?}
 
     public boolean clientOnly() {
         return this.clientOnly;

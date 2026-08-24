@@ -23,6 +23,10 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
+//? if >=1.21.11 {
+import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
+//?}
 
 @ApiStatus.Internal
 class ValueBuilderImpl<T> implements ValueBuilder<T> {
@@ -40,6 +44,10 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private boolean sync;
     private boolean clientOnly;
     private boolean serverOnly;
+//? if >=1.21.11 {
+    private Supplier<T> remoteScreenValue;
+    private BooleanSupplier remoteScreenViewAvailable = () -> false;
+//?}
     private Predicate<T> validator = value -> true;
     private String validationMessage = "Invalid value";
     private UnaryOperator<T> canonicalizer = UnaryOperator.identity();
@@ -118,6 +126,15 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
         return this;
     }
 
+//? if >=1.21.11 {
+    @Override
+    public ValueBuilder<T> remoteScreenView(Supplier<T> value, BooleanSupplier available) {
+        this.remoteScreenValue = value;
+        this.remoteScreenViewAvailable = available == null ? () -> false : available;
+        return this;
+    }
+//?}
+
     @Override
     public ValueBuilder<T> validate(Predicate<T> validator, String errorMessage) {
         this.validator = validator == null ? value -> true : validator;
@@ -171,6 +188,10 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
                 this.rangeMin,
                 this.rangeMax,
                 this.dropdownOptions,
+//? if >=1.21.11 {
+                this.remoteScreenValue,
+                this.remoteScreenViewAvailable,
+//?}
 //? if <=1.16.5 {
                 this.boundRegistryId
 //?} else {

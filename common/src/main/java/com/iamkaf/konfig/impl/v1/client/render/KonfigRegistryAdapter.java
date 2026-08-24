@@ -47,6 +47,7 @@ import java.util.Locale;
 @ApiStatus.Internal
 public final class KonfigRegistryAdapter {
     public static final int SUGGESTION_LIMIT = 7;
+    private static final int DEFAULT_ICON_SIZE = 16;
 
     private KonfigRegistryAdapter() {
     }
@@ -182,20 +183,51 @@ public final class KonfigRegistryAdapter {
         return iconStack(item);
     }
 
+    public static boolean hasRegistryIcon(ResourceKey<? extends Registry<?>> registryKey, String value) {
+        return !registryIconStack(registryKey, value).isEmpty();
+    }
+
 //? if >=26.1 {
     public static void renderRegistryIcon(GuiGraphicsExtractor guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
+        renderRegistryIcon(guiGraphics, registryKey, value, x, y, DEFAULT_ICON_SIZE);
+    }
+
+    public static void renderRegistryIcon(GuiGraphicsExtractor guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
         ItemStack stack = registryIconStack(registryKey, value);
         if (!stack.isEmpty()) {
-            guiGraphics.item(stack, x, y);
+            float scale = size / (float) DEFAULT_ICON_SIZE;
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(x, y);
+            guiGraphics.pose().scale(scale, scale);
+            guiGraphics.item(stack, 0, 0);
+            guiGraphics.pose().popMatrix();
         }
     }
 //?} elif >=1.20 {
     public static void renderRegistryIcon(GuiGraphics guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
+        renderRegistryIcon(guiGraphics, registryKey, value, x, y, DEFAULT_ICON_SIZE);
+    }
+
+//? if >=1.21.11 {
+    public static void renderRegistryIcon(GuiGraphics guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
+        ItemStack stack = registryIconStack(registryKey, value);
+        if (!stack.isEmpty()) {
+            float scale = size / (float) DEFAULT_ICON_SIZE;
+            guiGraphics.pose().pushMatrix();
+            guiGraphics.pose().translate(x, y);
+            guiGraphics.pose().scale(scale, scale);
+            guiGraphics.renderItem(stack, 0, 0);
+            guiGraphics.pose().popMatrix();
+        }
+    }
+//?} else {
+    private static void renderRegistryIcon(GuiGraphics guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
         ItemStack stack = registryIconStack(registryKey, value);
         if (!stack.isEmpty()) {
             guiGraphics.renderItem(stack, x, y);
         }
     }
+//?}
 //?} else {
     public static void renderRegistryIcon(PoseStack guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
         ItemStack stack = registryIconStack(registryKey, value);

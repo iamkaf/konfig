@@ -30,7 +30,12 @@ final class KonfigRowFactory {
         if (entry.value.kind() == EntryKind.URL) {
             return new UrlRow(this.host, entry);
         }
-        if (!entry.editable) {
+//? if >=1.21.11 {
+        if (entry.value.kind() == EntryKind.FIELDSET) {
+            return new FieldsetRow(this.host, entry);
+        }
+//?}
+        if (entry.value.kind() == EntryKind.CUSTOM) {
             return new UnsupportedRow(this.host, entry);
         }
         if (entry.value.kind() == EntryKind.BOOLEAN) {
