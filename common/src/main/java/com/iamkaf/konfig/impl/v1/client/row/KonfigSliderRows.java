@@ -11,7 +11,6 @@ import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
-import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.components.AbstractWidget;
 //? if >=1.21.9 {
 import net.minecraft.client.input.KeyEvent;
@@ -49,6 +48,17 @@ final class IntegerSliderRow extends KonfigConfigRow {
         this.field().setDraft(Integer.valueOf(intFromProgress(progress, this.min, this.max)));
     }
 
+    private void stepValue(int direction) {
+        int previousValue = this.currentValue();
+        int nextValue = stepInt(previousValue, direction, this.min, this.max);
+        if (nextValue == previousValue) {
+            return;
+        }
+        this.field().setDraft(Integer.valueOf(nextValue));
+        this.slider.syncToProgress(progressFor(nextValue, this.min, this.max));
+        this.commitOrRevert(Integer.valueOf(previousValue));
+    }
+
     private final class SliderWidget extends BaseSliderWidget {
         private SliderWidget() {
             super(progressFor(IntegerSliderRow.this.currentValue(), IntegerSliderRow.this.min, IntegerSliderRow.this.max));
@@ -65,6 +75,12 @@ final class IntegerSliderRow extends KonfigConfigRow {
             IntegerSliderRow.this.updateDraftFromSlider(this.value);
         }
 
+        @Override
+        protected boolean resetToDefault() {
+            IntegerSliderRow.this.resetToDefault();
+            return true;
+        }
+
 //? if >=1.21.9 {
         @Override
         public void onRelease(MouseButtonEvent event) {
@@ -75,12 +91,11 @@ final class IntegerSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
-            int previousValue = IntegerSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(event);
-            if (handled && previousValue != IntegerSliderRow.this.currentValue()) {
-                IntegerSliderRow.this.commitOrRevert(Integer.valueOf(previousValue));
+            if (this.canChangeValue && (event.isLeft() || event.isRight())) {
+                IntegerSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
+                return true;
             }
-            return handled;
+            return super.keyPressed(event);
         }
 //?} else {
         @Override
@@ -134,6 +149,17 @@ final class LongSliderRow extends KonfigConfigRow {
         this.field().setDraft(Long.valueOf(longFromProgress(progress, this.min, this.max)));
     }
 
+    private void stepValue(int direction) {
+        long previousValue = this.currentValue();
+        long nextValue = stepLong(previousValue, direction, this.min, this.max);
+        if (nextValue == previousValue) {
+            return;
+        }
+        this.field().setDraft(Long.valueOf(nextValue));
+        this.slider.syncToProgress(progressFor(nextValue, this.min, this.max));
+        this.commitOrRevert(Long.valueOf(previousValue));
+    }
+
     private final class SliderWidget extends BaseSliderWidget {
         private SliderWidget() {
             super(progressFor(LongSliderRow.this.currentValue(), LongSliderRow.this.min, LongSliderRow.this.max));
@@ -150,6 +176,12 @@ final class LongSliderRow extends KonfigConfigRow {
             LongSliderRow.this.updateDraftFromSlider(this.value);
         }
 
+        @Override
+        protected boolean resetToDefault() {
+            LongSliderRow.this.resetToDefault();
+            return true;
+        }
+
 //? if >=1.21.9 {
         @Override
         public void onRelease(MouseButtonEvent event) {
@@ -160,12 +192,11 @@ final class LongSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
-            long previousValue = LongSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(event);
-            if (handled && previousValue != LongSliderRow.this.currentValue()) {
-                LongSliderRow.this.commitOrRevert(Long.valueOf(previousValue));
+            if (this.canChangeValue && (event.isLeft() || event.isRight())) {
+                LongSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
+                return true;
             }
-            return handled;
+            return super.keyPressed(event);
         }
 //?} else {
         @Override
@@ -233,6 +264,12 @@ final class DoubleSliderRow extends KonfigConfigRow {
         @Override
         protected void applyValue() {
             DoubleSliderRow.this.updateDraftFromSlider(this.value);
+        }
+
+        @Override
+        protected boolean resetToDefault() {
+            DoubleSliderRow.this.resetToDefault();
+            return true;
         }
 
 //? if >=1.21.9 {

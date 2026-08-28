@@ -183,6 +183,26 @@ public final class KonfigFieldValues {
         return min + Math.round((max - min) * progress);
     }
 
+    public static int stepInt(int current, int direction, int min, int max) {
+        if (direction < 0) {
+            return current <= min ? min : current - 1;
+        }
+        if (direction > 0) {
+            return current >= max ? max : current + 1;
+        }
+        return current;
+    }
+
+    public static long stepLong(long current, int direction, long min, long max) {
+        if (direction < 0) {
+            return current <= min ? min : current - 1L;
+        }
+        if (direction > 0) {
+            return current >= max ? max : current + 1L;
+        }
+        return current;
+    }
+
     public static double doubleFromProgress(double progress, double min, double max) {
         if (max <= min) {
             return min;

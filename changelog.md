@@ -16,6 +16,7 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 ### Fixed
 
+- Numeric sliders can now be adjusted one value at a time with the arrow keys and reset to their configured default with right-click.
 - Config saves preserve unknown TOML values and comments, preserve malformed files before restoring defaults, and refuse to overwrite files written with a newer schema.
 - Synchronized server values remain authoritative until the server updates them or the client disconnects.
 
