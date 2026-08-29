@@ -167,6 +167,13 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
         }
     }
 
+    protected final void resetToDefault() {
+        Object previousValue = this.entry.value.get();
+        this.field().setDraft(this.entry.value.defaultValue());
+        this.commitOrRevert(previousValue);
+        this.syncFromDraft();
+    }
+
     protected void syncFromDraft() {
     }
 }
