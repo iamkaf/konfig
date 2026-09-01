@@ -870,9 +870,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
                         @Override
                         public boolean applySuggestion(String suggestion) {
-                            TextControl.this.suppressResponder = true;
-                            TextControl.this.input.setValue(suggestion);
-                            TextControl.this.suppressResponder = false;
+                            TextControl.this.setInputValue(suggestion);
                             return TextControl.this.apply(suggestion);
                         }
 
@@ -1011,6 +1009,26 @@ final class KonfigFieldsetListScreen extends Screen {
                 return String.valueOf(value);
             }
 
+            private void setInputValue(String value) {
+                boolean previouslySuppressed = this.suppressResponder;
+                this.suppressResponder = true;
+                try {
+                    this.input.setValue(value);
+                } finally {
+                    this.suppressResponder = previouslySuppressed;
+                }
+            }
+
+            private void moveInputCursorToStart() {
+                boolean previouslySuppressed = this.suppressResponder;
+                this.suppressResponder = true;
+                try {
+                    this.input.moveCursorToStart(false);
+                } finally {
+                    this.suppressResponder = previouslySuppressed;
+                }
+            }
+
             @Override
             void layoutControls(int x, int y, int width) {
                 this.input.setX(x);
@@ -1025,12 +1043,10 @@ final class KonfigFieldsetListScreen extends Screen {
             void sync() {
                 String value = this.textValue();
                 if (!this.input.getValue().equals(value)) {
-                    this.suppressResponder = true;
-                    this.input.setValue(value);
-                    this.suppressResponder = false;
+                    this.setInputValue(value);
                 }
                 if (!this.input.isFocused()) {
-                    this.input.moveCursorToStart(false);
+                    this.moveInputCursorToStart();
                 }
                 this.refreshSuggestions();
             }
@@ -1046,7 +1062,7 @@ final class KonfigFieldsetListScreen extends Screen {
             @Override
             void renderDecoration(KonfigRenderContext context, int controlX, int y, int controlWidth) {
                 if (!this.input.isFocused()) {
-                    this.input.moveCursorToStart(false);
+                    this.moveInputCursorToStart();
                 }
                 if (this.suggestions == null) {
                     return;
