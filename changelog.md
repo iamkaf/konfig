@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.7.1
+
+### Fixed
+
+- Config screens with clickable URL decorations no longer crash when opened.
+- Fieldset list editors no longer crash when they contain text-entry controls.
+
 ## 0.7.0
 
 ### Added
