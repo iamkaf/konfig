@@ -218,7 +218,15 @@ final class UrlRow extends KonfigConfigRow {
 
     @Override
     protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
-        this.renderStandardRow(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom, 0xFF80C8FF);
+        this.host.updateHoveredEntry(this.entry, hovered);
+        if (hovered) {
+            context.fill(layout.x, layout.y, layout.x + layout.width, layout.y + layout.height, 0x22000000);
+        }
+
+        context.showTooltip(this.host.screen(), this.host.font(), this.entry.tooltip, mouseX, mouseY, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
+        layoutControl(this.button, layout.controlX, layout.controlY, layout.controlWidth);
+        context.drawText(this.host.font(), this.entry.displayLabel(), layout.x + 4, layout.y + 12, 0xFF80C8FF);
+        context.renderWidget(this.button, mouseX, mouseY, partialTick);
     }
 }
 //?}
