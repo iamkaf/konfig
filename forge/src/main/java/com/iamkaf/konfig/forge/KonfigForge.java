@@ -223,7 +223,10 @@ public final class KonfigForge {
     }
 
     private static boolean canEdit(net.minecraft.server.level.ServerPlayer player) {
-        return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+        return ConfigSyncAuthority.canEdit(
+                player.level().getServer().isSingleplayerOwner(player.nameAndId()),
+                player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
+        );
     }
 //?}
 

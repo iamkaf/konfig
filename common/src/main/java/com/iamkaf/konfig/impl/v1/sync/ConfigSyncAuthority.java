@@ -102,6 +102,10 @@ public final class ConfigSyncAuthority {
         );
     }
 
+    public static boolean canEdit(boolean singleplayerOwner, boolean hasGamemasterPermission) {
+        return singleplayerOwner || hasGamemasterPermission;
+    }
+
     public static boolean isValidConfigId(String configId) {
         if (configId == null || configId.length() > MAX_CONFIG_ID_LENGTH) {
             return false;

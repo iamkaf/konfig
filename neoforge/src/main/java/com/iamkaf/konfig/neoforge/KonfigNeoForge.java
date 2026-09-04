@@ -7,6 +7,7 @@ import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditCapabilities;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditSnapshot;
+import com.iamkaf.konfig.impl.v1.sync.ConfigSyncAuthority;
 //?}
 import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
 //? if >=1.21.11 {
@@ -116,7 +117,10 @@ public final class KonfigNeoForge {
 
 //? if >=1.21.11 {
     private static boolean canEdit(net.minecraft.server.level.ServerPlayer player) {
-        return player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+        return ConfigSyncAuthority.canEdit(
+                player.level().getServer().isSingleplayerOwner(player.nameAndId()),
+                player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
+        );
     }
 
     private static boolean supportsRemoteResponses(net.minecraft.server.level.ServerPlayer player) {
