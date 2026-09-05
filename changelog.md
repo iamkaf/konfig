@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.7.2
+
+### Fixed
+
+- Players hosting singleplayer worlds over LAN or e4mc can now edit synchronized configs without enabling cheats.
+
 ## 0.7.1
 
 ### Fixed
