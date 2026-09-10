@@ -11,7 +11,7 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 ### Changed
 
-- Ported to Minecraft 26.3-pre-2.
+- Ported to Minecraft 26.3.
 
 ## 0.7.2
 

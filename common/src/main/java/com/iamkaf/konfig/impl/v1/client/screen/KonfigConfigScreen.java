@@ -446,7 +446,11 @@ public final class KonfigConfigScreen extends Screen {
         }
 
         try {
-            Util.getPlatform().openUri(URI.create(target));
+            //? if >=26.3 {
+            com.mojang.blaze3d.Blaze3D.openUri(URI.create(target));
+            //?} else {
+            /*Util.getPlatform().openUri(URI.create(target));*/
+            //?}
         } catch (Exception exception) {
             Constants.LOG.warn("Failed to open inline URL {}", target, exception);
             KonfigToastSupport.openFailed(target);
