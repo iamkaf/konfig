@@ -321,6 +321,10 @@ async function selectKonfig(ctx: TeaKitTestContext): Promise<ClientScreen> {
 }
 
 async function activateFabricConfigure(screen: ClientScreen, version: string) {
+  if (screen.widgets().all().some((widget) => widget.label === "Configure...")) {
+    await screen.widgets().activate({ label: "Configure..." });
+    return;
+  }
   if (atLeast(version, "1.17") && atMost(version, "1.19.2")) {
     await screen.widgets().activate({ label: "Configure...", nth: 0 });
     return;
