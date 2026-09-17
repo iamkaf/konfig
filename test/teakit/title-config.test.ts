@@ -278,7 +278,7 @@ async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, ver
   }
 
   screen = await ctx.client.waitForScreen("Mods", { timeoutMs: 5_000 });
-  if (loader === "neoforge") {
+  if (loader === "neoforge" && !atLeast(version, "26.3")) {
     await screen.widgets().activate({ label: "Z-A", nth: 0 });
     await ctx.runtime.wait(300);
     screen = await ctx.client.screen();
@@ -306,7 +306,7 @@ async function selectKonfig(ctx: TeaKitTestContext): Promise<ClientScreen> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < 5_000) {
     const screen = await ctx.client.screen();
-    const entries = screen.lists("mod_list").entries();
+    const entries = screen.lists().entries();
     const konfig = entries.find((entry) => entry.label.includes("Konfig"));
     if (konfig?.selected) return screen;
     if (!konfig) throw new Error("Missing Konfig in the mod list");

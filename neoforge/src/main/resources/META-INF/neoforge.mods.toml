@@ -9,7 +9,7 @@ version="${version}"
 displayName="${mod_name}"
 authors="${mod_author}"
 description='''${description}'''
-logoFile="icon.png"
+${neoforge_icon_key}="icon.png"
 
 [[dependencies.${mod_id}]]
 modId="neoforge"
