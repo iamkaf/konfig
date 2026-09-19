@@ -72,6 +72,9 @@ public final class KonfigForge {
             .networkProtocolVersion(PROTOCOL)
             .clientAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
             .serverAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
+//? if >=1.21.11 {
+            .optional()
+//?}
             .simpleChannel();
 //? if >=1.21.11 {
     private static final SimpleChannel REMOTE_CHANNEL = ChannelBuilder
@@ -162,9 +165,14 @@ public final class KonfigForge {
 //?}
 
 //? if >=1.20.2 {
-        KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
-                CHANNEL.send(SyncMessage.of(configId, jsonPayload), PacketDistributor.PLAYER.with(player))
-        );
+        KonfigRuntime.setSyncSender((player, configId, jsonPayload) -> {
+//? if >=1.21.11 {
+            if (!CHANNEL.isRemotePresent(player.connection.getConnection())) {
+                return;
+            }
+//?}
+            CHANNEL.send(SyncMessage.of(configId, jsonPayload), PacketDistributor.PLAYER.with(player));
+        });
 //?} elif >=1.17 {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
                 CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), SyncMessage.of(configId, jsonPayload))
