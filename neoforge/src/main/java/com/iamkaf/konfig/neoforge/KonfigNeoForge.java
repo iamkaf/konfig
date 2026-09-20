@@ -41,6 +41,9 @@ public final class KonfigNeoForge {
 
     private void onRegisterPayloadHandlers(RegisterPayloadHandlersEvent event) {
         event.registrar(KonfigRuntime.MOD_ID)
+//? if >=1.21.11 {
+                .optional()
+//?}
                 .playToClient(
                         KonfigNetwork.snapshotPayloadType(),
                         KonfigNetwork.snapshotPayloadCodec(),
@@ -86,9 +89,14 @@ public final class KonfigNeoForge {
                 );
 //?}
 
-        KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
-                player.connection.send(KonfigNetwork.snapshotPayload(configId, jsonPayload))
-        );
+        KonfigRuntime.setSyncSender((player, configId, jsonPayload) -> {
+//? if >=1.21.11 {
+            if (!player.connection.hasChannel(KonfigNetwork.snapshotPayloadType())) {
+                return;
+            }
+//?}
+            player.connection.send(KonfigNetwork.snapshotPayload(configId, jsonPayload));
+        });
 //? if >=1.21.11 {
         KonfigSync.setRemoteSender(new KonfigSync.RemoteSender() {
             @Override
