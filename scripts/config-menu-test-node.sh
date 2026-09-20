@@ -23,7 +23,7 @@ test_file="test/teakit/title-config.test.ts"
 workspace_root="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
 catalog_root="${KONFIG_VERSION_CATALOG_ROOT:-}"
 if [ -z "$catalog_root" ] && [ -n "$workspace_root" ]; then
-  catalog_root="$workspace_root/tooling/version-catalog"
+  catalog_root="$workspace_root/tooling/multiloader-conventions/catalogs"
 fi
 catalog="$catalog_root/mc-$version/gradle/libs.versions.toml"
 if [ ! -f "$catalog" ] || ! rg -q '^teakit = ' "$catalog"; then
