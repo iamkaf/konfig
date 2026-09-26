@@ -29,7 +29,10 @@ import net.minecraft.client.Minecraft;
 //?}
 import net.minecraft.core.Registry;
 //? if >=1.21.11 {
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.resources.Identifier;
+import net.minecraft.tags.TagKey;
 //?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
@@ -39,14 +42,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 
 @ApiStatus.Internal
 public final class KonfigRegistryAdapter {
-    public static final int SUGGESTION_LIMIT = 7;
     private static final int DEFAULT_ICON_SIZE = 16;
 
     private KonfigRegistryAdapter() {
@@ -141,6 +140,12 @@ public final class KonfigRegistryAdapter {
         }
 
 //? if >=1.21.11 {
+        if (value != null && value.startsWith("#")) {
+            return tagIconStack(registryKey, value);
+        }
+//?}
+
+//? if >=1.21.11 {
         Identifier identifier = parseIdentifier(value);
 //?} else {
         ResourceLocation identifier = parseIdentifier(value);
@@ -182,6 +187,38 @@ public final class KonfigRegistryAdapter {
         }
         return iconStack(item);
     }
+
+//? if >=1.21.11 {
+    private static HolderLookup<Item> itemLookup() {
+        var level = Minecraft.getInstance().level;
+        return level == null ? BuiltInRegistries.ITEM : level.holderLookup(Registries.ITEM);
+    }
+
+    private static ItemStack tagIconStack(ResourceKey<? extends Registry<?>> registryKey, String value) {
+        if (registryKey != Registries.ITEM) {
+            return ItemStack.EMPTY;
+        }
+        Identifier id = parseIdentifier(value.substring(1));
+        if (id == null) {
+            return ItemStack.EMPTY;
+        }
+        var holders = itemLookup().get(TagKey.create(Registries.ITEM, id));
+        return holders.filter(tag -> tag.size() > 0)
+                .map(tag -> iconStack(tag.get(0).value()))
+                .orElse(ItemStack.EMPTY);
+    }
+
+    public static List<String> tagSuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+        if (registryKey != Registries.ITEM) {
+            return List.of();
+        }
+        return itemLookup().listTags()
+                .filter(tag -> tag.size() > 0)
+                .map(tag -> "#" + tag.key().location())
+                .sorted()
+                .toList();
+    }
+//?}
 
     public static boolean hasRegistryIcon(ResourceKey<? extends Registry<?>> registryKey, String value) {
         return !registryIconStack(registryKey, value).isEmpty();
@@ -268,65 +305,5 @@ public final class KonfigRegistryAdapter {
 //?}
     }
 
-    public static List<String> filterRegistrySuggestions(List<String> allSuggestions, String query) {
-        if (allSuggestions.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-        List<String> exact = new ArrayList<String>();
-        List<String> prefix = new ArrayList<String>();
-        List<String> contains = new ArrayList<String>();
-
-        for (String candidate : allSuggestions) {
-            String lowerCandidate = candidate.toLowerCase(Locale.ROOT);
-            String pathCandidate = registryPath(lowerCandidate);
-            if (normalized.isEmpty()) {
-                prefix.add(candidate);
-                continue;
-            }
-            if (lowerCandidate.equals(normalized) || pathCandidate.equals(normalized)) {
-                exact.add(candidate);
-            } else if (lowerCandidate.startsWith(normalized) || pathCandidate.startsWith(normalized)) {
-                prefix.add(candidate);
-            } else if (lowerCandidate.contains(normalized) || pathCandidate.contains(normalized)) {
-                contains.add(candidate);
-            }
-        }
-
-        List<String> result = new ArrayList<String>(SUGGESTION_LIMIT);
-        appendSuggestions(result, exact);
-        appendSuggestions(result, prefix);
-        appendSuggestions(result, contains);
-        return result;
-    }
-
-    private static void appendSuggestions(List<String> target, List<String> source) {
-        for (String value : source) {
-            if (target.size() >= SUGGESTION_LIMIT) {
-                return;
-            }
-            target.add(value);
-        }
-    }
-
-    private static String registryPath(String registryId) {
-        int separator = registryId.indexOf(':');
-        return separator >= 0 ? registryId.substring(separator + 1) : registryId;
-    }
-
-    public static String suggestionSuffix(String currentValue, String suggestion) {
-        if (KonfigScreenSupport.isBlank(suggestion)) {
-            return "";
-        }
-        String current = currentValue == null ? "" : currentValue;
-        if (current.isEmpty()) {
-            return suggestion;
-        }
-        if (suggestion.regionMatches(true, 0, current, 0, current.length())) {
-            return suggestion.substring(current.length());
-        }
-        return "";
-    }
 }
 //?}

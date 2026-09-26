@@ -4,6 +4,7 @@ package com.iamkaf.konfig.impl.v1.client.fieldset;
 import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.hasRegistryIcon;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.tagSuggestions;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
 
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetCatalog;
@@ -560,14 +561,21 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     }
 
     private void revertActiveDraft() {
-        if (this.activeTextField != null) {
+        if (this.activeTextField != null && this.activeTextField.hasLocalDraftError()) {
             this.activeTextField.revert();
+        } else if (this.session.dirty() && this.pendingSave == null) {
+            this.session.restorePersisted();
+            this.state.refresh();
+            this.activeTextField = null;
+            this.message = Component.empty();
+            this.requestRebuild();
         }
     }
 
     private void refreshRevertAction() {
         if (this.revert != null) {
-            this.revert.visible = this.activeTextField != null && this.activeTextField.hasLocalDraftError();
+            this.revert.visible = (this.activeTextField != null && this.activeTextField.hasLocalDraftError())
+                    || (this.session.dirty() && this.pendingSave == null);
         }
     }
 
@@ -1187,6 +1195,14 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             FieldsetValue previous = KonfigFieldsetCatalogScreen.this.session.original();
             KonfigFieldsetEditResult result = this.field.value().setDraft(value);
             if (result.accepted()) {
+                // Keep related fields editable until their combined value passes validation.
+                List<FieldsetValidationIssue> issues = KonfigFieldsetCatalogScreen.this.session.draft().validate().issues();
+                if (!issues.isEmpty()) {
+                    this.localError = "";
+                    KonfigFieldsetCatalogScreen.this.message = Component.literal(issues.get(0).message());
+                    KonfigFieldsetCatalogScreen.this.refreshRevertAction();
+                    return true;
+                }
                 result = KonfigFieldsetCatalogScreen.this.persistDraft(previous, true);
             }
             this.localError = result.submitted() ? "" : result.message().getString();
@@ -1374,7 +1390,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             });
             this.controls.add(this.input);
 
-            if (field.field().kind() == FieldsetFieldKind.REGISTRY_STRING && field.field().registryKey().isPresent()) {
+            if (field.field().registryKey().isPresent()) {
                 this.suggestions = new KonfigRegistrySuggestionController(new KonfigRegistrySuggestionController.Owner() {
                     @Override
                     public boolean hasRegistryBinding() {
@@ -1388,6 +1404,9 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
                     @Override
                     public List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+                        if (TextFieldRow.this.input.getValue().startsWith("#")) {
+                            return tagSuggestions(registryKey);
+                        }
                         List<String> matches = KonfigFieldsetCatalogScreen.this.registrySuggestions.find(
                                 registryKey,
                                 TextFieldRow.this.input.getValue(),
