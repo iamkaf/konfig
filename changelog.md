@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.9.0
+
+### Added
+
+- Optional registry-backed Fieldset fields now show suggestions and previews. Type `#` in an item field to suggest tags and preview an item from the tag.
+
+### Fixed
+
+- Incomplete Fieldset entries can be edited across related fields without getting stuck on the first field.
+
 ## 0.8.1
 
 ### Fixed
