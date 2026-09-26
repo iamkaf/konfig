@@ -2,7 +2,7 @@ name: Comment TeaKit results
 
 on:
   workflow_run:
-    workflows: [Build]
+    workflows: [Build All Versions]
     types: [completed]
 
 permissions:
