@@ -15,6 +15,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 
 import java.util.List;
+import java.util.Objects;
 
 @ApiStatus.Internal
 public final class KonfigRegistrySuggestionController {
@@ -27,6 +28,8 @@ public final class KonfigRegistrySuggestionController {
     private int dropdownY;
     private int dropdownWidth;
     private int dropdownHeight;
+    private String lastInputValue;
+    private ResourceKey<? extends Registry<?>> lastRegistryKey;
 
     public KonfigRegistrySuggestionController(Owner owner) {
         this.owner = owner;
@@ -55,7 +58,16 @@ public final class KonfigRegistrySuggestionController {
             return;
         }
 
-        this.suggestions.refresh(this.owner.registrySuggestions(this.owner.registryKey()), this.owner.inputValue());
+        ResourceKey<? extends Registry<?>> registryKey = this.owner.registryKey();
+        String inputValue = this.owner.inputValue();
+        // Tag queries enumerate the registry; rendering the focused field also calls refresh.
+        if (Objects.equals(this.lastInputValue, inputValue)
+                && Objects.equals(this.lastRegistryKey, registryKey)) {
+            return;
+        }
+        this.lastInputValue = inputValue;
+        this.lastRegistryKey = registryKey;
+        this.suggestions.refresh(this.owner.registrySuggestions(registryKey), inputValue);
         this.updateInlineSuggestion();
     }
 
@@ -65,11 +77,17 @@ public final class KonfigRegistrySuggestionController {
             return;
         }
 
-        this.suggestions.activate(this.owner.registrySuggestions(this.owner.registryKey()), this.owner.inputValue());
+        ResourceKey<? extends Registry<?>> registryKey = this.owner.registryKey();
+        String inputValue = this.owner.inputValue();
+        this.lastInputValue = inputValue;
+        this.lastRegistryKey = registryKey;
+        this.suggestions.activate(this.owner.registrySuggestions(registryKey), inputValue);
         this.updateInlineSuggestion();
     }
 
     public void close() {
+        this.lastInputValue = null;
+        this.lastRegistryKey = null;
         this.suggestions.close();
         this.updateInlineSuggestion();
     }

@@ -4,6 +4,7 @@ package com.iamkaf.konfig.impl.v1.client.fieldset;
 import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.hasRegistryIcon;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.tagSuggestions;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
 
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
@@ -836,7 +837,7 @@ final class KonfigFieldsetListScreen extends Screen {
                 this.input.setResponder(this::changed);
                 this.controls.add(this.input);
 
-                if (field.field().kind() == FieldsetFieldKind.REGISTRY_STRING && field.field().registryKey().isPresent()) {
+                if (field.field().registryKey().isPresent()) {
                     this.suggestions = new KonfigRegistrySuggestionController(new KonfigRegistrySuggestionController.Owner() {
                         @Override
                         public boolean hasRegistryBinding() {
@@ -850,6 +851,9 @@ final class KonfigFieldsetListScreen extends Screen {
 
                         @Override
                         public List<String> registrySuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+                            if (TextControl.this.input.getValue().startsWith("#")) {
+                                return tagSuggestions(registryKey);
+                            }
                             List<String> matches = KonfigFieldsetListScreen.this.registrySuggestions.find(
                                     registryKey,
                                     TextControl.this.input.getValue(),
@@ -871,7 +875,7 @@ final class KonfigFieldsetListScreen extends Screen {
                         @Override
                         public boolean applySuggestion(String suggestion) {
                             TextControl.this.setInputValue(suggestion);
-                            return TextControl.this.apply(suggestion);
+                            return TextControl.this.apply(TextControl.this.parse(suggestion));
                         }
 
                         @Override

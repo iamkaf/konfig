@@ -107,6 +107,24 @@ public final class FieldsetField<T> {
         );
     }
 
+    /** An optional string with registry suggestions and icon preview. */
+    public static FieldsetField<Optional<String>> optionalRegistryString(
+            String key,
+            ResourceKey<? extends Registry<?>> registryKey
+    ) {
+        return new FieldsetField<Optional<String>>(
+                key,
+                FieldsetFieldKind.OPTIONAL_STRING,
+                Optional.empty(),
+                Optional.class,
+                null,
+                null,
+                Collections.emptyList(),
+                Objects.requireNonNull(registryKey, "registryKey"),
+                Collections.emptyList()
+        );
+    }
+
     public static FieldsetField<String> dropdown(String key, String defaultValue, List<String> options) {
         Objects.requireNonNull(defaultValue, "defaultValue");
         Objects.requireNonNull(options, "options");

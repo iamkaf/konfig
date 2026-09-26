@@ -5,15 +5,15 @@ package com.iamkaf.konfig.impl.v1.client.control;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.filterRegistrySuggestions;
-import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.suggestionSuffix;
 import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.sameValue;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 @ApiStatus.Internal
 final class KonfigSuggestionState {
+    private static final int SUGGESTION_LIMIT = 7;
     private final List<String> visibleSuggestions = new ArrayList<String>();
     private boolean suggestionsDismissed;
     private String dismissedValue = "";
@@ -121,6 +121,62 @@ final class KonfigSuggestionState {
             return min;
         }
         return Math.min(value, max);
+    }
+
+    static List<String> filterRegistrySuggestions(List<String> candidates, String query) {
+        String normalized = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        boolean tagQuery = normalized.startsWith("#");
+        String search = tagQuery ? normalized.substring(1) : normalized;
+        List<String> exact = new ArrayList<>();
+        List<String> prefix = new ArrayList<>();
+        List<String> contains = new ArrayList<>();
+
+        for (String candidate : candidates) {
+            boolean tagCandidate = candidate.startsWith("#");
+            if (tagQuery != tagCandidate) {
+                continue;
+            }
+            String id = (tagCandidate ? candidate.substring(1) : candidate).toLowerCase(Locale.ROOT);
+            String path = id.substring(id.indexOf(':') + 1);
+            if (search.isEmpty()) {
+                prefix.add(candidate);
+            } else if (id.equals(search) || path.equals(search)) {
+                exact.add(candidate);
+            } else if (id.startsWith(search) || path.startsWith(search)) {
+                prefix.add(candidate);
+            } else if (id.contains(search) || path.contains(search)) {
+                contains.add(candidate);
+            }
+        }
+
+        List<String> result = new ArrayList<>(SUGGESTION_LIMIT);
+        appendSuggestions(result, exact);
+        appendSuggestions(result, prefix);
+        appendSuggestions(result, contains);
+        return result;
+    }
+
+    private static void appendSuggestions(List<String> target, List<String> source) {
+        for (String value : source) {
+            if (target.size() >= SUGGESTION_LIMIT) {
+                return;
+            }
+            target.add(value);
+        }
+    }
+
+    private static String suggestionSuffix(String currentValue, String suggestion) {
+        if (suggestion == null || suggestion.isBlank()) {
+            return "";
+        }
+        String current = currentValue == null ? "" : currentValue;
+        if (current.isEmpty()) {
+            return suggestion;
+        }
+        if (suggestion.regionMatches(true, 0, current, 0, current.length())) {
+            return suggestion.substring(current.length());
+        }
+        return "";
     }
 }
 //?}
