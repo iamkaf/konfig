@@ -3,41 +3,36 @@ package com.iamkaf.konfig.fabric;
 import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditCapabilities;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditSnapshot;
-import com.iamkaf.konfig.impl.v1.sync.ConfigSyncAuthority;
+import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
 import com.iamkaf.konfig.impl.v1.sync.KonfigRemotePayloads;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
-import net.minecraft.server.permissions.Permissions;
-//?}
-//? if <=1.20.4 {
-import io.netty.buffer.Unpooled;
-//?}
 import net.fabricmc.api.ModInitializer;
-//? if >=1.20.5 {
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-//?}
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
-//? if <=1.20.4 {
+import net.minecraft.server.level.ServerPlayer;
+//? if >=1.20.5 {
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+//?} else {
+import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
-//? if <=1.16.5 {
 import net.minecraft.resources.ResourceLocation;
-//?}
+
+import java.util.function.BiConsumer;
 //?}
 
 @ApiStatus.Internal
 public final class KonfigFabric implements ModInitializer {
 //? if <=1.20.4 {
-//? if <=1.16.5 {
-    private static final ResourceLocation SYNC_CHANNEL = new ResourceLocation(KonfigRuntime.MOD_ID, "sync_snapshot");
-//?} else {
-    private static final net.minecraft.resources.ResourceLocation SYNC_CHANNEL = KonfigNetwork.syncSnapshotChannel();
-//?}
+    private static final ResourceLocation SYNC_CHANNEL = KonfigNetwork.syncSnapshotChannel();
+    static final ResourceLocation REMOTE_HELLO = KonfigRuntime.resource(KonfigRemotePayloads.Hello.PATH);
+    static final ResourceLocation REMOTE_CAPABILITIES = KonfigRuntime.resource(KonfigRemotePayloads.Capabilities.PATH);
+    static final ResourceLocation REMOTE_SNAPSHOT = KonfigRuntime.resource(KonfigRemotePayloads.Snapshot.PATH);
+    static final ResourceLocation REMOTE_EDIT = KonfigRuntime.resource(KonfigRemotePayloads.EditRequest.PATH);
+    static final ResourceLocation REMOTE_RESULT = KonfigRuntime.resource(KonfigRemotePayloads.EditResult.PATH);
 //?}
 
     @Override
@@ -49,17 +44,13 @@ public final class KonfigFabric implements ModInitializer {
 
 //? if >=26.1 {
         PayloadTypeRegistry.clientboundPlay().register(KonfigNetwork.snapshotPayloadType(), KonfigNetwork.snapshotPayloadCodec());
-//?} elif >=1.20.5 {
-        PayloadTypeRegistry.playS2C().register(KonfigNetwork.snapshotPayloadType(), KonfigNetwork.snapshotPayloadCodec());
-//?}
-
-//? if >=26.1 {
         PayloadTypeRegistry.serverboundPlay().register(KonfigRemotePayloads.Hello.TYPE, KonfigRemotePayloads.Hello.STREAM_CODEC);
         PayloadTypeRegistry.serverboundPlay().register(KonfigRemotePayloads.EditRequest.TYPE, KonfigRemotePayloads.EditRequest.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(KonfigRemotePayloads.Capabilities.TYPE, KonfigRemotePayloads.Capabilities.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(KonfigRemotePayloads.Snapshot.TYPE, KonfigRemotePayloads.Snapshot.STREAM_CODEC);
         PayloadTypeRegistry.clientboundPlay().register(KonfigRemotePayloads.EditResult.TYPE, KonfigRemotePayloads.EditResult.STREAM_CODEC);
-//?} elif >=1.21.11 {
+//?} elif >=1.20.5 {
+        PayloadTypeRegistry.playS2C().register(KonfigNetwork.snapshotPayloadType(), KonfigNetwork.snapshotPayloadCodec());
         PayloadTypeRegistry.playC2S().register(KonfigRemotePayloads.Hello.TYPE, KonfigRemotePayloads.Hello.STREAM_CODEC);
         PayloadTypeRegistry.playC2S().register(KonfigRemotePayloads.EditRequest.TYPE, KonfigRemotePayloads.EditRequest.STREAM_CODEC);
         PayloadTypeRegistry.playS2C().register(KonfigRemotePayloads.Capabilities.TYPE, KonfigRemotePayloads.Capabilities.STREAM_CODEC);
@@ -67,60 +58,72 @@ public final class KonfigFabric implements ModInitializer {
         PayloadTypeRegistry.playS2C().register(KonfigRemotePayloads.EditResult.TYPE, KonfigRemotePayloads.EditResult.STREAM_CODEC);
 //?}
 
-//? if >=1.21.11 {
-        ServerPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.Hello.TYPE, (payload, context) -> {
-            if (!supportsRemoteResponses(context.player())) {
-                return;
-            }
-            KonfigSync.onClientHello(context.player(), payload.protocolVersion(), canEdit(context.player()));
-        });
+//? if >=1.20.5 {
+        ServerPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.Hello.TYPE, (payload, context) ->
+                onHello(context.player(), payload)
+        );
         ServerPlayNetworking.registerGlobalReceiver(KonfigRemotePayloads.EditRequest.TYPE, (payload, context) ->
-                KonfigSync.onRemoteEdit(
-                        context.player(),
-                        canEdit(context.player()),
-                        KonfigNetwork.editRequest(payload)
-                )
+                onEdit(context.player(), payload)
         );
 
         KonfigSync.setRemoteSender(new KonfigSync.RemoteSender() {
             @Override
-            public void sendCapabilities(net.minecraft.server.level.ServerPlayer player, ConfigEditCapabilities capabilities) {
+            public void sendCapabilities(ServerPlayer player, ConfigEditCapabilities capabilities) {
                 if (ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Capabilities.TYPE)) {
                     ServerPlayNetworking.send(player, KonfigNetwork.remoteCapabilitiesPayload(capabilities));
                 }
             }
 
             @Override
-            public void sendSnapshot(net.minecraft.server.level.ServerPlayer player, ConfigEditSnapshot snapshot) {
+            public void sendSnapshot(ServerPlayer player, ConfigEditSnapshot snapshot) {
                 if (ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Snapshot.TYPE)) {
                     ServerPlayNetworking.send(player, KonfigNetwork.remoteSnapshotPayload(snapshot));
                 }
             }
 
             @Override
-            public void sendResult(net.minecraft.server.level.ServerPlayer player, ConfigEditResult result) {
+            public void sendResult(ServerPlayer player, ConfigEditResult result) {
                 if (ServerPlayNetworking.canSend(player, KonfigRemotePayloads.EditResult.TYPE)) {
                     ServerPlayNetworking.send(player, KonfigNetwork.remoteResultPayload(result));
                 }
             }
         });
-//?}
 
-//? if >=1.20.5 {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
                 ServerPlayNetworking.send(player, KonfigNetwork.snapshotPayload(configId, jsonPayload))
         );
 //?} else {
+        // Raw channel handlers run on the network thread: decode there, then hop to the server thread.
+        ServerPlayNetworking.registerGlobalReceiver(REMOTE_HELLO, (server, player, handler, buffer, responseSender) -> {
+            KonfigRemotePayloads.Hello payload = KonfigRemotePayloads.Hello.read(buffer);
+            server.execute(() -> onHello(player, payload));
+        });
+        ServerPlayNetworking.registerGlobalReceiver(REMOTE_EDIT, (server, player, handler, buffer, responseSender) -> {
+            KonfigRemotePayloads.EditRequest payload = KonfigRemotePayloads.EditRequest.read(buffer);
+            server.execute(() -> onEdit(player, payload));
+        });
+
+        KonfigSync.setRemoteSender(new KonfigSync.RemoteSender() {
+            @Override
+            public void sendCapabilities(ServerPlayer player, ConfigEditCapabilities capabilities) {
+                send(player, REMOTE_CAPABILITIES, KonfigNetwork.remoteCapabilitiesPayload(capabilities), KonfigRemotePayloads.Capabilities::write);
+            }
+
+            @Override
+            public void sendSnapshot(ServerPlayer player, ConfigEditSnapshot snapshot) {
+                send(player, REMOTE_SNAPSHOT, KonfigNetwork.remoteSnapshotPayload(snapshot), KonfigRemotePayloads.Snapshot::write);
+            }
+
+            @Override
+            public void sendResult(ServerPlayer player, ConfigEditResult result) {
+                send(player, REMOTE_RESULT, KonfigNetwork.remoteResultPayload(result), KonfigRemotePayloads.EditResult::write);
+            }
+        });
+
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) -> {
-            net.minecraft.server.level.ServerPlayer serverPlayer = (net.minecraft.server.level.ServerPlayer) player;
             FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
-//? if <=1.16.5 {
-            buffer.writeUtf(configId, 256);
-            buffer.writeUtf(jsonPayload);
-//?} else {
             KonfigNetwork.encodeSnapshot(KonfigNetwork.snapshot(configId, jsonPayload), buffer);
-//?}
-            ServerPlayNetworking.send(serverPlayer, SYNC_CHANNEL, buffer);
+            ServerPlayNetworking.send(player, SYNC_CHANNEL, buffer);
         });
 //?}
 
@@ -132,18 +135,35 @@ public final class KonfigFabric implements ModInitializer {
         );
     }
 
-//? if >=1.21.11 {
-    private static boolean canEdit(net.minecraft.server.level.ServerPlayer player) {
-        return ConfigSyncAuthority.canEdit(
-                player.level().getServer().isSingleplayerOwner(player.nameAndId()),
-                player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
-        );
+    private static void onHello(ServerPlayer player, KonfigRemotePayloads.Hello payload) {
+        if (supportsRemoteResponses(player)) {
+            KonfigSync.onClientHello(player, payload.protocolVersion(), KonfigNetwork.canEdit(player));
+        }
     }
 
-    private static boolean supportsRemoteResponses(net.minecraft.server.level.ServerPlayer player) {
+    private static void onEdit(ServerPlayer player, KonfigRemotePayloads.EditRequest payload) {
+        KonfigSync.onRemoteEdit(player, KonfigNetwork.canEdit(player), KonfigNetwork.editRequest(payload));
+    }
+
+    private static boolean supportsRemoteResponses(ServerPlayer player) {
+//? if >=1.20.5 {
         return ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Capabilities.TYPE)
                 && ServerPlayNetworking.canSend(player, KonfigRemotePayloads.Snapshot.TYPE)
                 && ServerPlayNetworking.canSend(player, KonfigRemotePayloads.EditResult.TYPE);
+//?} else {
+        return ServerPlayNetworking.canSend(player, REMOTE_CAPABILITIES)
+                && ServerPlayNetworking.canSend(player, REMOTE_SNAPSHOT)
+                && ServerPlayNetworking.canSend(player, REMOTE_RESULT);
+//?}
+    }
+
+//? if <=1.20.4 {
+    private static <T> void send(ServerPlayer player, ResourceLocation channel, T payload, BiConsumer<FriendlyByteBuf, T> writer) {
+        if (ServerPlayNetworking.canSend(player, channel)) {
+            FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
+            writer.accept(buffer, payload);
+            ServerPlayNetworking.send(player, channel, buffer);
+        }
     }
 //?}
 }

@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.render;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -34,9 +31,11 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.resources.ResourceLocation;
 //?}
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -129,6 +128,54 @@ public final class KonfigUiAdapter {
         return Button.builder(label, onPress).bounds(x, y, width, height).build();
 //?} else {
         return new Button(x, y, width, height, label, onPress);
+//?}
+    }
+
+    public static void place(AbstractWidget widget, int x, int y, int width) {
+//? if >=1.19.3 {
+        widget.setX(x);
+        widget.setY(y);
+//?} else {
+        widget.x = x;
+        widget.y = y;
+//?}
+        widget.setWidth(width);
+    }
+
+    public static int y(AbstractWidget widget) {
+//? if >=1.19.3 {
+        return widget.getY();
+//?} else {
+        return widget.y;
+//?}
+    }
+
+    public static void focus(EditBox box, boolean focused) {
+//? if >=1.19.4 {
+        box.setFocused(focused);
+//?} else {
+        box.setFocus(focused);
+//?}
+    }
+
+    public static void moveCursorToStart(EditBox box) {
+//? if >=1.20.2 {
+        box.moveCursorToStart(false);
+//?} else {
+        box.moveCursorToStart();
+//?}
+    }
+
+    /**
+     * Returns false where EditBox has no native hint; the caller then draws the placeholder itself. The hint is dark
+     * grey on every line: before 1.21.9 vanilla draws an unstyled hint in the input's text colour, so it looked typed.
+     */
+    public static boolean setHint(EditBox box, Component hint) {
+//? if >=1.19.3 {
+        box.setHint(hint.copy().withStyle(ChatFormatting.DARK_GRAY));
+        return true;
+//?} else {
+        return false;
 //?}
     }
 
@@ -275,14 +322,7 @@ public final class KonfigUiAdapter {
         if (KonfigScreenSupport.isBlank(tooltip)) {
             return;
         }
-//? if <=1.16.1 {
-        screen.renderTooltip(guiGraphics, tooltipLines(tooltip), mouseX, mouseY);
-//?} elif <=1.16.3 {
-        screen.renderTooltip(guiGraphics, font.split(KonfigScreenSupport.text(tooltip), Math.max(screen.width / 2, 200)), mouseX, mouseY);
-//?} else {
         screen.renderComponentTooltip(guiGraphics, tooltipLines(tooltip), mouseX, mouseY);
-//?}
     }
 //?}
 }
-//?}

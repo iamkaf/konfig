@@ -1,189 +1,3 @@
-//? if <=1.15.2 {
-package com.iamkaf.konfig.impl.v1.client.screen;
-
-import org.jetbrains.annotations.ApiStatus;
-
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.TextComponent;
-
-@ApiStatus.Internal
-public final class KonfigConfigScreen extends Screen {
-    private final Screen parent;
-    private final String screenTitle;
-
-    public KonfigConfigScreen(Screen parent) {
-        this(parent, null, null);
-    }
-
-    public KonfigConfigScreen(Screen parent, String modIdFilter) {
-        this(parent, modIdFilter, null);
-    }
-
-    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(new TextComponent(defaultScreenTitle(modIdFilter, screenTitle)));
-        this.parent = parent;
-        this.screenTitle = screenTitle;
-    }
-
-    private static String defaultScreenTitle(String modIdFilter, String screenTitle) {
-        if (!isBlank(screenTitle)) {
-            return screenTitle;
-        }
-        if (!isBlank(modIdFilter)) {
-            return prettySegment(modIdFilter);
-        }
-        return "Configurations";
-    }
-
-    private static String prettySegment(String raw) {
-        if (raw == null || raw.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder builder = new StringBuilder(raw.length());
-        boolean capitalizeNext = true;
-        for (int i = 0; i < raw.length(); i++) {
-            char character = raw.charAt(i);
-            if (character == '_' || character == '-' || character == '.') {
-                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
-                    builder.append(' ');
-                }
-                capitalizeNext = true;
-                continue;
-            }
-
-            if (capitalizeNext) {
-                builder.append(Character.toUpperCase(character));
-                capitalizeNext = false;
-            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
-                builder.append(' ').append(character);
-            } else {
-                builder.append(Character.toLowerCase(character));
-            }
-        }
-        if (builder.length() > 0) {
-            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
-        }
-        return builder.toString().trim();
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
-
-    @Override
-    protected void init() {
-    }
-
-    @Override
-    public void onClose() {
-        if (this.minecraft != null) {
-            this.minecraft.setScreen(this.parent);
-        }
-    }
-
-    @Override
-    public void render(int mouseX, int mouseY, float partialTick) {
-        this.renderBackground();
-        drawCenteredString(this.font, this.title.getString(), this.width / 2, this.height / 2 - 10, 0xFFFFFFFF);
-        drawCenteredString(this.font, "Use the loader-specific config screen on 1.16.5.", this.width / 2, this.height / 2 + 4, 0xFFA0A0A0);
-        super.render(mouseX, mouseY, partialTick);
-    }
-}
-//?} elif <=1.16.5 {
-package com.iamkaf.konfig.impl.v1.client.screen;
-
-import org.jetbrains.annotations.ApiStatus;
-
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.network.chat.TextComponent;
-
-@ApiStatus.Internal
-public final class KonfigConfigScreen extends Screen {
-    private final Screen parent;
-    private final String screenTitle;
-
-    public KonfigConfigScreen(Screen parent) {
-        this(parent, null, null);
-    }
-
-    public KonfigConfigScreen(Screen parent, String modIdFilter) {
-        this(parent, modIdFilter, null);
-    }
-
-    public KonfigConfigScreen(Screen parent, String modIdFilter, String screenTitle) {
-        super(new TextComponent(defaultScreenTitle(modIdFilter, screenTitle)));
-        this.parent = parent;
-        this.screenTitle = screenTitle;
-    }
-
-    private static String defaultScreenTitle(String modIdFilter, String screenTitle) {
-        if (!isBlank(screenTitle)) {
-            return screenTitle;
-        }
-        if (!isBlank(modIdFilter)) {
-            return prettySegment(modIdFilter);
-        }
-        return "Configurations";
-    }
-
-    private static String prettySegment(String raw) {
-        if (raw == null || raw.isEmpty()) {
-            return "";
-        }
-
-        StringBuilder builder = new StringBuilder(raw.length());
-        boolean capitalizeNext = true;
-        for (int i = 0; i < raw.length(); i++) {
-            char character = raw.charAt(i);
-            if (character == '_' || character == '-' || character == '.') {
-                if (builder.length() > 0 && builder.charAt(builder.length() - 1) != ' ') {
-                    builder.append(' ');
-                }
-                capitalizeNext = true;
-                continue;
-            }
-
-            if (capitalizeNext) {
-                builder.append(Character.toUpperCase(character));
-                capitalizeNext = false;
-            } else if (Character.isUpperCase(character) && i > 0 && Character.isLowerCase(raw.charAt(i - 1))) {
-                builder.append(' ').append(character);
-            } else {
-                builder.append(Character.toLowerCase(character));
-            }
-        }
-        if (builder.length() > 0) {
-            builder.setCharAt(0, Character.toUpperCase(builder.charAt(0)));
-        }
-        return builder.toString().trim();
-    }
-
-    private static boolean isBlank(String value) {
-        return value == null || value.trim().isEmpty();
-    }
-
-    @Override
-    protected void init() {
-    }
-
-    @Override
-    public void onClose() {
-        if (this.minecraft != null) {
-            this.minecraft.setScreen(this.parent);
-        }
-    }
-
-    @Override
-    public void render(PoseStack poseStack, int mouseX, int mouseY, float partialTick) {
-        this.renderBackground(poseStack);
-        drawCenteredString(poseStack, this.font, this.title, this.width / 2, this.height / 2 - 10, 0xFFFFFFFF);
-        drawCenteredString(poseStack, this.font, new TextComponent("Use the loader-specific config screen on 1.16.5."), this.width / 2, this.height / 2 + 4, 0xFFA0A0A0);
-        super.render(poseStack, mouseX, mouseY, partialTick);
-    }
-}
-//?} else {
 package com.iamkaf.konfig.impl.v1.client.screen;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -196,13 +10,11 @@ import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.impl.v1.bootstrap.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.impl.v1.client.editor.KonfigEditorScreens;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetEditResult;
 import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetScreens;
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
-//?}
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelRenderer;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
@@ -301,7 +113,6 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     protected void init() {
-//? if >=1.21.11
         KonfigSync.refreshRemoteCapabilities();
         this.rebuildScreenWidgets();
     }
@@ -321,7 +132,6 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void closeScreen() {
-//? if >=1.21.11
         this.coordinator.closeSession();
         this.setScreen(this.parent);
     }
@@ -346,7 +156,6 @@ public final class KonfigConfigScreen extends Screen {
         this.setScreen(KonfigEditorScreens.stringList(this.editorHost, entry));
     }
 
-//? if >=1.21.11 {
     void openFieldsetEditor(EntryRef entry) {
         Object draft = this.coordinator.field(entry).draft();
         if (!(draft instanceof FieldsetValue fieldset)) {
@@ -432,7 +241,6 @@ public final class KonfigConfigScreen extends Screen {
         }
         return matches;
     }
-//?}
 
     void returnToMainScreen() {
         this.rebuildScreenWidgets();
@@ -788,4 +596,3 @@ public final class KonfigConfigScreen extends Screen {
     }
 
 }
-//?}

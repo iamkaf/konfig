@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.control;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -46,6 +43,11 @@ public final class KonfigRegistrySuggestionController {
                 && mouseX <= this.inputX + this.inputWidth
                 && mouseY >= this.inputY
                 && mouseY <= this.inputY + this.owner.controlHeight();
+    }
+
+    /** Whether the whole input lies between {@code top} and {@code bottom}, as laid out by the last render. */
+    public boolean isInputWithin(int top, int bottom) {
+        return this.inputY >= top && this.inputY + this.owner.controlHeight() <= bottom;
     }
 
     public boolean hasVisibleSuggestions() {
@@ -219,4 +221,3 @@ public final class KonfigRegistrySuggestionController {
         int listTop();
     }
 }
-//?}

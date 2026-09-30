@@ -15,13 +15,11 @@ import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.config.io.PathToml;
 import com.iamkaf.konfig.impl.v1.config.migration.ConfigMigrationSupport;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditRequest;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditStatus;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
-//?}
 import com.google.gson.JsonPrimitive;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,10 +32,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-//? if >=1.21.11 {
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
-//?}
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -324,7 +320,6 @@ final class HeadlessKonfigRegressionTest {
         assertTrue(stored.contains("retained value comment"));
     }
 
-//? if >=1.21.11 {
     @Test
     void remoteScreenViewDoesNotReplaceTheStoredValue() {
         AtomicReference<String> remote = new AtomicReference<>("server");
@@ -389,7 +384,6 @@ final class HeadlessKonfigRegressionTest {
         assertEquals(ConfigEditStatus.INVALID, incomplete.status());
         assertEquals(7, count.get());
     }
-//?}
 
     @Test
     void synchronizedValuesOverlayLocalStateUntilDisconnect() {

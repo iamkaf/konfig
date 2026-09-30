@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.runtime;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -31,4 +30,3 @@ public record ConfigLifecycleResult(Status status, List<String> completedConfigI
         FAILED
     }
 }
-//?}

@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -11,6 +8,8 @@ import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
+//? if <=1.21.8
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.components.AbstractWidget;
 //? if >=1.21.9 {
 import net.minecraft.client.input.KeyEvent;
@@ -91,7 +90,7 @@ final class IntegerSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
-            if (this.canChangeValue && (event.isLeft() || event.isRight())) {
+            if (this.keyboardEditing() && (event.isLeft() || event.isRight())) {
                 IntegerSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
                 return true;
             }
@@ -107,12 +106,11 @@ final class IntegerSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            int previousValue = IntegerSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
-            if (handled && previousValue != IntegerSliderRow.this.currentValue()) {
-                IntegerSliderRow.this.commitOrRevert(Integer.valueOf(previousValue));
+            if (this.keyboardEditing() && (keyCode == InputConstants.KEY_LEFT || keyCode == InputConstants.KEY_RIGHT)) {
+                IntegerSliderRow.this.stepValue(keyCode == InputConstants.KEY_LEFT ? -1 : 1);
+                return true;
             }
-            return handled;
+            return super.keyPressed(keyCode, scanCode, modifiers);
         }
 //?}
     }
@@ -192,7 +190,7 @@ final class LongSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
-            if (this.canChangeValue && (event.isLeft() || event.isRight())) {
+            if (this.keyboardEditing() && (event.isLeft() || event.isRight())) {
                 LongSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
                 return true;
             }
@@ -208,12 +206,11 @@ final class LongSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            long previousValue = LongSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
-            if (handled && previousValue != LongSliderRow.this.currentValue()) {
-                LongSliderRow.this.commitOrRevert(Long.valueOf(previousValue));
+            if (this.keyboardEditing() && (keyCode == InputConstants.KEY_LEFT || keyCode == InputConstants.KEY_RIGHT)) {
+                LongSliderRow.this.stepValue(keyCode == InputConstants.KEY_LEFT ? -1 : 1);
+                return true;
             }
-            return handled;
+            return super.keyPressed(keyCode, scanCode, modifiers);
         }
 //?}
     }
@@ -309,4 +306,3 @@ final class DoubleSliderRow extends KonfigConfigRow {
 //?}
     }
 }
-//?}

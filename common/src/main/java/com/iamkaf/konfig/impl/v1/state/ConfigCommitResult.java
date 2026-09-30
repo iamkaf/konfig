@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.state;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -6,7 +5,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.util.Objects;
 
 @ApiStatus.Internal
-public sealed interface ConfigCommitResult permits ConfigCommitResult.Accepted, ConfigCommitResult.NoOp, ConfigCommitResult.Pending, ConfigCommitResult.Stale, ConfigCommitResult.Rejected, ConfigCommitResult.Failed {
+public interface ConfigCommitResult {
     record Accepted(long revision) implements ConfigCommitResult {
         public Accepted {
             requireRevision(revision);
@@ -70,4 +69,3 @@ public sealed interface ConfigCommitResult permits ConfigCommitResult.Accepted, 
         return normalized;
     }
 }
-//?}

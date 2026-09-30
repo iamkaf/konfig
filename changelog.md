@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.10.0
+
+### Changed
+
+- Fieldsets, remote editing, tag suggestions, and slider keys now ship on every supported line, from Minecraft 1.17 up.
+- Forge and NeoForge clients can join servers without Konfig on every line.
+- Konfig's debug settings include a sample catalog and a slider that syncs from the server.
+
+### Fixed
+
+- Clicking a field in a tall Fieldset card no longer hides it behind its suggestion popup.
+- Keyboard focus scrolls Fieldset fields into view.
+- The Fieldset catalog filter cycles from `All` again.
+- The catalog status line no longer vanishes after an edit on 1.21.11 and older.
+- Large synced configs now arrive on 1.21.10 and older.
+
+### Removed
+
+- Minecraft 1.14.4 through 1.16.5.
+
 ## 0.9.0
 
 ### Added

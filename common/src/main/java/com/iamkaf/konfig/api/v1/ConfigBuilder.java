@@ -1,10 +1,9 @@
 package com.iamkaf.konfig.api.v1;
 
-//? if >=1.21.11
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
 
@@ -166,7 +165,7 @@ public interface ConfigBuilder {
      * @return this builder
      */
     ConfigBuilder image(Identifier textureId, String caption, ImageOptions options);
-//?} elif >=1.17 {
+//?} else {
     /**
      * Adds an image decoration row.
      *
@@ -202,42 +201,6 @@ public interface ConfigBuilder {
      * @return this builder
      */
     ConfigBuilder image(ResourceLocation textureId, String caption, ImageOptions options);
-//?} else {
-    /**
-     * Adds an image decoration row.
-     *
-     * @param textureId the loader/version texture identifier
-     * @return this builder
-     */
-    ConfigBuilder image(Object textureId);
-
-    /**
-     * Adds an image decoration row.
-     *
-     * @param textureId the loader/version texture identifier
-     * @param options image layout options
-     * @return this builder
-     */
-    ConfigBuilder image(Object textureId, ImageOptions options);
-
-    /**
-     * Adds an image decoration row with a caption.
-     *
-     * @param textureId the loader/version texture identifier
-     * @param caption the visible caption
-     * @return this builder
-     */
-    ConfigBuilder image(Object textureId, String caption);
-
-    /**
-     * Adds an image decoration row with a caption.
-     *
-     * @param textureId the loader/version texture identifier
-     * @param caption the visible caption
-     * @param options image layout options
-     * @return this builder
-     */
-    ConfigBuilder image(Object textureId, String caption, ImageOptions options);
 //?}
 
     /**
@@ -378,7 +341,6 @@ public interface ConfigBuilder {
      */
     <T> ValueBuilder<T> custom(String key, T defaultValue, KonfigCodec<T> codec);
 
-//? if >=1.21.11 {
     /**
      * Adds an editable flat collection of structured entries.
      *
@@ -388,7 +350,6 @@ public interface ConfigBuilder {
      */
     @org.jetbrains.annotations.ApiStatus.Experimental
     ValueBuilder<FieldsetValue> fieldset(String key, FieldsetValue defaultValue);
-//?}
 
     /**
      * Finalizes this builder and registers the config handle.

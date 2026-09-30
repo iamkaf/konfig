@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.storage;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -7,7 +6,7 @@ import java.util.List;
 import java.util.Objects;
 
 @ApiStatus.Internal
-public sealed interface ConfigMigrationResult<D> permits ConfigMigrationResult.Current, ConfigMigrationResult.Migrated, ConfigMigrationResult.NewerSchema, ConfigMigrationResult.MissingStep, ConfigMigrationResult.Failed {
+public interface ConfigMigrationResult<D> {
     D document();
 
     record Current<D>(D document, int version) implements ConfigMigrationResult<D> {
@@ -44,4 +43,3 @@ public sealed interface ConfigMigrationResult<D> permits ConfigMigrationResult.C
         }
     }
 }
-//?}

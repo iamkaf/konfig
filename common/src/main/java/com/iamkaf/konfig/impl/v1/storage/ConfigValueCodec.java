@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.storage;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -11,4 +10,3 @@ public interface ConfigValueCodec<T> {
 
     JsonElement encode(T value) throws Exception;
 }
-//?}

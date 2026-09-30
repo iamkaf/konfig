@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.fieldset;
 
 import com.google.gson.JsonArray;
@@ -16,6 +15,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -89,7 +89,9 @@ public final class FieldsetCodec implements KonfigCodec<FieldsetValue> {
     }
 
     private FieldsetEntry decodeEntry(JsonObject object, int entryIndex) {
-        for (String key : object.keySet()) {
+        // entrySet, not keySet: keySet arrived in Gson 2.8.1 and 1.17-1.17.1 ship 2.8.0.
+        for (Map.Entry<String, JsonElement> member : object.entrySet()) {
+            String key = member.getKey();
             if (!this.allowedKeys.contains(key)) {
                 throw new IllegalArgumentException("Fieldset entry " + entryIndex + " has unknown field: " + key);
             }
@@ -208,4 +210,3 @@ public final class FieldsetCodec implements KonfigCodec<FieldsetValue> {
         }
     }
 }
-//?}

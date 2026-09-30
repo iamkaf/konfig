@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -6,6 +5,11 @@ import org.jetbrains.annotations.ApiStatus;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.hasRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.tagSuggestions;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.focus;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.moveCursorToStart;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.place;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.setHint;
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
@@ -13,21 +17,26 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetFieldKind;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValidationIssue;
 import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
+import com.iamkaf.konfig.impl.v1.client.row.KonfigListRow;
+import com.iamkaf.konfig.impl.v1.client.row.KonfigSelectionList;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-//?} else {
+//?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
+//?} else {
+import com.mojang.blaze3d.vertex.PoseStack;
 //?}
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.9 {
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+//?}
 import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -36,9 +45,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.BooleanSupplier;
 
 @ApiStatus.Internal
 final class KonfigFieldsetListScreen extends Screen {
+    private static final int SEARCH_Y = 38;
     private static final int LIST_TOP = 64;
     private static final int COLLAPSED_HEIGHT = 40;
     private static final int FIELD_HEIGHT = 38;
@@ -64,11 +75,13 @@ final class KonfigFieldsetListScreen extends Screen {
     private Button moveDown;
     private EntryRow.TextControl activeRegistryControl;
     private EntryRow.TextControl renderedRegistryControl;
-    private Component message = Component.empty();
+    private Component message = text("");
     private boolean suppressSearchResponder;
     private boolean rebuildPending;
     private boolean revealPending;
     private boolean savePending;
+    private boolean drawSearchHint;
+    private int searchX;
 
     KonfigFieldsetListScreen(
             Screen parent,
@@ -99,18 +112,19 @@ final class KonfigFieldsetListScreen extends Screen {
         this.search = this.addRenderableWidget(new EditBox(
                 this.font,
                 contentX,
-                38,
+                SEARCH_Y,
                 contentWidth,
                 20,
-                Component.literal("Search fieldset entries")
+                text("Search fieldset entries")
         ));
-        this.search.setHint(Component.literal("Search"));
+        this.drawSearchHint = !setHint(this.search, text("Search"));
+        this.searchX = contentX;
         this.search.setValue(this.state.query());
         this.search.setResponder(this::searchChanged);
 
         int listBottom = Math.max(LIST_TOP + COLLAPSED_HEIGHT, this.height - 60);
         this.list = this.addRenderableWidget(new EntryList(contentWidth, listBottom - LIST_TOP, LIST_TOP));
-        this.list.setX(contentX);
+        this.list.setLeft(contentX);
         this.list.rebuild(false);
 
         int actionY = this.height - 52;
@@ -123,14 +137,14 @@ final class KonfigFieldsetListScreen extends Screen {
         int actionsWidth = addWidth + spacer + copyWidth + deleteWidth + moveWidth * 2 + actionGap * 4;
         int actionX = this.width / 2 - actionsWidth / 2;
 
-        this.add = this.addRenderableWidget(button(actionX, actionY, addWidth, 20, Component.literal("Add"), ignored -> {
+        this.add = this.addRenderableWidget(button(actionX, actionY, addWidth, 20, text("Add"), ignored -> {
             this.apply(this.state.add(), true);
         }));
         int selectedX = actionX + addWidth + spacer;
-        this.duplicate = this.addRenderableWidget(button(selectedX, actionY, copyWidth, 20, Component.literal("Copy"), ignored -> {
+        this.duplicate = this.addRenderableWidget(button(selectedX, actionY, copyWidth, 20, text("Copy"), ignored -> {
             this.apply(this.state.duplicateSelected(), true);
         }));
-        this.delete = this.addRenderableWidget(button(selectedX + copyWidth + actionGap, actionY, deleteWidth, 20, Component.literal("Delete"), ignored -> {
+        this.delete = this.addRenderableWidget(button(selectedX + copyWidth + actionGap, actionY, deleteWidth, 20, text("Delete"), ignored -> {
             this.apply(this.state.deleteSelected(), true);
         }));
         this.moveUp = this.addRenderableWidget(button(
@@ -138,7 +152,7 @@ final class KonfigFieldsetListScreen extends Screen {
                 actionY,
                 moveWidth,
                 20,
-                Component.literal("Up"),
+                text("Up"),
                 ignored -> this.apply(this.state.moveSelected(-1), true)
         ));
         this.moveDown = this.addRenderableWidget(button(
@@ -146,12 +160,12 @@ final class KonfigFieldsetListScreen extends Screen {
                 actionY,
                 moveWidth,
                 20,
-                Component.literal("Down"),
+                text("Down"),
                 ignored -> this.apply(this.state.moveSelected(1), true)
         ));
 
         int footerY = this.height - 26;
-        this.addRenderableWidget(button(this.width / 2 - 80, footerY, 160, 20, Component.literal("Done"), ignored -> this.closeToParent()));
+        this.addRenderableWidget(button(this.width / 2 - 80, footerY, 160, 20, text("Done"), ignored -> this.closeToParent()));
         this.refreshControls();
     }
 
@@ -208,7 +222,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
     private void toggleEntry(String entryId) {
         if (this.state.toggleExpanded(entryId)) {
-            this.message = Component.empty();
+            this.message = text("");
             this.requestRebuild(true);
             this.refreshControls();
         }
@@ -221,7 +235,7 @@ final class KonfigFieldsetListScreen extends Screen {
         List<FieldsetValidationIssue> issues = this.session.draft().validate().issues();
         if (!issues.isEmpty()) {
             this.session.restorePersisted();
-            return KonfigFieldsetEditResult.invalid(Component.literal(issues.get(0).message()));
+            return KonfigFieldsetEditResult.invalid(text(issues.get(0).message()));
         }
         KonfigFieldsetEditResult result;
         try {
@@ -232,7 +246,7 @@ final class KonfigFieldsetListScreen extends Screen {
         } catch (RuntimeException exception) {
             String detail = exception.getMessage();
             this.session.restorePersisted();
-            return KonfigFieldsetEditResult.invalid(Component.literal(detail == null || detail.isBlank()
+            return KonfigFieldsetEditResult.invalid(text(detail == null || detail.isBlank()
                     ? "The fieldset could not be saved."
                     : detail));
         }
@@ -253,7 +267,7 @@ final class KonfigFieldsetListScreen extends Screen {
         }
         this.savePending = false;
         this.session.adoptPersisted(authoritative);
-        this.message = result.accepted() ? Component.empty() : result.message();
+        this.message = result.accepted() ? text("") : result.message();
         this.state.refresh();
         this.requestRebuild(false);
         this.refreshControls();
@@ -263,7 +277,7 @@ final class KonfigFieldsetListScreen extends Screen {
         if (result.accepted()) {
             result = this.persistDraft();
         }
-        this.message = result.accepted() ? Component.empty() : result.message();
+        this.message = result.accepted() ? text("") : result.message();
         this.state.refresh();
         if (!this.search.getValue().equals(this.state.query())) {
             this.setSearchValue(this.state.query());
@@ -295,38 +309,60 @@ final class KonfigFieldsetListScreen extends Screen {
 //?}
     }
 
+//? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        return this.handleClick(event.x(), event.y(), () -> super.mouseClicked(event, doubleClick));
+    }
+
+    @Override
+    public boolean keyPressed(KeyEvent event) {
+        return this.handleKey(event.key(), () -> super.keyPressed(event));
+    }
+//?} else {
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return this.handleClick(mouseX, mouseY, () -> super.mouseClicked(mouseX, mouseY, button));
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        return this.handleKey(keyCode, () -> super.keyPressed(keyCode, scanCode, modifiers));
+    }
+//?}
+
+    private boolean handleClick(double mouseX, double mouseY, BooleanSupplier vanilla) {
         if (this.savePending) {
             return true;
         }
         EntryRow.TextControl active = this.activeRegistryControl;
-        if (active != null && active.handleSuggestionClick(event)) {
+        // Only the popup drawn last frame takes clicks; a field scrolled out of the list hides its popup.
+        EntryRow.TextControl shown = this.renderedRegistryControl;
+        if (shown != null && shown.handleSuggestionClick(mouseX, mouseY)) {
             return true;
         }
 
-        boolean handled = super.mouseClicked(event, doubleClick);
+        boolean handled = vanilla.getAsBoolean();
         EntryRow.TextControl focused = this.list == null ? null : this.list.focusedRegistryControl();
         if (focused != null) {
             this.activeRegistryControl = focused;
             focused.activateSuggestions();
-        } else if (active != null && !active.isPointInsideInput(event.x(), event.y())) {
+        } else if (active != null && !active.isPointInsideInput(mouseX, mouseY)) {
             active.closeSuggestions();
             this.activeRegistryControl = null;
         }
         return handled;
     }
 
-    @Override
-    public boolean keyPressed(KeyEvent event) {
+    private boolean handleKey(int keyCode, BooleanSupplier vanilla) {
         if (this.savePending) {
             return true;
         }
         EntryRow.TextControl active = this.activeRegistryControl;
-        if (active != null && active.hasVisibleSuggestions() && active.handleSuggestionKey(event)) {
+        if (active != null && active == this.renderedRegistryControl && active.handleSuggestionKey(keyCode)) {
             return true;
         }
-        boolean handled = super.keyPressed(event);
+        boolean handled = vanilla.getAsBoolean();
         if (active != null && active.isFocused()) {
             active.refreshSuggestions();
         }
@@ -343,9 +379,19 @@ final class KonfigFieldsetListScreen extends Screen {
         this.renderChrome(context);
         this.renderRegistrySuggestions(context, mouseX, mouseY);
     }
-//?} else {
+//?} elif >=1.20 {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        KonfigRenderContext context = KonfigRenderContext.of(graphics);
+        context.fill(0, 0, this.width, this.height, 0xC0101010);
+        this.renderedRegistryControl = null;
+        super.render(graphics, mouseX, mouseY, partialTick);
+        this.renderChrome(context);
+        this.renderRegistrySuggestions(context, mouseX, mouseY);
+    }
+//?} else {
+    @Override
+    public void render(PoseStack graphics, int mouseX, int mouseY, float partialTick) {
         KonfigRenderContext context = KonfigRenderContext.of(graphics);
         context.fill(0, 0, this.width, this.height, 0xC0101010);
         this.renderedRegistryControl = null;
@@ -379,6 +425,9 @@ final class KonfigFieldsetListScreen extends Screen {
                 context.drawCenteredText(this.font, this.context, this.width / 2, 22, 0xFFA0A0A0);
             }
         }
+        if (this.drawSearchHint && this.search.getValue().isEmpty() && !this.search.isFocused()) {
+            context.drawText(this.font, text("Search"), this.searchX + 4, SEARCH_Y + 6, 0xFF808080);
+        }
     }
 
     private Component fit(Component value, int width) {
@@ -387,10 +436,10 @@ final class KonfigFieldsetListScreen extends Screen {
             return value;
         }
         String suffix = "...";
-        return Component.literal(this.font.plainSubstrByWidth(text, Math.max(0, width - this.font.width(suffix))) + suffix);
+        return text(this.font.plainSubstrByWidth(text, Math.max(0, width - this.font.width(suffix))) + suffix);
     }
 
-    private final class EntryList extends ContainerObjectSelectionList<EntryRow> {
+    private final class EntryList extends KonfigSelectionList<EntryRow> {
         private final int rowWidth;
 
         private EntryList(int width, int height, int y) {
@@ -399,14 +448,14 @@ final class KonfigFieldsetListScreen extends Screen {
         }
 
         private void rebuild(boolean revealSelection) {
-            double previousScroll = this.scrollAmount();
+            double previousScroll = this.scrollOffset();
             KonfigFieldsetListScreen.this.activeRegistryControl = null;
             KonfigFieldsetListScreen.this.renderedRegistryControl = null;
             this.setFocused(null);
             this.clearEntries();
             for (KonfigFieldsetListEditorState.VisibleEntry<FieldsetEntry> visible : KonfigFieldsetListScreen.this.state.visibleEntries()) {
                 EntryRow row = new EntryRow(visible);
-                this.addEntry(row, row.rowHeight());
+                this.addRow(row, row.rowHeight());
             }
             this.setScrollAmount(previousScroll);
             if (revealSelection) {
@@ -417,12 +466,7 @@ final class KonfigFieldsetListScreen extends Screen {
         private void reveal(String entryId) {
             for (EntryRow row : this.children()) {
                 if (row.entryId.equals(entryId)) {
-                    if (row.getHeight() > this.getHeight() - 4) {
-                        int topOffset = row.getY() - this.getY() - 2;
-                        this.setScrollAmount(this.scrollAmount() + topOffset);
-                    } else {
-                        this.scrollToEntry(row);
-                    }
+                    this.revealRow(row);
                     return;
                 }
             }
@@ -448,26 +492,16 @@ final class KonfigFieldsetListScreen extends Screen {
         public int getRowWidth() {
             return this.rowWidth;
         }
-
-//? if >=26.1 {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - this.scrollbarWidth();
-        }
-//?} else {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - 6;
-        }
-//?}
     }
 
-    private final class EntryRow extends ContainerObjectSelectionList.Entry<EntryRow> {
+    private final class EntryRow extends KonfigListRow<EntryRow> {
         private final String entryId;
         private final FieldsetEntry snapshot;
         private final boolean selected;
         private final boolean expanded;
         private final Button header;
+        // The card's title and summary. UI tests read it as the row label; the header button narrates only the title.
+        private Component label = text("");
         private final List<FieldControl> fields = new ArrayList<>();
         private final List<AbstractWidget> controls = new ArrayList<>();
 
@@ -476,7 +510,7 @@ final class KonfigFieldsetListScreen extends Screen {
             this.snapshot = visible.entry();
             this.selected = visible.selected();
             this.expanded = KonfigFieldsetListScreen.this.state.isExpanded(this.entryId);
-            this.header = button(0, 0, 100, COLLAPSED_HEIGHT - CARD_GAP, Component.empty(), ignored -> {
+            this.header = button(0, 0, 100, COLLAPSED_HEIGHT - CARD_GAP - 2, text(""), ignored -> {
                 KonfigFieldsetListScreen.this.toggleEntry(this.entryId);
             });
             this.controls.add(this.header);
@@ -519,7 +553,11 @@ final class KonfigFieldsetListScreen extends Screen {
 
         private void refreshHeaderNarration() {
             String action = this.expanded ? "Collapse " : "Expand ";
-            this.header.setMessage(Component.literal(action + KonfigFieldsetListScreen.this.adapter.entryLabel(this.currentEntry()).getString()));
+            FieldsetEntry entry = this.currentEntry();
+            String title = KonfigFieldsetListScreen.this.adapter.entryLabel(entry).getString();
+            String summary = KonfigFieldsetListScreen.this.adapter.entrySummary(entry).getString();
+            this.label = text(summary.isBlank() ? title : title + ", " + summary);
+            this.header.setMessage(text(action + title));
         }
 
         private boolean hasLocalErrors() {
@@ -546,11 +584,13 @@ final class KonfigFieldsetListScreen extends Screen {
             return null;
         }
 
-        private void renderRow(
+        @Override
+        protected void renderRow(
                 KonfigRenderContext context,
                 int x,
                 int y,
                 int width,
+                int height,
                 int mouseX,
                 int mouseY,
                 boolean hovered,
@@ -581,10 +621,7 @@ final class KonfigFieldsetListScreen extends Screen {
         }
 
         private void layoutHeader(int x, int y, int width) {
-            this.header.setX(x + 1);
-            this.header.setY(y + 1);
-            this.header.setWidth(width - 2);
-            this.header.setHeight(COLLAPSED_HEIGHT - CARD_GAP - 2);
+            place(this.header, x + 1, y + 1, width - 2);
         }
 
         private void renderHeader(
@@ -603,7 +640,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
             context.drawText(
                     KonfigFieldsetListScreen.this.font,
-                    Component.literal(this.expanded ? "v" : ">"),
+                    text(this.expanded ? "v" : ">"),
                     x + 9,
                     y + 9,
                     0xFFD0D0D0
@@ -634,43 +671,13 @@ final class KonfigFieldsetListScreen extends Screen {
                 int color = !validation.isValid() || this.hasLocalErrors() ? 0xFFFF7070 : 0xFF8F8F8F;
                 context.drawText(
                         KonfigFieldsetListScreen.this.font,
-                        Component.literal(status),
+                        text(status),
                         x + width - statusWidth,
                         y + 14,
                         color
                 );
             }
         }
-
-//? if >=26.1 {
-        @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(
-                    KonfigRenderContext.of(graphics),
-                    this.getContentX(),
-                    this.getContentY(),
-                    this.getContentWidth(),
-                    mouseX,
-                    mouseY,
-                    hovered,
-                    partialTick
-            );
-        }
-//?} else {
-        @Override
-        public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(
-                    KonfigRenderContext.of(graphics),
-                    this.getContentX(),
-                    this.getContentY(),
-                    this.getContentWidth(),
-                    mouseX,
-                    mouseY,
-                    hovered,
-                    partialTick
-            );
-        }
-//?}
 
         @Override
         public List<? extends GuiEventListener> children() {
@@ -697,7 +704,7 @@ final class KonfigFieldsetListScreen extends Screen {
                     result = KonfigFieldsetListScreen.this.persistDraft();
                 }
                 this.localError = result.submitted() ? "" : result.message().getString();
-                KonfigFieldsetListScreen.this.message = result.accepted() ? Component.empty() : result.message();
+                KonfigFieldsetListScreen.this.message = result.accepted() ? text("") : result.message();
                 this.sync();
                 EntryRow.this.refreshHeaderNarration();
                 KonfigFieldsetListScreen.this.refreshControls();
@@ -733,7 +740,7 @@ final class KonfigFieldsetListScreen extends Screen {
                 if (!validation.isBlank()) {
                     context.drawText(
                             KonfigFieldsetListScreen.this.font,
-                            KonfigFieldsetListScreen.this.fit(Component.literal(validation), controlWidth),
+                            KonfigFieldsetListScreen.this.fit(text(validation), controlWidth),
                             controlX,
                             y + 27,
                             0xFFFF7070
@@ -757,7 +764,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
             private BooleanControl(KonfigFieldsetEntryEditorState.FieldState<FieldsetField<?>> field) {
                 super(field);
-                this.toggle = button(0, 0, 100, CONTROL_HEIGHT, Component.empty(), ignored -> {
+                this.toggle = button(0, 0, 100, CONTROL_HEIGHT, text(""), ignored -> {
                     Object current = this.field.value().draft();
                     this.apply(Boolean.valueOf(!(current instanceof Boolean) || !((Boolean) current).booleanValue()));
                 });
@@ -768,14 +775,12 @@ final class KonfigFieldsetListScreen extends Screen {
 
             @Override
             void layoutControls(int x, int y, int width) {
-                this.toggle.setX(x);
-                this.toggle.setY(y);
-                this.toggle.setWidth(width);
+                place(this.toggle, x, y, width);
             }
 
             @Override
             void sync() {
-                this.toggle.setMessage(Component.literal(Boolean.TRUE.equals(this.field.value().draft()) ? "On" : "Off"));
+                this.toggle.setMessage(text(Boolean.TRUE.equals(this.field.value().draft()) ? "On" : "Off"));
             }
         }
 
@@ -784,7 +789,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
             private DropdownControl(KonfigFieldsetEntryEditorState.FieldState<FieldsetField<?>> field) {
                 super(field);
-                this.dropdown = button(0, 0, 100, CONTROL_HEIGHT, Component.empty(), ignored -> this.next());
+                this.dropdown = button(0, 0, 100, CONTROL_HEIGHT, text(""), ignored -> this.next());
                 this.dropdown.active = field.value().access().canEdit();
                 this.controls.add(this.dropdown);
                 this.sync();
@@ -802,14 +807,12 @@ final class KonfigFieldsetListScreen extends Screen {
 
             @Override
             void layoutControls(int x, int y, int width) {
-                this.dropdown.setX(x);
-                this.dropdown.setY(y);
-                this.dropdown.setWidth(width);
+                place(this.dropdown, x, y, width);
             }
 
             @Override
             void sync() {
-                this.dropdown.setMessage(Component.literal(String.valueOf(this.field.value().draft())));
+                this.dropdown.setMessage(text(String.valueOf(this.field.value().draft())));
             }
         }
 
@@ -830,7 +833,7 @@ final class KonfigFieldsetListScreen extends Screen {
                 );
                 this.input.setMaxLength(512);
                 this.input.setValue(this.textValue());
-                this.input.moveCursorToStart(false);
+                moveCursorToStart(this.input);
                 boolean editable = field.value().access().canEdit();
                 this.input.setEditable(editable);
                 this.input.active = editable;
@@ -880,7 +883,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
                         @Override
                         public void focusInput() {
-                            TextControl.this.input.setFocused(true);
+                            focus(TextControl.this.input, true);
                         }
 
                         @Override
@@ -922,7 +925,7 @@ final class KonfigFieldsetListScreen extends Screen {
                     this.refreshSuggestions();
                 } catch (IllegalArgumentException exception) {
                     this.localError = exception.getMessage() == null ? "Invalid value" : exception.getMessage();
-                    KonfigFieldsetListScreen.this.message = Component.literal(this.localError);
+                    KonfigFieldsetListScreen.this.message = text(this.localError);
                     KonfigFieldsetListScreen.this.refreshControls();
                 }
             }
@@ -997,12 +1000,12 @@ final class KonfigFieldsetListScreen extends Screen {
                 }
             }
 
-            private boolean handleSuggestionClick(MouseButtonEvent event) {
-                return this.suggestions != null && this.suggestions.handleClick(event.x(), event.y());
+            private boolean handleSuggestionClick(double mouseX, double mouseY) {
+                return this.suggestions != null && this.suggestions.handleClick(mouseX, mouseY);
             }
 
-            private boolean handleSuggestionKey(KeyEvent event) {
-                return this.suggestions != null && this.suggestions.handleKey(event.key());
+            private boolean handleSuggestionKey(int keyCode) {
+                return this.suggestions != null && this.suggestions.handleKey(keyCode);
             }
 
             private String textValue() {
@@ -1027,7 +1030,7 @@ final class KonfigFieldsetListScreen extends Screen {
                 boolean previouslySuppressed = this.suppressResponder;
                 this.suppressResponder = true;
                 try {
-                    this.input.moveCursorToStart(false);
+                    moveCursorToStart(this.input);
                 } finally {
                     this.suppressResponder = previouslySuppressed;
                 }
@@ -1035,9 +1038,7 @@ final class KonfigFieldsetListScreen extends Screen {
 
             @Override
             void layoutControls(int x, int y, int width) {
-                this.input.setX(x);
-                this.input.setY(y);
-                this.input.setWidth(width);
+                place(this.input, x, y, width);
                 if (this.suggestions != null) {
                     this.suggestions.updateInputBounds(x, y, width);
                 }
@@ -1078,11 +1079,13 @@ final class KonfigFieldsetListScreen extends Screen {
                     KonfigFieldsetListScreen.this.activeRegistryControl = this;
                     this.refreshSuggestions();
                 }
-                if (KonfigFieldsetListScreen.this.activeRegistryControl == this && this.hasVisibleSuggestions()) {
+                EntryList list = KonfigFieldsetListScreen.this.list;
+                if (KonfigFieldsetListScreen.this.activeRegistryControl == this
+                        && this.hasVisibleSuggestions()
+                        && this.suggestions.isInputWithin(list.listTop(), list.listBottom())) {
                     KonfigFieldsetListScreen.this.renderedRegistryControl = this;
                 }
             }
         }
     }
 }
-//?}

@@ -2,16 +2,12 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 
 import org.jetbrains.annotations.ApiStatus;
 
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so shared parsing, labels, and visibility helpers target the 1.17+ UI path.
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenHandle;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-//? if >=1.21.11
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import net.minecraft.network.chat.Component;
 //? if <=1.18.2 {
@@ -56,7 +52,6 @@ public final class KonfigScreenSupport {
             return false;
         }
         if (value.serverOnly() && KonfigRuntime.isClient()
-//? if >=1.21.11
                 && !(KonfigSync.clientConnected() && value.sync())
         ) {
             return false;
@@ -238,4 +233,3 @@ public final class KonfigScreenSupport {
         return value == null || value.trim().isEmpty();
     }
 }
-//?}

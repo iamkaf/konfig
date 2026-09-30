@@ -2,13 +2,14 @@ package com.iamkaf.konfig.forge;
 
 import org.jetbrains.annotations.ApiStatus;
 
+import com.iamkaf.konfig.forge.api.v1.KonfigForgeClientScreens;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditRequest;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
+//? if <=1.21.5 {
+import net.minecraftforge.common.MinecraftForge;
 //?}
-import com.iamkaf.konfig.forge.api.v1.KonfigForgeClientScreens;
 
 @ApiStatus.Internal
 final class KonfigForgeClient {
@@ -17,7 +18,6 @@ final class KonfigForgeClient {
 
     static void init() {
         KonfigForgeClientScreens.register(KonfigRuntime.MOD_ID);
-//? if >=1.21.11 {
         KonfigSync.setClientRequestSender(new KonfigSync.ClientRequestSender() {
             @Override
             public void sendHello(int protocolVersion) {
@@ -29,10 +29,26 @@ final class KonfigForgeClient {
                 KonfigForge.sendRemoteEdit(request);
             }
         });
+//? if >=1.21.6 {
         ClientPlayerNetworkEvent.LoggingIn.BUS.addListener(event ->
                 KonfigSync.onClientConnected(KonfigForge.supportsRemoteEditing(event.getConnection()))
         );
         ClientPlayerNetworkEvent.LoggingOut.BUS.addListener(event -> KonfigRuntime.clientDisconnected());
+//?} elif >=1.19 {
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn event) ->
+                KonfigSync.onClientConnected(KonfigForge.supportsRemoteEditing(event.getConnection()))
+        );
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut event) -> KonfigRuntime.clientDisconnected());
+//?} elif >=1.18 {
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggedInEvent event) ->
+                KonfigSync.onClientConnected(KonfigForge.supportsRemoteEditing(event.getConnection()))
+        );
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggedOutEvent event) -> KonfigRuntime.clientDisconnected());
+//?} else {
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggedInEvent event) ->
+                KonfigSync.onClientConnected(KonfigForge.supportsRemoteEditing(event.getNetworkManager()))
+        );
+        MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggedOutEvent event) -> KonfigRuntime.clientDisconnected());
 //?}
     }
 }

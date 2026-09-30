@@ -9,12 +9,8 @@ import com.iamkaf.konfig.api.v1.ConfigScope;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.SyncMode;
-//? if >=1.17 {
-// Model construction accepts typed ResourceKey registry bindings on modern
-// lines; legacy values are built with string registry ids instead.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-//?}
 
 import java.nio.file.Path;
 import java.util.Collections;
@@ -23,10 +19,8 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
-//? if >=1.21.11 {
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
-//?}
 
 @ApiStatus.Internal
 public final class KonfigModels {
@@ -69,15 +63,9 @@ public final class KonfigModels {
             Number rangeMin,
             Number rangeMax,
             List<DropdownOptionMetadata> dropdownOptions,
-//? if >=1.21.11 {
             Supplier<T> remoteScreenValue,
             BooleanSupplier remoteScreenViewAvailable,
-//?}
-//? if <=1.16.5 {
-            String boundRegistryId
-//?} else {
             ResourceKey<? extends Registry<?>> boundRegistryKey
-//?}
     ) {
         return new ConfigValueImpl<T>(
                 path,
@@ -95,15 +83,9 @@ public final class KonfigModels {
                 rangeMin,
                 rangeMax,
                 dropdownOptions,
-//? if >=1.21.11 {
                 remoteScreenValue,
                 remoteScreenViewAvailable,
-//?}
-//? if <=1.16.5 {
-                boundRegistryId
-//?} else {
                 boundRegistryKey
-//?}
         );
     }
 
@@ -136,15 +118,9 @@ public final class KonfigModels {
                 labelTranslationKey,
                 target,
                 imageOptions,
-//? if >=1.21.11 {
                 null,
                 null,
-//?}
-//? if <=1.16.5 {
                 null
-//?} else {
-                null
-//?}
         );
     }
 

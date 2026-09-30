@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.screen;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -19,7 +16,6 @@ import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
-//? if >=1.21.11
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
 import com.iamkaf.konfig.impl.v1.state.ConfigSessionObserver;
 import net.minecraft.client.gui.Font;
@@ -96,24 +92,18 @@ final class KonfigScreenCoordinator {
 
     boolean persistEntry(EntryRef entry) {
         try {
-//? if >=1.21.11 {
             ConfigChangeResult result = persistEntryResult(entry);
             if (successful(result)) {
                 return true;
             }
             KonfigToastSupport.saveFailed(result.message());
             return false;
-//?} else {
-            this.field(entry).persist();
-            return true;
-//?}
         } catch (RuntimeException exception) {
             KonfigToastSupport.saveFailed(exceptionMessage(exception));
             return false;
         }
     }
 
-//? if >=1.21.11 {
     ConfigChangeResult persistEntryResult(EntryRef entry) {
         return this.fields.persist(entry);
     }
@@ -124,20 +114,15 @@ final class KonfigScreenCoordinator {
     ) {
         return this.fields.observe(entry, observer);
     }
-//?}
 
     void resetAll() {
         try {
-//? if >=1.21.11 {
             for (ConfigChangeResult result : this.fields.restoreAll()) {
                 if (!successful(result)) {
                     KonfigToastSupport.resetFailed(result.message());
                     return;
                 }
             }
-//?} else {
-            this.fields.resetAll();
-//?}
         } catch (RuntimeException exception) {
             KonfigToastSupport.resetFailed(exceptionMessage(exception));
         }
@@ -145,24 +130,18 @@ final class KonfigScreenCoordinator {
 
     boolean resetEntry(EntryRef entry) {
         try {
-//? if >=1.21.11 {
             ConfigChangeResult result = this.fields.restoreEntry(entry);
             if (successful(result)) {
                 return true;
             }
             KonfigToastSupport.resetFailed(result.message());
             return false;
-//?} else {
-            this.field(entry).resetToSessionStart();
-            return true;
-//?}
         } catch (RuntimeException exception) {
             KonfigToastSupport.resetFailed(exceptionMessage(exception));
             return false;
         }
     }
 
-//? if >=1.21.11 {
     void closeSession() {
         this.fields.close();
     }
@@ -170,7 +149,6 @@ final class KonfigScreenCoordinator {
     private static boolean successful(ConfigChangeResult result) {
         return result.accepted() || result.status() == ConfigChangeResult.Status.PENDING;
     }
-//?}
 
     KonfigField field(EntryRef entry) {
         return this.fields.field(entry);
@@ -307,4 +285,3 @@ final class KonfigScreenCoordinator {
         return exception.getMessage() == null ? "" : exception.getMessage();
     }
 }
-//?}

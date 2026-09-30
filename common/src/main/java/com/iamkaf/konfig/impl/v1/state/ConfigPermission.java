@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.state;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -44,4 +43,3 @@ public record ConfigPermission(boolean visible, boolean editable, Reason reason,
         RUNTIME_READ_ONLY
     }
 }
-//?}

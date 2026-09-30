@@ -16,9 +16,7 @@ import java.util.Set;
 public final class ConfigDisplayNode {
     public enum Kind {
         FIELD,
-//? if >=1.21.11 {
         FIELDSET,
-//?}
         HEADER,
         IMAGE,
         TEXT,
@@ -89,9 +87,7 @@ public final class ConfigDisplayNode {
         this.informationContext = informationContext;
 
         boolean fieldNode = kind == Kind.FIELD;
-//? if >=1.21.11 {
         fieldNode = fieldNode || kind == Kind.FIELDSET;
-//?}
         if (fieldNode != (field != null)) {
             throw new IllegalArgumentException("Only field display nodes may reference a config field: " + identity);
         }

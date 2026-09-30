@@ -10,7 +10,6 @@
   "contact": {},
   "license": "${license}",
   "icon": "assets/${mod_id}/icon.png",
-  "accessWidener": "${mod_id}.accesswidener",
   "environment": "*",
   "entrypoints": {
     "main": [

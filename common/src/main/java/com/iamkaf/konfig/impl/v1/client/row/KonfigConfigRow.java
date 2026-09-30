@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -9,6 +6,7 @@ import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import com.iamkaf.konfig.impl.v1.client.field.KonfigField;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
+import com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
 //? if >=26.1 {
@@ -146,14 +144,7 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
     }
 
     protected final void layoutControl(AbstractWidget control, int x, int y, int width) {
-//? if >=1.19.3 {
-        control.setX(x);
-        control.setY(y);
-//?} else {
-        control.x = x;
-        control.y = y;
-//?}
-        control.setWidth(width);
+        KonfigUiAdapter.place(control, x, y, width);
     }
 
     protected void revertDraft(Object previousValue) {
@@ -177,4 +168,3 @@ abstract class KonfigConfigRow extends ContainerObjectSelectionList.Entry<Konfig
     protected void syncFromDraft() {
     }
 }
-//?}

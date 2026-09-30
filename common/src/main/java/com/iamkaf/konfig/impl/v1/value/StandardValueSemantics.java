@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.value;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -236,4 +235,3 @@ public final class StandardValueSemantics {
         ConfigValidation validate(String path, T value);
     }
 }
-//?}

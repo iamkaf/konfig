@@ -98,11 +98,7 @@ run first="" second="" *rest:
           tasks=( ":$loader:$version:publishAllPublicationsToKafMavenRepository" "${extra[@]}" ); \
           ;; \
         runClient) \
-          if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
-            tasks=( ":forge:1.16.5:runLegacyClient" "${extra[@]}" ); \
-          else \
-            tasks=( ":$loader:$version:runClient" "${extra[@]}" ); \
-          fi; \
+          tasks=( ":$loader:$version:runClient" "${extra[@]}" ); \
           ;; \
         publishMod|publishRelease) \
           suffix=$(task_suffix "$version" "$loader"); \
@@ -203,20 +199,12 @@ run-client node:
     exit 1; \
   fi
   @version="{{node}}"; loader="${version##*-}"; version="${version%-*}"; \
-  if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
-    ./gradlew --configure-on-demand ":forge:1.16.5:runLegacyClient" --console=plain; \
-  else \
-    ./gradlew --configure-on-demand ":$loader:$version:runClient" --console=plain; \
-  fi
+  ./gradlew --configure-on-demand ":$loader:$version:runClient" --console=plain
 
 build-all:
   @./gradlew build --console=plain
 
 headless-test version="1.21.11" *args:
-  @case "{{version}}" in \
-    1.21.11|26.*) ;; \
-    *) echo "Headless tests support Minecraft 1.21.11 and newer; got {{version}}" >&2; exit 1 ;; \
-  esac
   @test -f "versions/{{version}}/gradle.properties" || (echo "Version {{version}} not found" >&2; exit 1)
   @just run "{{version}}" ":common:{{version}}:test" --rerun-tasks {{args}}
 
@@ -235,7 +223,6 @@ boot-check node timeout="120":
   @if ! just list-nodes | grep -Fxq "{{node}}"; then echo "Unknown node: {{node}}"; exit 1; fi
   @node="{{node}}"; version="${node%-*}"; loader="${node##*-}"; \
     task=":$loader:$version:runClient"; \
-    if [ "$node" = "1.16.5-forge" ]; then task=":forge:1.16.5:runLegacyClient"; fi; \
     log="/tmp/konfig-$node.boot.log"; \
     status=0; timeout --kill-after=10s "{{timeout}}s" ./gradlew --configure-on-demand --no-daemon "$task" --console=plain \
       -Dkonfig.withTeaKit=true -Dteakit.autoExitTitle=true -Dteakit.autoExitTitleDelayMs=2500 > "$log" 2>&1 || status=$?; \
@@ -283,3 +270,9 @@ teakit-check-all timeout="240":
       just teakit-check "$node" "{{timeout}}"; \
     fi; \
   done
+
+# Remote editing between a production client and dedicated server. Publish the node to Maven local first.
+remote-edit-pair node timeout="300":
+  env -u WAYLAND_DISPLAY xvfb-run -a -s "-screen 0 1920x1080x24" ./teakitw pair --node "{{node}}" \
+    --modstage-config modstage.toml --modstage-instance "{{node}}" --server-address 127.0.0.1:25581 \
+    --test-file test/teakit-pair/remote-edit.test.ts --timeout "{{timeout}}"

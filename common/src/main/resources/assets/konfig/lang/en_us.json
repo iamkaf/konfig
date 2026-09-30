@@ -26,6 +26,9 @@
   "konfig.config.konfig.konfig.debug.enabled": "Enable Debug Logging",
   "konfig.config.konfig.konfig.debug.enabled.tooltip": "Writes detailed Konfig diagnostics to the log.",
   "konfig.config.konfig.konfig.debug.mode": "Debug Mode",
+  "konfig.config.konfig.konfig.debug.sample_catalog": "Sample Catalog",
+  "konfig.config.konfig.konfig.debug.sample_level": "Sample Level",
+  "konfig.config.konfig.konfig.debug.sample_rules": "Sample Rules",
   "konfig.value.konfig.konfig.debug.mode.quiet": "Quiet",
   "konfig.value.konfig.konfig.debug.mode.standard": "Standard",
   "konfig.value.konfig.konfig.debug.mode.verbose": "Verbose"

@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig;
 
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
@@ -131,4 +130,3 @@ final class FoundationSemanticsTest {
         assertEquals(10, session.field("value").draftInput());
     }
 }
-//?}

@@ -1,9 +1,9 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
 
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetRowSummary;
@@ -53,7 +53,7 @@ final class FieldsetRow extends KonfigConfigRow {
     private Component summaryText() {
         Object draft = this.field().draft();
         if (!(draft instanceof FieldsetValue value)) {
-            return Component.literal("Invalid fieldset");
+            return text("Invalid fieldset");
         }
         KonfigFieldsetRowSummary summary = KonfigFieldsetScreens.summary(this.entry.label, value, this.field().editable());
         StringBuilder text = new StringBuilder(summary.countText().getString());
@@ -63,7 +63,6 @@ final class FieldsetRow extends KonfigConfigRow {
         if (summary.readOnly()) {
             text.append("  [read-only]");
         }
-        return Component.literal(text.toString());
+        return text(text.toString());
     }
 }
-//?}

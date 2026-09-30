@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.render;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -135,11 +132,9 @@ public final class KonfigRenderContext {
         KonfigRegistryAdapter.renderRegistryIcon(this.graphics, registryKey, value, x, y);
     }
 
-//? if >=1.21.11 {
     public void renderRegistryIcon(ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
         KonfigRegistryAdapter.renderRegistryIcon(this.graphics, registryKey, value, x, y, size);
     }
-//?}
 
     public void renderFloatingLayers(RenderLayer floatingLayer, RenderLayer tooltipLayer) {
 //? if >=1.21.6 {
@@ -197,4 +192,3 @@ public final class KonfigRenderContext {
         void render(KonfigRenderContext context);
     }
 }
-//?}

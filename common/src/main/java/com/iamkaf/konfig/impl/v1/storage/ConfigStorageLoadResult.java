@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.storage;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -8,7 +7,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @ApiStatus.Internal
-public sealed interface ConfigStorageLoadResult permits ConfigStorageLoadResult.Loaded, ConfigStorageLoadResult.Missing, ConfigStorageLoadResult.Recovered, ConfigStorageLoadResult.Failed {
+public interface ConfigStorageLoadResult {
     record Loaded(ConfigStorageDocument document) implements ConfigStorageLoadResult {
         public Loaded {
             document = Objects.requireNonNull(document, "document");
@@ -35,4 +34,3 @@ public sealed interface ConfigStorageLoadResult permits ConfigStorageLoadResult.
         }
     }
 }
-//?}

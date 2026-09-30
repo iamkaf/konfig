@@ -3,17 +3,10 @@ package com.iamkaf.konfig.impl.v1.bootstrap;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.nio.file.Path;
-//? if <=1.16.5 {
-import java.nio.file.Paths;
-//?}
 
 @ApiStatus.Internal
 public final class RuntimeEnvironment {
-//? if <=1.16.5 {
-    private static volatile Path configDirectory = Paths.get("config");
-//?} else {
     private static volatile Path configDirectory = Path.of("config");
-//?}
     private static volatile boolean client;
     private static volatile boolean initialized;
 

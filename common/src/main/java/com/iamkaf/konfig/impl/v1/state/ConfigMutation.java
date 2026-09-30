@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.state;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -6,7 +5,7 @@ import org.jetbrains.annotations.ApiStatus;
 import java.util.Objects;
 
 @ApiStatus.Internal
-public sealed interface ConfigMutation permits ConfigMutation.SetDraft, ConfigMutation.ResetField, ConfigMutation.ResetAll, ConfigMutation.RestoreField, ConfigMutation.RestoreAll, ConfigMutation.Rollback {
+public interface ConfigMutation {
     record SetDraft(String fieldId, Object input) implements ConfigMutation {
         public SetDraft {
             fieldId = requireFieldId(fieldId);
@@ -43,4 +42,3 @@ public sealed interface ConfigMutation permits ConfigMutation.SetDraft, ConfigMu
         return normalized;
     }
 }
-//?}
