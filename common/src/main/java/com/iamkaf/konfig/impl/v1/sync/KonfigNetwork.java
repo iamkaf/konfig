@@ -4,22 +4,17 @@ import org.jetbrains.annotations.ApiStatus;
 
 import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-//? if >=1.20.5 {
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
+//? if >=1.20.5 {
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+//?}
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.permissions.Permissions;
 //?} else {
 import net.minecraft.resources.ResourceLocation;
-//?}
-//?} else {
-import net.minecraft.network.FriendlyByteBuf;
-//? if >=1.21.11 {
-import net.minecraft.resources.Identifier;
-//?} else {
-import net.minecraft.resources.ResourceLocation;
-//?}
 //?}
 
 @ApiStatus.Internal
@@ -62,7 +57,6 @@ public final class KonfigNetwork {
         KonfigRuntime.clientReceivedSnapshot(payload.configId(), payload.jsonPayload());
     }
 
-//? if >=1.21.11 {
     public static KonfigRemotePayloads.Hello remoteHelloPayload(int protocolVersion) {
         return new KonfigRemotePayloads.Hello(protocolVersion);
     }
@@ -126,7 +120,25 @@ public final class KonfigNetwork {
                 payload.draftJson()
         );
     }
+
+    public static boolean canEdit(ServerPlayer player) {
+//? if >=1.20 {
+        net.minecraft.server.MinecraftServer server = player.level().getServer();
+//?} else {
+        net.minecraft.server.MinecraftServer server = player.getLevel().getServer();
 //?}
+//? if >=1.21.9 {
+        boolean owner = server.isSingleplayerOwner(player.nameAndId());
+//?} else {
+        boolean owner = server.isSingleplayerOwner(player.getGameProfile());
+//?}
+//? if >=1.21.11 {
+        boolean gamemaster = player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER);
+//?} else {
+        boolean gamemaster = player.hasPermissions(2);
+//?}
+        return ConfigSyncAuthority.canEdit(owner, gamemaster);
+    }
 
 //? if >=1.20.5 {
     public static CustomPacketPayload.Type<KonfigSyncPayload> snapshotPayloadType() {
@@ -140,18 +152,10 @@ public final class KonfigNetwork {
 
     public static void encodeSnapshot(SyncSnapshot snapshot, FriendlyByteBuf buffer) {
         buffer.writeUtf(snapshot.configId(), 256);
-//? if >=1.21.11 {
         buffer.writeUtf(snapshot.jsonPayload(), ConfigSyncAuthority.MAX_JSON_LENGTH);
-//?} else {
-        buffer.writeUtf(snapshot.jsonPayload());
-//?}
     }
 
     public static SyncSnapshot decodeSnapshot(FriendlyByteBuf buffer) {
-//? if >=1.21.11 {
         return snapshot(buffer.readUtf(256), buffer.readUtf(ConfigSyncAuthority.MAX_JSON_LENGTH));
-//?} else {
-        return snapshot(buffer.readUtf(256), buffer.readUtf());
-//?}
     }
 }

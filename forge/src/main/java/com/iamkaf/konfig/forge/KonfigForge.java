@@ -2,41 +2,39 @@ package com.iamkaf.konfig.forge;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
-import com.iamkaf.konfig.impl.v1.sync.SyncSnapshot;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
+import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditCapabilities;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditRequest;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditSnapshot;
 import com.iamkaf.konfig.impl.v1.sync.ConfigSyncAuthority;
+import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
 import com.iamkaf.konfig.impl.v1.sync.KonfigRemotePayloads;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import com.iamkaf.konfig.impl.v1.sync.SyncSnapshot;
 import net.minecraft.network.Connection;
-import net.minecraft.server.permissions.Permissions;
-import net.minecraftforge.network.NetworkDirection;
-//?}
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.FMLPaths;
 //? if >=1.20.2 {
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.Channel;
 import net.minecraftforge.network.ChannelBuilder;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.SimpleChannel;
 //?} elif >=1.18 {
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 //?} else {
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraftforge.fmllegacy.network.NetworkDirection;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import net.minecraftforge.fmllegacy.network.NetworkRegistry;
 import net.minecraftforge.fmllegacy.network.PacketDistributor;
@@ -44,7 +42,9 @@ import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
 //?}
 
 //? if <=1.20.1 {
-import java.util.function.Supplier;
+import java.util.Optional;
+import java.util.function.BiConsumer;
+import java.util.function.Function;
 //?}
 
 @Mod(KonfigRuntime.MOD_ID)
@@ -57,24 +57,27 @@ public final class KonfigForge {
             .networkProtocolVersion(PROTOCOL)
             .clientAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
             .serverAcceptedVersions(Channel.VersionTest.exact(PROTOCOL))
-//? if >=1.21.11 {
             .optional()
-//?}
             .simpleChannel();
-//? if >=1.21.11 {
     private static final SimpleChannel REMOTE_CHANNEL = ChannelBuilder
             .named(Constants.resource("remote_edit_v1"))
             .networkProtocolVersion(ConfigSyncAuthority.PROTOCOL_VERSION)
             .optional()
             .simpleChannel();
-//?}
 //?} else {
     private static final String PROTOCOL = KonfigNetwork.FORGE_PROTOCOL;
+    private static final String REMOTE_PROTOCOL = String.valueOf(ConfigSyncAuthority.PROTOCOL_VERSION);
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
             KonfigNetwork.mainChannel(),
             () -> PROTOCOL,
-            PROTOCOL::equals,
-            PROTOCOL::equals
+            NetworkRegistry.acceptMissingOr(PROTOCOL),
+            NetworkRegistry.acceptMissingOr(PROTOCOL)
+    );
+    private static final SimpleChannel REMOTE_CHANNEL = NetworkRegistry.newSimpleChannel(
+            Constants.resource("remote_edit_v1"),
+            () -> REMOTE_PROTOCOL,
+            NetworkRegistry.acceptMissingOr(REMOTE_PROTOCOL),
+            NetworkRegistry.acceptMissingOr(REMOTE_PROTOCOL)
     );
 //?}
 
@@ -95,43 +98,31 @@ public final class KonfigForge {
                     }
                 })
                 .add();
-//? if >=1.21.11 {
         REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.Hello.class, NetworkDirection.PLAY_TO_SERVER)
-                .encoder((message, buffer) -> KonfigRemotePayloads.Hello.STREAM_CODEC.encode(buffer, message))
-                .decoder(KonfigRemotePayloads.Hello.STREAM_CODEC::decode)
-                .consumerMainThread((message, context) -> {
-                    net.minecraft.server.level.ServerPlayer player = context.getSender();
-                    if (player != null) {
-                        KonfigSync.onClientHello(player, message.protocolVersion(), canEdit(player));
-                    }
-                })
+                .encoder((message, buffer) -> KonfigRemotePayloads.Hello.write(buffer, message))
+                .decoder(KonfigRemotePayloads.Hello::read)
+                .consumerMainThread((message, context) -> onHello(context.getSender(), message))
                 .add();
         REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.Capabilities.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder((message, buffer) -> KonfigRemotePayloads.Capabilities.STREAM_CODEC.encode(buffer, message))
-                .decoder(KonfigRemotePayloads.Capabilities.STREAM_CODEC::decode)
+                .encoder((message, buffer) -> KonfigRemotePayloads.Capabilities.write(buffer, message))
+                .decoder(KonfigRemotePayloads.Capabilities::read)
                 .consumerMainThread((message, context) -> KonfigNetwork.receiveClientCapabilities(message))
                 .add();
         REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.Snapshot.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder((message, buffer) -> KonfigRemotePayloads.Snapshot.STREAM_CODEC.encode(buffer, message))
-                .decoder(KonfigRemotePayloads.Snapshot.STREAM_CODEC::decode)
+                .encoder((message, buffer) -> KonfigRemotePayloads.Snapshot.write(buffer, message))
+                .decoder(KonfigRemotePayloads.Snapshot::read)
                 .consumerMainThread((message, context) -> KonfigNetwork.receiveClientAuthoritySnapshot(message))
                 .add();
         REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.EditRequest.class, NetworkDirection.PLAY_TO_SERVER)
-                .encoder((message, buffer) -> KonfigRemotePayloads.EditRequest.STREAM_CODEC.encode(buffer, message))
-                .decoder(KonfigRemotePayloads.EditRequest.STREAM_CODEC::decode)
-                .consumerMainThread((message, context) -> {
-                    net.minecraft.server.level.ServerPlayer player = context.getSender();
-                    if (player != null) {
-                        KonfigSync.onRemoteEdit(player, canEdit(player), KonfigNetwork.editRequest(message));
-                    }
-                })
+                .encoder((message, buffer) -> KonfigRemotePayloads.EditRequest.write(buffer, message))
+                .decoder(KonfigRemotePayloads.EditRequest::read)
+                .consumerMainThread((message, context) -> onEdit(context.getSender(), message))
                 .add();
         REMOTE_CHANNEL.messageBuilder(KonfigRemotePayloads.EditResult.class, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder((message, buffer) -> KonfigRemotePayloads.EditResult.STREAM_CODEC.encode(buffer, message))
-                .decoder(KonfigRemotePayloads.EditResult.STREAM_CODEC::decode)
+                .encoder((message, buffer) -> KonfigRemotePayloads.EditResult.write(buffer, message))
+                .decoder(KonfigRemotePayloads.EditResult::read)
                 .consumerMainThread((message, context) -> KonfigNetwork.receiveClientEditResult(message))
                 .add();
-//?}
 //?} else {
         CHANNEL.registerMessage(0, SyncMessage.class, SyncMessage::encode, SyncMessage::decode,
                 (message, contextSupplier) -> {
@@ -143,47 +134,42 @@ public final class KonfigForge {
                     });
                     context.setPacketHandled(true);
                 });
+        registerRemote(0, KonfigRemotePayloads.Hello.class,
+                (message, buffer) -> KonfigRemotePayloads.Hello.write(buffer, message), KonfigRemotePayloads.Hello::read,
+                NetworkDirection.PLAY_TO_SERVER, (message, sender) -> onHello(sender, message));
+        registerRemote(1, KonfigRemotePayloads.Capabilities.class,
+                (message, buffer) -> KonfigRemotePayloads.Capabilities.write(buffer, message), KonfigRemotePayloads.Capabilities::read,
+                NetworkDirection.PLAY_TO_CLIENT, (message, sender) -> KonfigNetwork.receiveClientCapabilities(message));
+        registerRemote(2, KonfigRemotePayloads.Snapshot.class,
+                (message, buffer) -> KonfigRemotePayloads.Snapshot.write(buffer, message), KonfigRemotePayloads.Snapshot::read,
+                NetworkDirection.PLAY_TO_CLIENT, (message, sender) -> KonfigNetwork.receiveClientAuthoritySnapshot(message));
+        registerRemote(3, KonfigRemotePayloads.EditRequest.class,
+                (message, buffer) -> KonfigRemotePayloads.EditRequest.write(buffer, message), KonfigRemotePayloads.EditRequest::read,
+                NetworkDirection.PLAY_TO_SERVER, (message, sender) -> onEdit(sender, message));
+        registerRemote(4, KonfigRemotePayloads.EditResult.class,
+                (message, buffer) -> KonfigRemotePayloads.EditResult.write(buffer, message), KonfigRemotePayloads.EditResult::read,
+                NetworkDirection.PLAY_TO_CLIENT, (message, sender) -> KonfigNetwork.receiveClientEditResult(message));
 //?}
 
-//? if >=1.20.2 {
-        KonfigRuntime.setSyncSender((player, configId, jsonPayload) -> {
-//? if >=1.21.11 {
-            if (!CHANNEL.isRemotePresent(player.connection.getConnection())) {
-                return;
-            }
-//?}
-            CHANNEL.send(SyncMessage.of(configId, jsonPayload), PacketDistributor.PLAYER.with(player));
-        });
-//?} else {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
-                CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), SyncMessage.of(configId, jsonPayload))
+                sendToPlayer(CHANNEL, player, SyncMessage.of(configId, jsonPayload))
         );
-//?}
-
-//? if >=1.21.11 {
         KonfigSync.setRemoteSender(new KonfigSync.RemoteSender() {
             @Override
-            public void sendCapabilities(net.minecraft.server.level.ServerPlayer player, ConfigEditCapabilities capabilities) {
-                if (supportsRemoteEditing(player.connection.getConnection())) {
-                    REMOTE_CHANNEL.send(KonfigNetwork.remoteCapabilitiesPayload(capabilities), PacketDistributor.PLAYER.with(player));
-                }
+            public void sendCapabilities(ServerPlayer player, ConfigEditCapabilities capabilities) {
+                sendToPlayer(REMOTE_CHANNEL, player, KonfigNetwork.remoteCapabilitiesPayload(capabilities));
             }
 
             @Override
-            public void sendSnapshot(net.minecraft.server.level.ServerPlayer player, ConfigEditSnapshot snapshot) {
-                if (supportsRemoteEditing(player.connection.getConnection())) {
-                    REMOTE_CHANNEL.send(KonfigNetwork.remoteSnapshotPayload(snapshot), PacketDistributor.PLAYER.with(player));
-                }
+            public void sendSnapshot(ServerPlayer player, ConfigEditSnapshot snapshot) {
+                sendToPlayer(REMOTE_CHANNEL, player, KonfigNetwork.remoteSnapshotPayload(snapshot));
             }
 
             @Override
-            public void sendResult(net.minecraft.server.level.ServerPlayer player, ConfigEditResult result) {
-                if (supportsRemoteEditing(player.connection.getConnection())) {
-                    REMOTE_CHANNEL.send(KonfigNetwork.remoteResultPayload(result), PacketDistributor.PLAYER.with(player));
-                }
+            public void sendResult(ServerPlayer player, ConfigEditResult result) {
+                sendToPlayer(REMOTE_CHANNEL, player, KonfigNetwork.remoteResultPayload(result));
             }
         });
-//?}
 
 //? if >=1.21.6 {
         PlayerEvent.PlayerLoggedInEvent.BUS.addListener(this::onPlayerJoin);
@@ -194,35 +180,86 @@ public final class KonfigForge {
 //?}
     }
 
-//? if >=1.21.11 {
     static boolean supportsRemoteEditing(Connection connection) {
         return REMOTE_CHANNEL.isRemotePresent(connection);
     }
 
     static void sendRemoteHello(int protocolVersion) {
-        REMOTE_CHANNEL.send(KonfigNetwork.remoteHelloPayload(protocolVersion), PacketDistributor.SERVER.noArg());
+        sendToServer(KonfigNetwork.remoteHelloPayload(protocolVersion));
     }
 
     static void sendRemoteEdit(ConfigEditRequest request) {
-        REMOTE_CHANNEL.send(KonfigNetwork.remoteEditPayload(request), PacketDistributor.SERVER.noArg());
+        sendToServer(KonfigNetwork.remoteEditPayload(request));
     }
 
-    private static boolean canEdit(net.minecraft.server.level.ServerPlayer player) {
-        return ConfigSyncAuthority.canEdit(
-                player.level().getServer().isSingleplayerOwner(player.nameAndId()),
-                player.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER)
-        );
+    private static void onHello(ServerPlayer player, KonfigRemotePayloads.Hello message) {
+        if (player != null) {
+            KonfigSync.onClientHello(player, message.protocolVersion(), KonfigNetwork.canEdit(player));
+        }
+    }
+
+    private static void onEdit(ServerPlayer player, KonfigRemotePayloads.EditRequest message) {
+        if (player != null) {
+            KonfigSync.onRemoteEdit(player, KonfigNetwork.canEdit(player), KonfigNetwork.editRequest(message));
+        }
+    }
+
+    // Channels are optional, so every clientbound send checks that the peer negotiated the channel.
+    private static void sendToPlayer(SimpleChannel channel, ServerPlayer player, Object message) {
+        if (!channel.isRemotePresent(connectionOf(player))) {
+            return;
+        }
+//? if >=1.20.2 {
+        channel.send(message, PacketDistributor.PLAYER.with(player));
+//?} else {
+        channel.send(PacketDistributor.PLAYER.with(() -> player), message);
+//?}
+    }
+
+    private static void sendToServer(Object message) {
+//? if >=1.20.2 {
+        REMOTE_CHANNEL.send(message, PacketDistributor.SERVER.noArg());
+//?} else {
+        REMOTE_CHANNEL.sendToServer(message);
+//?}
+    }
+
+    private static Connection connectionOf(ServerPlayer player) {
+//? if >=1.20.2 {
+        return player.connection.getConnection();
+//?} elif >=1.19.4 {
+        // Private in vanilla on these lines; Forge's access transformer opens it.
+        return player.connection.connection;
+//?} else {
+        return player.connection.getConnection();
+//?}
+    }
+
+//? if <=1.20.1 {
+    private static <M> void registerRemote(
+            int index,
+            Class<M> type,
+            BiConsumer<M, FriendlyByteBuf> encoder,
+            Function<FriendlyByteBuf, M> decoder,
+            NetworkDirection direction,
+            BiConsumer<M, ServerPlayer> handler
+    ) {
+        REMOTE_CHANNEL.registerMessage(index, type, encoder, decoder, (message, contextSupplier) -> {
+            NetworkEvent.Context context = contextSupplier.get();
+            context.enqueueWork(() -> handler.accept(message, context.getSender()));
+            context.setPacketHandled(true);
+        }, Optional.of(direction));
     }
 //?}
 
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             KonfigRuntime.playerJoined(player);
         }
     }
 
     private void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
+        if (event.getEntity() instanceof ServerPlayer player) {
             KonfigRuntime.playerLeft(player);
         }
 //? if >=1.20.2 {
@@ -247,7 +284,6 @@ public final class KonfigForge {
             return new SyncMessage(KonfigNetwork.snapshot(configId, jsonPayload));
         }
 
-//? if >=1.20.2 {
         private static void encode(SyncMessage message, FriendlyByteBuf buffer) {
             KonfigNetwork.encodeSnapshot(message.snapshot, buffer);
         }
@@ -255,14 +291,5 @@ public final class KonfigForge {
         private static SyncMessage decode(FriendlyByteBuf buffer) {
             return new SyncMessage(KonfigNetwork.decodeSnapshot(buffer));
         }
-//?} else {
-        private static void encode(SyncMessage message, FriendlyByteBuf buffer) {
-            KonfigNetwork.encodeSnapshot(message.snapshot, buffer);
-        }
-
-        private static SyncMessage decode(FriendlyByteBuf buffer) {
-            return new SyncMessage(KonfigNetwork.decodeSnapshot(buffer));
-        }
-//?}
     }
 }
