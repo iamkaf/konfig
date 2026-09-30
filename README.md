@@ -81,7 +81,7 @@ repositories {
 }
 ```
 
-Use the loader artifact for the Minecraft line you target:
+Konfig supports Minecraft 1.17 and newer, and every feature ships on every supported line. Use the loader artifact for the Minecraft line you target:
 
 | Loader | Dependency |
 |--------|------------|
@@ -459,7 +459,7 @@ Konfig has three useful runtime validation layers:
 |---------|----------------|
 | `just boot-check <mc>-forge 60` | Starts the client and confirms Konfig initializes from logs |
 | `just teakit-boot-check <mc>-forge 60` | Enables TeaKit as an optional dev runtime dependency, then confirms Konfig and TeaKit initialize |
-| `just teakit-check <mc>-forge 240` | Runs the checked-in TeaKit UI test, opens the title-screen Mods menu, opens Konfig's config screen, and asserts that `Enable Debug Logging` is present |
+| `just teakit-check <mc>-forge 240` | Runs the checked-in TeaKit UI test, opens the title-screen Mods menu, opens Konfig's config screen, asserts that `Enable Debug Logging` is present, and exercises the Fieldset editor |
 
 Matrix-wide helpers:
 
