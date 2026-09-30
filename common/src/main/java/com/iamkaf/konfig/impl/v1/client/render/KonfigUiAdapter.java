@@ -31,6 +31,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.resources.ResourceLocation;
 //?}
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -157,10 +158,13 @@ public final class KonfigUiAdapter {
 //?}
     }
 
-    /** Returns false where EditBox has no native hint; the caller then draws the placeholder itself. */
+    /**
+     * Returns false where EditBox has no native hint; the caller then draws the placeholder itself. The hint is dark
+     * grey on every line: before 1.21.9 vanilla draws an unstyled hint in the input's text colour, so it looked typed.
+     */
     public static boolean setHint(EditBox box, Component hint) {
 //? if >=1.19.3 {
-        box.setHint(hint);
+        box.setHint(hint.copy().withStyle(ChatFormatting.DARK_GRAY));
         return true;
 //?} else {
         return false;
