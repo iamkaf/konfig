@@ -80,7 +80,7 @@ async function exerciseConfigScreen(ctx: TeaKitTestContext, loader: string, vers
   await ctx.client.screenshot("konfig-translated-value-tooltip");
 
   await stepSampleLevel(ctx, version);
-  await exerciseFieldset(ctx);
+  await exerciseFieldset(ctx, version);
 }
 
 // Sample Level is the debug config's integer slider (0 to 10). Arrow keys step it by exactly one value.
@@ -130,7 +130,7 @@ async function stepSampleLevel(ctx: TeaKitTestContext, version: string): Promise
   }
 }
 
-async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
+async function exerciseFieldset(ctx: TeaKitTestContext, version: string): Promise<void> {
   let screen = await scrollToVisibleEntry(ctx, "Sample Rules");
   await clickEntryControl(ctx, screen, "Sample Rules");
   await ctx.runtime.wait(300);
@@ -193,6 +193,7 @@ async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
   if (screen.widgets().all().some((widget) => widget.label === "Save" || widget.label === "Cancel")) {
     throw new Error("Auto-saving Fieldset screen still exposes Save or Cancel");
   }
+  if (atLeast(version, "1.21.9")) await assertTabRevealsLastField(ctx);
   await screen.widgets().activate({ label: "Done" });
 
   await ctx.client.waitForScreen(CONFIG_SCREEN, { timeoutMs: 10_000 });
@@ -210,6 +211,34 @@ async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
   await ctx.runtime.wait(300);
   await ctx.client.screenshot("konfig-fieldset-reopened");
 }
+
+// From 1.21.9 Konfig keeps a partly visible card taller than the list from scrolling when it is selected. Keyboard
+// focus must still scroll the focused control into view: Tab from the clicked Role dropdown to Priority, then to
+// Active, the card's last field, which starts below the list on a short window.
+async function assertTabRevealsLastField(ctx: TeaKitTestContext): Promise<void> {
+  await ctx.client.key(258, { release: true });
+  await ctx.runtime.wait(100);
+  await ctx.client.key(258, { release: true });
+  await ctx.runtime.wait(300);
+  const screen = await ctx.client.screen();
+  const card = assertExpandedFieldsetRow(screen, 1);
+  const list = screen.widgets().all().find((widget) => widget.widgetClass.endsWith("$EntryList"));
+  if (!list) throw new Error("Missing the Fieldset card list widget");
+  const activeTop = card.y + FIELD_CONTROL_TOP + 3 * FIELD_HEIGHT;
+  const activeBottom = activeTop + CONTROL_HEIGHT;
+  if (activeTop < list.y || activeBottom > list.y + list.height) {
+    throw new Error(
+      `Tab left the Active field at y=${activeTop}..${activeBottom} outside the list band ${list.y}..${list.y + list.height}`,
+    );
+  }
+  await ctx.client.screenshot("konfig-fieldset-tab-revealed");
+}
+
+// KonfigFieldsetListScreen: an expanded card's fields start COLLAPSED_HEIGHT + 2 below the card's content top, each
+// FIELD_HEIGHT tall, with the control 4px into its field.
+const FIELD_CONTROL_TOP = 46;
+const FIELD_HEIGHT = 38;
+const CONTROL_HEIGHT = 20;
 
 // A Fieldset card's row label is its title and summary ("minecraft:iron_sword, weapon  ·  4"); the summary leads with the role.
 function assertCardSummary(row: ScreenListEntrySnapshot, role: string): void {

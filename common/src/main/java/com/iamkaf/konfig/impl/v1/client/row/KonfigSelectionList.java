@@ -4,6 +4,10 @@ import org.jetbrains.annotations.ApiStatus;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+//? if >=1.21.9 {
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+//?}
 //? if <1.21.9 {
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
 //? if >=1.20 {
@@ -40,6 +44,7 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
     /** Adds a row that occupies {@code height} pixels, including 2px padding on each side. */
     public final void addRow(E row, int height) {
 //? if >=1.21.9 {
+        row.attach(this);
         this.addEntry(row, height);
 //?} else {
         row.attach(this, height);
@@ -82,9 +87,10 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
     }
 
 //? if >=1.21.9 {
-    // Vanilla calls this whenever a clipped row is selected, including by mouse click. For a row taller than the list
-    // it would scroll to the row's bottom and move the clicked control out of view, so a partly visible tall row keeps
-    // its scroll and a hidden one is aligned to the list top.
+    // Vanilla calls this whenever a clipped row is selected, including by mouse click, and on every keyboard
+    // selection. For a row taller than the list it would scroll to the row's bottom and move the clicked control out
+    // of view, so a partly visible tall row keeps its scroll and a hidden one is aligned to the list top. Keyboard
+    // focus then scrolls to the focused control in revealFocusedChild.
     @Override
     protected void scrollToEntry(E row) {
         if (!this.tallerThanList(row)) {
@@ -94,7 +100,25 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
         }
     }
 
-    private boolean tallerThanList(E row) {
+    /** Scrolls a control that keyboard navigation focused inside a row taller than the list into view. */
+    final void revealFocusedChild(KonfigListRow<E> row, GuiEventListener child) {
+        if (!this.minecraft.getLastInputType().isKeyboard() || !this.tallerThanList(row)) {
+            return;
+        }
+        ScreenRectangle bounds = row.currentBounds(child);
+        if (bounds == null) {
+            return;
+        }
+        int above = bounds.top() - this.getY() - 2;
+        int below = this.getBottom() - 2 - bounds.bottom();
+        if (above < 0) {
+            this.setScrollAmount(this.scrollAmount() + above);
+        } else if (below < 0) {
+            this.setScrollAmount(this.scrollAmount() - below);
+        }
+    }
+
+    private boolean tallerThanList(KonfigListRow<E> row) {
         return row.getHeight() > this.getHeight() - 4;
     }
 

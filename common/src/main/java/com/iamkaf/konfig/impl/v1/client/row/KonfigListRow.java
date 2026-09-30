@@ -11,6 +11,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import com.mojang.blaze3d.vertex.PoseStack;
 //?}
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+//? if >=1.21.9 {
+import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.navigation.ScreenRectangle;
+//?}
 //? if <1.19.4 {
 import com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter;
 import net.minecraft.client.gui.components.EditBox;
@@ -25,11 +29,13 @@ public abstract class KonfigListRow<E extends KonfigListRow<E>> extends Containe
 //? if >=26.1 {
     @Override
     public final void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+        this.renderedContentY = this.getContentY();
         this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight(), mouseX, mouseY, hovered, partialTick);
     }
 //?} elif >=1.21.9 {
     @Override
     public final void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
+        this.renderedContentY = this.getContentY();
         this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth(), this.getContentHeight(), mouseX, mouseY, hovered, partialTick);
     }
 //?} elif >=1.20 {
@@ -45,8 +51,34 @@ public abstract class KonfigListRow<E extends KonfigListRow<E>> extends Containe
     }
 //?}
 
-//? if <1.21.9 {
     private KonfigSelectionList<E> owner;
+
+//? if >=1.21.9 {
+    // Content top at the last render, where renderRow placed the child widgets. The list may have scrolled since.
+    private int renderedContentY = Integer.MIN_VALUE;
+
+    final void attach(KonfigSelectionList<E> owner) {
+        this.owner = owner;
+    }
+
+    /** Where {@code child} is now, or null before this row was first rendered and its children were placed. */
+    final ScreenRectangle currentBounds(GuiEventListener child) {
+        if (this.renderedContentY == Integer.MIN_VALUE) {
+            return null;
+        }
+        ScreenRectangle rendered = child.getRectangle();
+        return new ScreenRectangle(rendered.left(), rendered.top() - this.renderedContentY + this.getContentY(), rendered.width(), rendered.height());
+    }
+
+    // The list selects this row, and may scroll it, before the focused child is set.
+    @Override
+    public void setFocused(GuiEventListener listener) {
+        super.setFocused(listener);
+        if (this.owner != null && listener != null) {
+            this.owner.revealFocusedChild(this, listener);
+        }
+    }
+//?} else {
     private int slotHeight;
 
     final void attach(KonfigSelectionList<E> owner, int slotHeight) {
