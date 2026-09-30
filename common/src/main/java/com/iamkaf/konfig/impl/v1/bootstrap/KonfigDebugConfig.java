@@ -9,6 +9,7 @@ import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.api.v1.SyncMode;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetBuilder;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetCatalog;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
 //? if >=1.19.3 {
@@ -98,7 +99,11 @@ public final class KonfigDebugConfig {
                         .inlineText("This can help diagnose issues but may produce a lot of log output.")
                         .inlineText("Default: OFF"))
                 .build();
-        FieldsetField<String> item = sampleItemField();
+        builder.intRange("sample_level", 5, 0, 10)
+                .comment("Sample integer slider for exercising Konfig's slider controls.")
+                .tooltip("Drag, or focus and use the arrow keys to step one value.")
+                .build();
+        FieldsetField<String> item = itemField("minecraft:iron_sword");
         FieldsetField<String> role = FieldsetField.dropdown(
                 "role",
                 "tool",
@@ -126,6 +131,49 @@ public final class KonfigDebugConfig {
                 .comment("Sample item rules for exercising Konfig's structured entry editor.")
                 .tooltip("Open the sample rules editor.")
                 .build();
+
+        FieldsetField<String> catalogItem = itemField("minecraft:iron_pickaxe");
+        FieldsetField<String> catalogRole = FieldsetField.dropdown(
+                "role",
+                "tool",
+                List.of("tool", "weapon", "utility")
+        );
+        FieldsetField<Integer> catalogPriority = FieldsetField.intRange("priority", 2, 1, 10);
+        FieldsetField<Boolean> catalogActive = FieldsetField.bool("active", true);
+        // Role comes first so its control stays on screen in the narrow detail page.
+        FieldsetCatalog catalog = FieldsetCatalog.create()
+                .editableProfile("User Rules")
+                .newEntryLabel("New Rule")
+                .overrideLabel("Override")
+                .filter(catalogRole)
+                .section("Rule", catalogRole, catalogPriority)
+                .section("Item", catalogItem, catalogActive)
+                .build();
+
+        builder.fieldset("sample_catalog", FieldsetBuilder.create()
+                .field(catalogItem)
+                .field(catalogRole)
+                .field(catalogPriority)
+                .field(catalogActive)
+                .key(catalogItem)
+                .title(catalogItem)
+                .icon(catalogItem)
+                .summary(catalogRole, catalogPriority)
+                .catalog(catalog)
+                .entry(FieldsetEntry.builtin("konfig:iron_sword", "Konfig Samples")
+                        .with(catalogItem, "minecraft:iron_sword")
+                        .with(catalogRole, "weapon")
+                        .with(catalogPriority, 4)
+                        .with(catalogActive, true))
+                .entry(FieldsetEntry.builtin("konfig:shears", "Konfig Samples")
+                        .with(catalogItem, "minecraft:shears")
+                        .with(catalogRole, "utility")
+                        .with(catalogPriority, 2)
+                        .with(catalogActive, true))
+                .build())
+                .comment("Sample item rules for exercising Konfig's catalog editor.")
+                .tooltip("Open the sample rule catalog.")
+                .build();
         builder.pop();
 
         builder.build();
@@ -140,11 +188,11 @@ public final class KonfigDebugConfig {
         }
     }
 
-    private static FieldsetField<String> sampleItemField() {
+    private static FieldsetField<String> itemField(String defaultValue) {
 //? if >=1.19.3 {
-        return FieldsetField.registryString("item", "minecraft:iron_sword", Registries.ITEM);
+        return FieldsetField.registryString("item", defaultValue, Registries.ITEM);
 //?} else {
-        return FieldsetField.registryString("item", "minecraft:iron_sword", Registry.ITEM_REGISTRY);
+        return FieldsetField.registryString("item", defaultValue, Registry.ITEM_REGISTRY);
 //?}
     }
 
