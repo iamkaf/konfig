@@ -7,12 +7,13 @@ import net.minecraftforge.fml.ModList;
 //?} elif >=1.19 {
 import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.ModLoadingContext;
-//?} elif >=1.18 {
-import net.minecraftforge.client.ConfigGuiHandler;
-import net.minecraftforge.fml.ModLoadingContext;
 //?} else {
 import net.minecraftforge.fml.ModLoadingContext;
+//? if >=1.18 {
+import net.minecraftforge.client.ConfigGuiHandler;
+//?} else {
 import net.minecraftforge.fmlclient.ConfigGuiHandler;
+//?}
 //?}
 
 /**
@@ -42,11 +43,6 @@ public final class KonfigForgeClientScreens {
         ModLoadingContext.get().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,
                 () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> KonfigClientScreens.create(modId, parent))
-        );
-//?} elif >=1.18 {
-        ModLoadingContext.get().registerExtensionPoint(
-                ConfigGuiHandler.ConfigGuiFactory.class,
-                () -> new ConfigGuiHandler.ConfigGuiFactory((minecraft, parent) -> KonfigClientScreens.create(modId, parent))
         );
 //?} else {
         ModLoadingContext.get().registerExtensionPoint(
