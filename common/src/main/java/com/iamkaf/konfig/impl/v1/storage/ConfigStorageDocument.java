@@ -2,7 +2,9 @@ package com.iamkaf.konfig.impl.v1.storage;
 
 import org.jetbrains.annotations.ApiStatus;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -34,7 +36,27 @@ public record ConfigStorageDocument(
 
     private static Map<String, JsonElement> copyValues(Map<String, JsonElement> values) {
         var copy = new LinkedHashMap<String, JsonElement>();
-        values.forEach((path, value) -> copy.put(path, value.deepCopy()));
+        values.forEach((path, value) -> copy.put(path, deepCopy(value)));
         return Collections.unmodifiableMap(copy);
+    }
+
+    // JsonElement.deepCopy() is package-private in Gson 2.8.0, which 1.14.4-1.17.1 ship.
+    private static JsonElement deepCopy(JsonElement value) {
+        if (value.isJsonObject()) {
+            JsonObject copy = new JsonObject();
+            for (Map.Entry<String, JsonElement> member : value.getAsJsonObject().entrySet()) {
+                copy.add(member.getKey(), deepCopy(member.getValue()));
+            }
+            return copy;
+        }
+        if (value.isJsonArray()) {
+            JsonArray copy = new JsonArray();
+            for (JsonElement element : value.getAsJsonArray()) {
+                copy.add(deepCopy(element));
+            }
+            return copy;
+        }
+        // JsonPrimitive and JsonNull are immutable.
+        return value;
     }
 }
