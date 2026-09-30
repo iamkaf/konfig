@@ -261,26 +261,35 @@ async function clickEntryControl(ctx: TeaKitTestContext, screen: ClientScreen, l
   });
 }
 
+// KonfigConfigScreen lays its list out from KonfigScreenMetrics.LIST_TOP to height - LIST_BOTTOM_MARGIN and puts the
+// Done button at height - 26 (rebuildScreenWidgets).
+const CONFIG_LIST_TOP = 28;
+const CONFIG_LIST_BOTTOM_MARGIN = 52;
+const CONFIG_DONE_BUTTON_OFFSET = 26;
+
 async function scrollToVisibleEntry(ctx: TeaKitTestContext, label: string): Promise<ClientScreen> {
   const startedAt = Date.now();
-  let previousY: number | undefined;
   while (Date.now() - startedAt < 10_000) {
     const screen = await ctx.client.screen();
-    const list = screen.widgets().all().find((widget) => widget.widgetClass.includes("KonfigEntryList"));
+    const band = configListBand(screen);
     const entry = screen.lists().entries().find((candidate) => candidate.label.includes(label));
-    if (list && entry && entry.y >= list.y && entry.y + entry.height <= list.y + list.height) {
+    if (entry && entry.y >= band.top && entry.y + entry.height <= band.bottom) {
       return screen;
     }
-    // Selection lists are not widgets before 1.20.3, so their bounds are unknown. Scroll until the entry stops
-    // moving instead; that is the end of the list, where the last entry is fully visible.
-    if (!list && entry && entry.y === previousY) {
-      return screen;
-    }
-    previousY = entry?.y;
-    await screen.scroll({ vertical: -2 });
+    await screen.scroll({ vertical: entry && entry.y < band.top ? 2 : -2 });
     await ctx.runtime.wait(100);
   }
   throw new Error(`Timed out scrolling to visible Konfig entry: ${label}`);
+}
+
+function configListBand(screen: ClientScreen): { top: number; bottom: number } {
+  const list = screen.widgets().all().find((widget) => widget.widgetClass.includes("KonfigEntryList"));
+  if (list) return { top: list.y, bottom: list.y + list.height };
+  // Selection lists are not widgets before 1.20.3. The snapshot has no screen height, so derive it from Done.
+  const done = screen.widgets().all().find((widget) => widget.label === "Done");
+  if (!done) throw new Error("Missing the Konfig config screen Done button");
+  const screenHeight = done.y + CONFIG_DONE_BUTTON_OFFSET;
+  return { top: CONFIG_LIST_TOP, bottom: screenHeight - CONFIG_LIST_BOTTOM_MARGIN };
 }
 
 async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, version: string): Promise<ClientScreen> {
