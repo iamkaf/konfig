@@ -23,7 +23,7 @@ const BUILT_IN_RULES = ["minecraft:iron_sword", "minecraft:shears"];
 const NEW_RULE = "minecraft:iron_pickaxe";
 
 describe("Konfig Fieldset catalog", () => {
-  test("adds, edits and deletes a user rule without touching built-in rules", async (ctx) => {
+  test("saves an added and edited user rule across reopens without touching built-in rules", async (ctx) => {
     const health = await ctx.runtime.health();
     const version = health.minecraftVersion ?? "";
     const loader = health.loader ?? "";
@@ -43,47 +43,29 @@ describe("Konfig Fieldset catalog", () => {
       await ctx.client.waitForFrames(3);
       await ctx.client.screenshot("konfig-catalog-new-entry");
 
-      // The role dropdown cycles tool -> weapon. Catalog detail controls are not screen widgets, so the saved
-      // value is read from the field row that applied it.
-      const role = rowsOf(screen, "DropdownFieldRow")[0];
-      if (!role) throw new Error("Missing the role control in the new rule's detail");
-      const applied = await ctx.spy.method(
-        "konfig.catalog.apply",
-        "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetCatalogScreen$FieldRow#apply",
-      );
-      try {
-        await ctx.client.click({ x: role.x + role.width * 0.75, y: role.y + 14, button: 0 });
-        await ctx.runtime.wait(300);
-        const calls = await applied.$calls();
-        if (calls.length !== 1 || calls[0]?.args?.[0] !== "weapon" || calls[0]?.returned !== true) {
-          throw new Error(`Expected the role control to save weapon once, found ${JSON.stringify(calls)}`);
-        }
-      } finally {
-        await ctx.spy.detach(applied);
-      }
-      screen = await waitForActiveWidget(ctx, "Undo");
+      // The role dropdown cycles tool -> weapon -> utility.
+      await cycleRole(ctx, screen, "weapon");
       await ctx.client.waitForFrames(3);
       await ctx.client.screenshot("konfig-catalog-edited");
 
-      if (rowsOf(screen, "RuleRow").length === 0) {
-        // The narrow layout shows the detail as its own page; Back returns to the User Rules list.
-        await screen.widgets().activate({ label: "Back" });
-        await ctx.runtime.wait(300);
-        screen = await ctx.client.screen();
-      }
-      const edited = assertRuleLabels(screen, [NEW_RULE]);
-
-      await clickRow(ctx, edited[0]!);
+      // Reopening reads the rule back from the config value, so the added rule must still be listed.
+      screen = await reopenCatalog(ctx);
+      screen = await openProfile(ctx, USER_PROFILE);
+      const saved = assertRuleLabels(screen, [NEW_RULE]);
+      await clickRow(ctx, saved[0]!);
       screen = await waitForActiveWidget(ctx, "Delete");
+      await ctx.client.waitForFrames(3);
+      await ctx.client.screenshot("konfig-catalog-reopened");
+      // weapon -> utility only happens if the reopened rule kept the edited role.
+      await cycleRole(ctx, screen, "utility");
+
+      screen = await ctx.client.screen();
       await screen.widgets().activate({ label: "Delete" });
       await ctx.runtime.wait(300);
       screen = await ctx.client.screen();
       assertRuleLabels(screen, []);
 
-      await screen.widgets().activate({ label: "Done" });
-      await ctx.client.waitForScreen(CONFIG_SCREEN, { timeoutMs: 10_000 });
-      screen = await openCatalog(ctx);
-      assertProfiles(screen);
+      screen = await reopenCatalog(ctx);
       screen = await openProfile(ctx, BUILT_IN_PROFILE);
       assertRuleLabels(screen, BUILT_IN_RULES);
       screen = await backToProfiles(ctx);
@@ -94,6 +76,39 @@ describe("Konfig Fieldset catalog", () => {
     }
   });
 });
+
+/**
+ * Clicks the selected rule's role dropdown once and asserts it saved `expected`. Catalog detail controls are not
+ * screen widgets, so the saved value is read from the field row that applied it.
+ */
+async function cycleRole(ctx: TeaKitTestContext, screen: ClientScreen, expected: string): Promise<void> {
+  const role = rowsOf(screen, "DropdownFieldRow")[0];
+  if (!role) throw new Error("Missing the role control in the rule's detail");
+  const applied = await ctx.spy.method(
+    "konfig.catalog.apply",
+    "com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetCatalogScreen$FieldRow#apply",
+  );
+  try {
+    await ctx.client.click({ x: role.x + role.width * 0.75, y: role.y + 14, button: 0 });
+    await ctx.runtime.wait(300);
+    const calls = await applied.$calls();
+    if (calls.length !== 1 || calls[0]?.args?.[0] !== expected || calls[0]?.returned !== true) {
+      throw new Error(`Expected the role control to save ${expected} once, found ${JSON.stringify(calls)}`);
+    }
+  } finally {
+    await ctx.spy.detach(applied);
+  }
+}
+
+/** Leaves the catalog with Done and opens it again from the config screen. */
+async function reopenCatalog(ctx: TeaKitTestContext): Promise<ClientScreen> {
+  const screen = await ctx.client.screen();
+  await screen.widgets().activate({ label: "Done" });
+  await ctx.client.waitForScreen(CONFIG_SCREEN, { timeoutMs: 10_000 });
+  const catalog = await openCatalog(ctx);
+  assertProfiles(catalog);
+  return catalog;
+}
 
 async function openCatalog(ctx: TeaKitTestContext): Promise<ClientScreen> {
   const screen = await scrollToVisibleEntry(ctx, "Sample Catalog");
