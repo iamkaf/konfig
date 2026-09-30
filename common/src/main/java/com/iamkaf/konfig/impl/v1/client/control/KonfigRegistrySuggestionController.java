@@ -45,6 +45,11 @@ public final class KonfigRegistrySuggestionController {
                 && mouseY <= this.inputY + this.owner.controlHeight();
     }
 
+    /** Whether the whole input lies between {@code top} and {@code bottom}, as laid out by the last render. */
+    public boolean isInputWithin(int top, int bottom) {
+        return this.inputY >= top && this.inputY + this.owner.controlHeight() <= bottom;
+    }
+
     public boolean hasVisibleSuggestions() {
         return !this.suggestions.isEmpty();
     }

@@ -651,7 +651,9 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             return true;
         }
         TextFieldRow active = this.activeTextField;
-        if (active != null && active.handleSuggestionClick(mouseX, mouseY)) {
+        // Only the popup drawn last frame takes clicks; a field scrolled out of the list hides its popup.
+        TextFieldRow shown = this.renderedRegistryField;
+        if (shown != null && shown.handleSuggestionClick(mouseX, mouseY)) {
             return true;
         }
         if (active != null
@@ -670,7 +672,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             return true;
         }
         TextFieldRow active = this.activeTextField;
-        if (active != null && active.hasVisibleSuggestions() && active.handleSuggestionKey(keyCode)) {
+        if (active != null && active == this.renderedRegistryField && active.handleSuggestionKey(keyCode)) {
             return true;
         }
         if (active != null && active.inputFocused()) {
@@ -1552,7 +1554,10 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 KonfigFieldsetCatalogScreen.this.activeTextField = this;
                 this.refreshSuggestions();
             }
-            if (KonfigFieldsetCatalogScreen.this.activeTextField == this && this.hasVisibleSuggestions()) {
+            DetailList list = KonfigFieldsetCatalogScreen.this.detailList;
+            if (KonfigFieldsetCatalogScreen.this.activeTextField == this
+                    && this.hasVisibleSuggestions()
+                    && this.suggestions.isInputWithin(list.listTop(), list.listBottom())) {
                 KonfigFieldsetCatalogScreen.this.renderedRegistryField = this;
             }
         }

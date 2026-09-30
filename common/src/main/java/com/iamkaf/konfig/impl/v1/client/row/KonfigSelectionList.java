@@ -66,11 +66,10 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
     /** Scrolls a row into view. A row taller than the list is aligned to the list top. */
     public final void revealRow(E row) {
 //? if >=1.21.9 {
-        if (row.getHeight() > this.getHeight() - 4) {
-            int topOffset = row.getY() - this.getY() - 2;
-            this.setScrollAmount(this.scrollAmount() + topOffset);
+        if (this.tallerThanList(row)) {
+            this.alignTop(row);
         } else {
-            this.scrollToEntry(row);
+            super.scrollToEntry(row);
         }
 //?} else {
         int rowY = this.getRowTop(this.children().indexOf(row)) - 2;
@@ -79,6 +78,46 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
         } else {
             this.ensureVisible(row);
         }
+//?}
+    }
+
+//? if >=1.21.9 {
+    // Vanilla calls this whenever a clipped row is selected, including by mouse click. For a row taller than the list
+    // it would scroll to the row's bottom and move the clicked control out of view, so a partly visible tall row keeps
+    // its scroll and a hidden one is aligned to the list top.
+    @Override
+    protected void scrollToEntry(E row) {
+        if (!this.tallerThanList(row)) {
+            super.scrollToEntry(row);
+        } else if (row.getY() + row.getHeight() <= this.getY() || row.getY() >= this.getBottom()) {
+            this.alignTop(row);
+        }
+    }
+
+    private boolean tallerThanList(E row) {
+        return row.getHeight() > this.getHeight() - 4;
+    }
+
+    private void alignTop(E row) {
+        this.setScrollAmount(this.scrollAmount() + row.getY() - this.getY() - 2);
+    }
+//?}
+
+    /** Top edge of the visible row area. */
+    public final int listTop() {
+//? if >=1.20.3 {
+        return this.getY();
+//?} else {
+        return this.y0;
+//?}
+    }
+
+    /** Bottom edge of the visible row area. */
+    public final int listBottom() {
+//? if >=1.20.3 {
+        return this.getBottom();
+//?} else {
+        return this.y1;
 //?}
     }
 
@@ -258,27 +297,11 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
 //?}
     }
 
-    private int listTop() {
-//? if >=1.20.3 {
-        return this.getY();
-//?} else {
-        return this.y0;
-//?}
-    }
-
     private int listRight() {
 //? if >=1.20.3 {
         return this.getRight();
 //?} else {
         return this.x1;
-//?}
-    }
-
-    private int listBottom() {
-//? if >=1.20.3 {
-        return this.getBottom();
-//?} else {
-        return this.y1;
 //?}
     }
 //?}

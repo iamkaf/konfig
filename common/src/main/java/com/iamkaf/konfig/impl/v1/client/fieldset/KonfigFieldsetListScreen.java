@@ -336,7 +336,9 @@ final class KonfigFieldsetListScreen extends Screen {
             return true;
         }
         EntryRow.TextControl active = this.activeRegistryControl;
-        if (active != null && active.handleSuggestionClick(mouseX, mouseY)) {
+        // Only the popup drawn last frame takes clicks; a field scrolled out of the list hides its popup.
+        EntryRow.TextControl shown = this.renderedRegistryControl;
+        if (shown != null && shown.handleSuggestionClick(mouseX, mouseY)) {
             return true;
         }
 
@@ -357,7 +359,7 @@ final class KonfigFieldsetListScreen extends Screen {
             return true;
         }
         EntryRow.TextControl active = this.activeRegistryControl;
-        if (active != null && active.hasVisibleSuggestions() && active.handleSuggestionKey(keyCode)) {
+        if (active != null && active == this.renderedRegistryControl && active.handleSuggestionKey(keyCode)) {
             return true;
         }
         boolean handled = vanilla.getAsBoolean();
@@ -498,6 +500,8 @@ final class KonfigFieldsetListScreen extends Screen {
         private final boolean selected;
         private final boolean expanded;
         private final Button header;
+        // The card's title and summary. The header button narrates it, and UI tests read it as the row label.
+        private Component label = text("");
         private final List<FieldControl> fields = new ArrayList<>();
         private final List<AbstractWidget> controls = new ArrayList<>();
 
@@ -549,7 +553,11 @@ final class KonfigFieldsetListScreen extends Screen {
 
         private void refreshHeaderNarration() {
             String action = this.expanded ? "Collapse " : "Expand ";
-            this.header.setMessage(text(action + KonfigFieldsetListScreen.this.adapter.entryLabel(this.currentEntry()).getString()));
+            FieldsetEntry entry = this.currentEntry();
+            String title = KonfigFieldsetListScreen.this.adapter.entryLabel(entry).getString();
+            String summary = KonfigFieldsetListScreen.this.adapter.entrySummary(entry).getString();
+            this.label = text(summary.isBlank() ? title : title + ", " + summary);
+            this.header.setMessage(text(action + this.label.getString()));
         }
 
         private boolean hasLocalErrors() {
@@ -1071,7 +1079,10 @@ final class KonfigFieldsetListScreen extends Screen {
                     KonfigFieldsetListScreen.this.activeRegistryControl = this;
                     this.refreshSuggestions();
                 }
-                if (KonfigFieldsetListScreen.this.activeRegistryControl == this && this.hasVisibleSuggestions()) {
+                EntryList list = KonfigFieldsetListScreen.this.list;
+                if (KonfigFieldsetListScreen.this.activeRegistryControl == this
+                        && this.hasVisibleSuggestions()
+                        && this.suggestions.isInputWithin(list.listTop(), list.listBottom())) {
                     KonfigFieldsetListScreen.this.renderedRegistryControl = this;
                 }
             }

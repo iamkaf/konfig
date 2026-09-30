@@ -107,14 +107,21 @@ async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
   if (screen.widgets().all().some((widget) => widget.label === "Suggest")) {
     throw new Error("Fieldset registry input still exposes the legacy Suggest button");
   }
+  assertCardSummary(expandedCopy, "weapon");
   await clickInlineField(ctx, expandedCopy, 0);
   await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  // Selecting a field in a card taller than the list must not scroll the clicked field away.
+  const afterItemClick = assertExpandedFieldsetRow(screen, 1);
+  if (afterItemClick.y !== expandedCopy.y) {
+    throw new Error(`Clicking the Item field scrolled its card from y=${expandedCopy.y} to y=${afterItemClick.y}`);
+  }
   await ctx.client.screenshot("konfig-fieldset-registry-suggestions");
   await ctx.client.key(256, { release: true });
   await clickInlineField(ctx, expandedCopy, 1);
   await ctx.runtime.wait(300);
   screen = await ctx.client.screen();
-  assertExpandedFieldsetRow(screen, 1);
+  assertCardSummary(assertExpandedFieldsetRow(screen, 1), "utility");
   await ctx.client.screenshot("konfig-fieldset-edited");
   if (screen.widgets().all().some((widget) => widget.label === "Save" || widget.label === "Cancel")) {
     throw new Error("Auto-saving Fieldset screen still exposes Save or Cancel");
@@ -131,9 +138,19 @@ async function exerciseFieldset(ctx: TeaKitTestContext): Promise<void> {
     { timeoutMs: 10_000 },
   );
 
-  assertFieldsetRows(screen, 2, 0);
+  const reopenedRows = assertFieldsetRows(screen, 2, 0);
+  const reopenedCopy = reopenedRows.find((row) => row.entryIndex === 1);
+  if (!reopenedCopy) throw new Error("Missing copied sample rule after reopening");
+  assertCardSummary(reopenedCopy, "utility");
   await ctx.runtime.wait(300);
   await ctx.client.screenshot("konfig-fieldset-reopened");
+}
+
+// A Fieldset card's row label is its title and summary ("minecraft:iron_sword, weapon  ·  4"); the summary leads with the role.
+function assertCardSummary(row: ScreenListEntrySnapshot, role: string): void {
+  if (!row.label.includes(`, ${role}`)) {
+    throw new Error(`Expected Fieldset card ${row.entryIndex} to have role ${role}, found label ${JSON.stringify(row.label)}`);
+  }
 }
 
 async function assertBuiltInFieldsDoNotTrapFocus(
