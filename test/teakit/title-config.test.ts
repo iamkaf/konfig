@@ -208,7 +208,7 @@ async function exerciseFieldset(ctx: TeaKitTestContext, version: string): Promis
   if (screen.widgets().all().some((widget) => widget.label === "Save" || widget.label === "Cancel")) {
     throw new Error("Auto-saving Fieldset screen still exposes Save or Cancel");
   }
-  if (atLeast(version, "1.21.9")) await assertTabRevealsLastField(ctx);
+  if (atLeast(version, "1.21.9")) await assertTabRevealsLastField(ctx, version);
   await screen.widgets().activate({ label: "Done" });
 
   await ctx.client.waitForScreen(CONFIG_SCREEN, { timeoutMs: 10_000 });
@@ -230,10 +230,10 @@ async function exerciseFieldset(ctx: TeaKitTestContext, version: string): Promis
 // From 1.21.9 Konfig keeps a partly visible card taller than the list from scrolling when it is selected. Keyboard
 // focus must still scroll the focused control into view: Tab from the clicked Role dropdown to Priority, then to
 // Active, the card's last field, which starts below the list on a short window.
-async function assertTabRevealsLastField(ctx: TeaKitTestContext): Promise<void> {
-  await ctx.client.key(258, { release: true });
+async function assertTabRevealsLastField(ctx: TeaKitTestContext, version: string): Promise<void> {
+  await pressTab(ctx, version);
   await ctx.runtime.wait(100);
-  await ctx.client.key(258, { release: true });
+  await pressTab(ctx, version);
   await ctx.runtime.wait(300);
   const screen = await ctx.client.screen();
   const card = assertExpandedFieldsetRow(screen, 1);
@@ -247,6 +247,16 @@ async function assertTabRevealsLastField(ctx: TeaKitTestContext): Promise<void> 
     );
   }
   await ctx.client.screenshot("konfig-fieldset-tab-revealed");
+}
+
+// From 26.3 Minecraft marks input as keyboard input from the key event's SDL keycode (9 for Tab), while TeaKit passes
+// the GLFW code (258) through as the keycode. Send the SDL keycode and scancode (43) a real Tab press carries.
+async function pressTab(ctx: TeaKitTestContext, version: string): Promise<void> {
+  if (atLeast(version, "26.3")) {
+    await ctx.client.key(9, { scancode: 43, release: true });
+  } else {
+    await ctx.client.key(258, { release: true });
+  }
 }
 
 // KonfigFieldsetListScreen: an expanded card's fields start COLLAPSED_HEIGHT + 2 below the card's content top, each
