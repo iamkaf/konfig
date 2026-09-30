@@ -1,11 +1,7 @@
 package com.iamkaf.konfig.api.v1;
 
-//? if >=1.17 {
-// Registry binding is typed with ResourceKey on modern Minecraft; legacy
-// lines keep registry ids as strings in their loader-specific API shape.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-//?}
 
 import java.util.List;
 import java.util.function.Predicate;
@@ -95,15 +91,6 @@ public interface StringListValueBuilder extends ValueBuilder<List<String>> {
     @Override
     StringListValueBuilder validate(Predicate<List<String>> validator, String errorMessage);
 
-//? if <=1.16.5 {
-    /**
-     * Binds list entries to registry-id suggestions.
-     *
-     * @param registryId the registry id to suggest from
-     * @return this builder
-     */
-    StringListValueBuilder registry(String registryId);
-//?} else {
     /**
      * Binds list entries to registry-key suggestions.
      *
@@ -111,5 +98,4 @@ public interface StringListValueBuilder extends ValueBuilder<List<String>> {
      * @return this builder
      */
     StringListValueBuilder registry(ResourceKey<? extends Registry<?>> registryKey);
-//?}
 }

@@ -18,13 +18,11 @@ import net.minecraft.network.Connection;
 import net.minecraft.server.permissions.Permissions;
 import net.minecraftforge.network.NetworkDirection;
 //?}
-//? if >=1.17 {
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.loading.FMLLoader;
 import net.minecraftforge.fml.loading.FMLPaths;
-//?}
 //? if >=1.20.2 {
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.Channel;
@@ -37,25 +35,12 @@ import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.fmllegacy.network.NetworkEvent;
 import net.minecraftforge.fmllegacy.network.NetworkRegistry;
 import net.minecraftforge.fmllegacy.network.PacketDistributor;
 import net.minecraftforge.fmllegacy.network.simple.SimpleChannel;
-//?} else {
-import net.minecraft.entity.player.ServerPlayerEntity;
-import net.minecraft.network.PacketBuffer;
-import net.minecraft.util.ResourceLocation;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.loading.FMLLoader;
-import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.fml.network.NetworkEvent;
-import net.minecraftforge.fml.network.NetworkRegistry;
-import net.minecraftforge.fml.network.PacketDistributor;
-import net.minecraftforge.fml.network.simple.SimpleChannel;
 //?}
 
 //? if <=1.20.1 {
@@ -86,11 +71,7 @@ public final class KonfigForge {
 //?} else {
     private static final String PROTOCOL = KonfigNetwork.FORGE_PROTOCOL;
     private static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-//? if >=1.17 {
             KonfigNetwork.mainChannel(),
-//?} else {
-            new ResourceLocation(KonfigRuntime.MOD_ID, "main"),
-//?}
             () -> PROTOCOL,
             PROTOCOL::equals,
             PROTOCOL::equals
@@ -173,13 +154,9 @@ public final class KonfigForge {
 //?}
             CHANNEL.send(SyncMessage.of(configId, jsonPayload), PacketDistributor.PLAYER.with(player));
         });
-//?} elif >=1.17 {
-        KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
-                CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), SyncMessage.of(configId, jsonPayload))
-        );
 //?} else {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) ->
-                CHANNEL.send(PacketDistributor.PLAYER.with(() -> (ServerPlayerEntity) player), SyncMessage.of(configId, jsonPayload))
+                CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), SyncMessage.of(configId, jsonPayload))
         );
 //?}
 
@@ -239,29 +216,15 @@ public final class KonfigForge {
 //?}
 
     private void onPlayerJoin(PlayerEvent.PlayerLoggedInEvent event) {
-//? if >=1.17 {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
             KonfigRuntime.playerJoined(player);
         }
-//?} else {
-        if (event.getEntity() instanceof ServerPlayerEntity) {
-            ServerPlayerEntity player = (ServerPlayerEntity) event.getEntity();
-            KonfigRuntime.playerJoined(player);
-        }
-//?}
     }
 
     private void onPlayerLeave(PlayerEvent.PlayerLoggedOutEvent event) {
-//? if >=1.17 {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer player) {
             KonfigRuntime.playerLeft(player);
         }
-//?} else {
-        if (event.getEntity() instanceof ServerPlayerEntity) {
-            ServerPlayerEntity player = (ServerPlayerEntity) event.getEntity();
-            KonfigRuntime.playerLeft(player);
-        }
-//?}
 //? if >=1.20.2 {
         if (event.getEntity().level().isClientSide()) {
             KonfigRuntime.clientDisconnected();
@@ -292,22 +255,13 @@ public final class KonfigForge {
         private static SyncMessage decode(FriendlyByteBuf buffer) {
             return new SyncMessage(KonfigNetwork.decodeSnapshot(buffer));
         }
-//?} elif >=1.17 {
+//?} else {
         private static void encode(SyncMessage message, FriendlyByteBuf buffer) {
             KonfigNetwork.encodeSnapshot(message.snapshot, buffer);
         }
 
         private static SyncMessage decode(FriendlyByteBuf buffer) {
             return new SyncMessage(KonfigNetwork.decodeSnapshot(buffer));
-        }
-//?} else {
-        private static void encode(SyncMessage message, PacketBuffer buffer) {
-            buffer.writeUtf(message.snapshot.configId());
-            buffer.writeUtf(message.snapshot.jsonPayload());
-        }
-
-        private static SyncMessage decode(PacketBuffer buffer) {
-            return SyncMessage.of(buffer.readUtf(256), buffer.readUtf());
         }
 //?}
     }

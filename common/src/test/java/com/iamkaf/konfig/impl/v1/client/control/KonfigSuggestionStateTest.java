@@ -1,4 +1,3 @@
-//? if >=1.17 {
 package com.iamkaf.konfig.impl.v1.client.control;
 
 import org.junit.jupiter.api.Test;
@@ -24,4 +23,3 @@ class KonfigSuggestionStateTest {
                 KonfigSuggestionState.filterRegistrySuggestions(candidates, "#minecraft:diamond"));
     }
 }
-//?}

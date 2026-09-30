@@ -7,12 +7,8 @@ import com.google.gson.JsonPrimitive;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
 import com.iamkaf.konfig.api.v1.StringValueBuilder;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
-//? if >=1.17 {
-// Registry-bound strings use ResourceKey on modern lines; <=1.16.5 keeps
-// string registry ids to match the legacy Minecraft registry API.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-//?}
 
 import java.util.function.Predicate;
 import java.util.function.Consumer;
@@ -89,13 +85,8 @@ final class StringValueBuilderImpl extends ValueBuilderImpl<String> implements S
     }
 
     @Override
-//? if <=1.16.5 {
-    public StringValueBuilder registry(String registryId) {
-        super.bindRegistry(registryId);
-//?} else {
     public StringValueBuilder registry(ResourceKey<? extends Registry<?>> registryKey) {
         super.bindRegistry(registryKey);
-//?}
         return this;
     }
 }

@@ -2,9 +2,6 @@ package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
 
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so dropdown interaction state belongs to the 1.17 client API baseline.
 import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.sameValue;
 
 import java.util.List;
@@ -243,4 +240,3 @@ final class KonfigDropdownState {
         return Math.min(value, max);
     }
 }
-//?}

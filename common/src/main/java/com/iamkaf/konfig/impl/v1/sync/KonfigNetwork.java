@@ -13,7 +13,7 @@ import net.minecraft.resources.Identifier;
 //?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.network.FriendlyByteBuf;
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
@@ -30,7 +30,6 @@ public final class KonfigNetwork {
     private KonfigNetwork() {
     }
 
-//? if >=1.17 {
 //? if >=1.21.11 {
     public static Identifier mainChannel() {
 //?} else {
@@ -46,7 +45,6 @@ public final class KonfigNetwork {
 //?}
         return Constants.resource("sync_snapshot");
     }
-//?}
 
     public static SyncSnapshot snapshot(String configId, String jsonPayload) {
         return new SyncSnapshot(configId, jsonPayload);
@@ -140,9 +138,6 @@ public final class KonfigNetwork {
     }
 //?}
 
-//? if >=1.17 {
-// FriendlyByteBuf is the shared modern network buffer; legacy Forge 1.16 keeps
-// PacketBuffer handling in its loader root because the mapped type differs.
     public static void encodeSnapshot(SyncSnapshot snapshot, FriendlyByteBuf buffer) {
         buffer.writeUtf(snapshot.configId(), 256);
 //? if >=1.21.11 {
@@ -159,5 +154,4 @@ public final class KonfigNetwork {
         return snapshot(buffer.readUtf(256), buffer.readUtf());
 //?}
     }
-//?}
 }

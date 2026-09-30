@@ -1,4 +1,3 @@
-//? if >=1.17 {
 package com.iamkaf.konfig.impl.v1.client.field;
 
 import org.junit.jupiter.api.Test;
@@ -38,4 +37,3 @@ final class KonfigFieldValuesTest {
         );
     }
 }
-//?}

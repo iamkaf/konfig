@@ -2,9 +2,6 @@ package com.iamkaf.konfig.impl.v1.client.screen;
 
 import org.jetbrains.annotations.ApiStatus;
 
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so shared parsing, labels, and visibility helpers target the 1.17+ UI path.
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenHandle;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
@@ -238,4 +235,3 @@ public final class KonfigScreenSupport {
         return value == null || value.trim().isEmpty();
     }
 }
-//?}

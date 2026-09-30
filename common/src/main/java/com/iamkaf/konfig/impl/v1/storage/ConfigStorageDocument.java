@@ -40,7 +40,7 @@ public record ConfigStorageDocument(
         return Collections.unmodifiableMap(copy);
     }
 
-    // JsonElement.deepCopy() is package-private in Gson 2.8.0, which 1.14.4-1.17.1 ship.
+    // JsonElement.deepCopy() is package-private in Gson 2.8.0, which 1.17-1.17.1 ship.
     private static JsonElement deepCopy(JsonElement value) {
         if (value.isJsonObject()) {
             JsonObject copy = new JsonObject();

@@ -89,7 +89,7 @@ public final class FieldsetCodec implements KonfigCodec<FieldsetValue> {
     }
 
     private FieldsetEntry decodeEntry(JsonObject object, int entryIndex) {
-        // entrySet, not keySet: keySet arrived in Gson 2.8.1 and 1.14.4-1.17.1 ship 2.8.0.
+        // entrySet, not keySet: keySet arrived in Gson 2.8.1 and 1.17-1.17.1 ship 2.8.0.
         for (Map.Entry<String, JsonElement> member : object.entrySet()) {
             String key = member.getKey();
             if (!this.allowedKeys.contains(key)) {

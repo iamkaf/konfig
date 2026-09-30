@@ -13,7 +13,7 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
 //? if >=1.19.3 {
 import net.minecraft.core.registries.Registries;
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.core.Registry;
 //?}
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
@@ -143,10 +143,8 @@ public final class KonfigDebugConfig {
     private static FieldsetField<String> sampleItemField() {
 //? if >=1.19.3 {
         return FieldsetField.registryString("item", "minecraft:iron_sword", Registries.ITEM);
-//?} elif >=1.17 {
-        return FieldsetField.registryString("item", "minecraft:iron_sword", Registry.ITEM_REGISTRY);
 //?} else {
-        return FieldsetField.registryString("item", "minecraft:iron_sword", "minecraft:item");
+        return FieldsetField.registryString("item", "minecraft:iron_sword", Registry.ITEM_REGISTRY);
 //?}
     }
 

@@ -25,19 +25,12 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 //? if <=1.20.4 {
 import net.minecraft.network.FriendlyByteBuf;
-//? if <=1.16.5 {
-import net.minecraft.resources.ResourceLocation;
-//?}
 //?}
 
 @ApiStatus.Internal
 public final class KonfigFabric implements ModInitializer {
 //? if <=1.20.4 {
-//? if <=1.16.5 {
-    private static final ResourceLocation SYNC_CHANNEL = new ResourceLocation(KonfigRuntime.MOD_ID, "sync_snapshot");
-//?} else {
     private static final net.minecraft.resources.ResourceLocation SYNC_CHANNEL = KonfigNetwork.syncSnapshotChannel();
-//?}
 //?}
 
     @Override
@@ -112,15 +105,9 @@ public final class KonfigFabric implements ModInitializer {
         );
 //?} else {
         KonfigRuntime.setSyncSender((player, configId, jsonPayload) -> {
-            net.minecraft.server.level.ServerPlayer serverPlayer = (net.minecraft.server.level.ServerPlayer) player;
             FriendlyByteBuf buffer = new FriendlyByteBuf(Unpooled.buffer());
-//? if <=1.16.5 {
-            buffer.writeUtf(configId, 256);
-            buffer.writeUtf(jsonPayload);
-//?} else {
             KonfigNetwork.encodeSnapshot(KonfigNetwork.snapshot(configId, jsonPayload), buffer);
-//?}
-            ServerPlayNetworking.send(serverPlayer, SYNC_CHANNEL, buffer);
+            ServerPlayNetworking.send(player, SYNC_CHANNEL, buffer);
         });
 //?}
 

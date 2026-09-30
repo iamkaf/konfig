@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.render;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -275,14 +272,7 @@ public final class KonfigUiAdapter {
         if (KonfigScreenSupport.isBlank(tooltip)) {
             return;
         }
-//? if <=1.16.1 {
-        screen.renderTooltip(guiGraphics, tooltipLines(tooltip), mouseX, mouseY);
-//?} elif <=1.16.3 {
-        screen.renderTooltip(guiGraphics, font.split(KonfigScreenSupport.text(tooltip), Math.max(screen.width / 2, 200)), mouseX, mouseY);
-//?} else {
         screen.renderComponentTooltip(guiGraphics, tooltipLines(tooltip), mouseX, mouseY);
-//?}
     }
 //?}
 }
-//?}

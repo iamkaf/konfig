@@ -267,16 +267,6 @@ async function openKonfig(ctx: TeaKitTestContext, loader: LoaderId | string, ver
   await ctx.runtime.wait(800);
   screen = await ctx.client.screen();
 
-  if (loader === "fabric" && atMost(version, "1.16.5")) {
-    if (screen.screenClass === "com.iamkaf.konfig.fabric.KonfigLegacyModsScreen") {
-      await screen.widgets().activate({ label: "Configure...", nth: 0 });
-      return ctx.client.waitForScreen("com.iamkaf.konfig.fabric.KonfigConfigScreen", { timeoutMs: 10_000 });
-    }
-    screen = await selectKonfig(ctx);
-    await screen.widgets().activate({ label: "Configure...", nth: 0 });
-    return ctx.client.waitForScreen("com.iamkaf.konfig.fabric.KonfigConfigScreen", { timeoutMs: 10_000 });
-  }
-
   screen = await ctx.client.waitForScreen("Mods", { timeoutMs: 5_000 });
   if (loader === "neoforge" && !atLeast(version, "26.3")) {
     await screen.widgets().activate({ label: "Z-A", nth: 0 });

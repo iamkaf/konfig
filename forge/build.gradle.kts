@@ -1,11 +1,6 @@
-import org.gradle.api.tasks.Sync
-
 plugins {
     id("com.iamkaf.multiloader.forge")
 }
-
-val minecraftVersion = project.name
-val useLegacy1165ForgeSources = minecraftVersion == "1.16.5"
 
 configurations.configureEach {
     resolutionStrategy.eachDependency {
@@ -35,10 +30,3 @@ val forgeLibrariesRepository = repositories.maven {
 }
 repositories.remove(forgeLibrariesRepository)
 repositories.addFirst(forgeLibrariesRepository)
-
-if (useLegacy1165ForgeSources) {
-    tasks.named<Sync>("stageMergedJavaSources").configure {
-        from(rootProject.file("forge/src/legacy-1.16.5/java"))
-        exclude("com/iamkaf/konfig/impl/v1/client/screen/KonfigConfigScreen.java")
-    }
-}

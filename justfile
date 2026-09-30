@@ -98,11 +98,7 @@ run first="" second="" *rest:
           tasks=( ":$loader:$version:publishAllPublicationsToKafMavenRepository" "${extra[@]}" ); \
           ;; \
         runClient) \
-          if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
-            tasks=( ":forge:1.16.5:runLegacyClient" "${extra[@]}" ); \
-          else \
-            tasks=( ":$loader:$version:runClient" "${extra[@]}" ); \
-          fi; \
+          tasks=( ":$loader:$version:runClient" "${extra[@]}" ); \
           ;; \
         publishMod|publishRelease) \
           suffix=$(task_suffix "$version" "$loader"); \
@@ -203,11 +199,7 @@ run-client node:
     exit 1; \
   fi
   @version="{{node}}"; loader="${version##*-}"; version="${version%-*}"; \
-  if [ "$version" = "1.16.5" ] && [ "$loader" = "forge" ]; then \
-    ./gradlew --configure-on-demand ":forge:1.16.5:runLegacyClient" --console=plain; \
-  else \
-    ./gradlew --configure-on-demand ":$loader:$version:runClient" --console=plain; \
-  fi
+  ./gradlew --configure-on-demand ":$loader:$version:runClient" --console=plain
 
 build-all:
   @./gradlew build --console=plain
@@ -235,7 +227,6 @@ boot-check node timeout="120":
   @if ! just list-nodes | grep -Fxq "{{node}}"; then echo "Unknown node: {{node}}"; exit 1; fi
   @node="{{node}}"; version="${node%-*}"; loader="${node##*-}"; \
     task=":$loader:$version:runClient"; \
-    if [ "$node" = "1.16.5-forge" ]; then task=":forge:1.16.5:runLegacyClient"; fi; \
     log="/tmp/konfig-$node.boot.log"; \
     status=0; timeout --kill-after=10s "{{timeout}}s" ./gradlew --configure-on-demand --no-daemon "$task" --console=plain \
       -Dkonfig.withTeaKit=true -Dteakit.autoExitTitle=true -Dteakit.autoExitTitleDelayMs=2500 > "$log" 2>&1 || status=$?; \

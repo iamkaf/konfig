@@ -1,9 +1,7 @@
 package com.iamkaf.konfig.api.v1.fieldset;
 
-//? if >=1.17 {
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-//?}
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.ArrayList;
@@ -27,11 +25,7 @@ public final class FieldsetField<T> {
     private final Number minimum;
     private final Number maximum;
     private final List<String> options;
-//? if <=1.16.5 {
-    private final String registryId;
-//?} else {
     private final ResourceKey<? extends Registry<?>> registryKey;
-//?}
     private final List<ValidationRule<T>> validationRules;
 
     private FieldsetField(
@@ -42,11 +36,7 @@ public final class FieldsetField<T> {
             Number minimum,
             Number maximum,
             List<String> options,
-//? if <=1.16.5 {
-            String registryId,
-//?} else {
             ResourceKey<? extends Registry<?>> registryKey,
-//?}
             List<ValidationRule<T>> validationRules
     ) {
         this.key = requireKey(key);
@@ -56,11 +46,7 @@ public final class FieldsetField<T> {
         this.minimum = minimum;
         this.maximum = maximum;
         this.options = Collections.unmodifiableList(new ArrayList<String>(options));
-//? if <=1.16.5 {
-        this.registryId = registryId;
-//?} else {
         this.registryKey = registryKey;
-//?}
         this.validationRules = Collections.unmodifiableList(new ArrayList<ValidationRule<T>>(validationRules));
         requireValueType(defaultValue);
     }
@@ -120,22 +106,6 @@ public final class FieldsetField<T> {
         );
     }
 
-//? if <=1.16.5 {
-    /** An optional string with registry suggestions and icon preview. */
-    public static FieldsetField<Optional<String>> optionalRegistryString(String key, String registryId) {
-        return new FieldsetField<Optional<String>>(
-                key,
-                FieldsetFieldKind.OPTIONAL_STRING,
-                Optional.empty(),
-                Optional.class,
-                null,
-                null,
-                Collections.emptyList(),
-                Objects.requireNonNull(registryId, "registryId"),
-                Collections.emptyList()
-        );
-    }
-//?} else {
     /** An optional string with registry suggestions and icon preview. */
     public static FieldsetField<Optional<String>> optionalRegistryString(
             String key,
@@ -153,7 +123,6 @@ public final class FieldsetField<T> {
                 Collections.emptyList()
         );
     }
-//?}
 
     public static FieldsetField<String> dropdown(String key, String defaultValue, List<String> options) {
         Objects.requireNonNull(defaultValue, "defaultValue");
@@ -183,21 +152,6 @@ public final class FieldsetField<T> {
         return field.validate(normalized::contains, "Must be one of: " + String.join(", ", normalized));
     }
 
-//? if <=1.16.5 {
-    public static FieldsetField<String> registryString(String key, String defaultValue, String registryId) {
-        return new FieldsetField<String>(
-                key,
-                FieldsetFieldKind.REGISTRY_STRING,
-                Objects.requireNonNull(defaultValue, "defaultValue"),
-                String.class,
-                null,
-                null,
-                Collections.emptyList(),
-                Objects.requireNonNull(registryId, "registryId"),
-                Collections.emptyList()
-        );
-    }
-//?} else {
     public static FieldsetField<String> registryString(
             String key,
             String defaultValue,
@@ -215,7 +169,6 @@ public final class FieldsetField<T> {
                 Collections.emptyList()
         );
     }
-//?}
 
     /**
      * Adds a semantic validation rule to this declaration.
@@ -255,15 +208,9 @@ public final class FieldsetField<T> {
         return this.options;
     }
 
-//? if <=1.16.5 {
-    public Optional<String> registryId() {
-        return Optional.ofNullable(this.registryId);
-    }
-//?} else {
     public Optional<ResourceKey<? extends Registry<?>>> registryKey() {
         return Optional.ofNullable(this.registryKey);
     }
-//?}
 
     public List<String> validationMessages(T value) {
         requireValueType(value);
@@ -317,11 +264,7 @@ public final class FieldsetField<T> {
                 minimum,
                 maximum,
                 this.options,
-//? if <=1.16.5 {
-                this.registryId,
-//?} else {
                 this.registryKey,
-//?}
                 rules
         );
     }

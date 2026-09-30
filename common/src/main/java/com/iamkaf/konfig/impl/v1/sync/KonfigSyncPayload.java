@@ -12,7 +12,7 @@ import net.minecraft.resources.Identifier;
 //?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.network.FriendlyByteBuf;
 //?}
 
@@ -67,9 +67,7 @@ public final class KonfigSyncPayload {
         return this.jsonPayload;
     }
 
-//? if >=1.17 {
-// The pre-1.20.5 custom payload class still needs FriendlyByteBuf helpers;
-// modern typed payloads use StreamCodec above and legacy 1.16 stays loader-local.
+// The pre-1.20.5 custom payload class still needs FriendlyByteBuf helpers.
     public static void encode(KonfigSyncPayload payload, FriendlyByteBuf buffer) {
         buffer.writeUtf(payload.configId(), 256);
         buffer.writeUtf(payload.jsonPayload());
@@ -78,6 +76,5 @@ public final class KonfigSyncPayload {
     public static KonfigSyncPayload decode(FriendlyByteBuf buffer) {
         return new KonfigSyncPayload(buffer.readUtf(256), buffer.readUtf());
     }
-//?}
 }
 //?}

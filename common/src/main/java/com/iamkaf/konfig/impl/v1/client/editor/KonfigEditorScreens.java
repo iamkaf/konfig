@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.editor;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -588,9 +585,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
 //?} else {
             super(minecraft, width, height, y, y + height, ITEM_ROW_HEIGHT);
 //?}
-//? if <=1.16.3 {
-            this.setRenderHeader(false, 0);
-//?} elif <=1.20.4 {
+//? if <=1.20.4 {
             this.setRenderBackground(false);
 //?}
         }
@@ -942,4 +937,3 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
         }
     }
 }
-//?}

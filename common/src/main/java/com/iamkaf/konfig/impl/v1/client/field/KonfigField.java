@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen field semantics only: 1.16.x keeps legacy loader-specific
-// screens, so typed UI value state begins at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.field;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -341,4 +338,3 @@ public final class KonfigField {
     }
 //?}
 }
-//?}

@@ -12,12 +12,8 @@ import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 import com.iamkaf.konfig.impl.v1.config.model.TooltipText;
-//? if >=1.17 {
-// Modern registry binding stores ResourceKey values; legacy bindings stay as
-// string ids because the 1.16 registry API does not share the same type.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-//?}
 
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -50,11 +46,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
     private Number rangeMin;
     private Number rangeMax;
     private java.util.List<DropdownOptionMetadata> dropdownOptions = java.util.Collections.emptyList();
-//? if <=1.16.5 {
-    private String boundRegistryId;
-//?} else {
     private ResourceKey<? extends Registry<?>> boundRegistryKey;
-//?}
 
     ValueBuilderImpl(
             ConfigBuilderImpl owner,
@@ -154,13 +146,8 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
         return this;
     }
 
-//? if <=1.16.5 {
-    ValueBuilderImpl<T> bindRegistry(String registryId) {
-        this.boundRegistryId = registryId == null ? null : registryId.trim();
-//?} else {
     ValueBuilderImpl<T> bindRegistry(ResourceKey<? extends Registry<?>> registryKey) {
         this.boundRegistryKey = registryKey;
-//?}
         return this;
     }
 
@@ -184,11 +171,7 @@ class ValueBuilderImpl<T> implements ValueBuilder<T> {
                 this.dropdownOptions,
                 this.remoteScreenValue,
                 this.remoteScreenViewAvailable,
-//? if <=1.16.5 {
-                this.boundRegistryId
-//?} else {
                 this.boundRegistryKey
-//?}
         );
 
         this.owner.addEntry(this.path, entry, this.comment);

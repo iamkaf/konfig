@@ -6,12 +6,8 @@ import com.google.gson.JsonElement;
 import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.RestartRequirement;
-//? if >=1.17 {
-// Runtime model stores typed ResourceKey registry bindings on modern lines;
-// <=1.16.5 stores the equivalent binding as a string registry id.
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
-//?}
 
 import java.util.Collections;
 import java.util.List;
@@ -47,11 +43,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     private final boolean inlineLabelTranslationKey;
     private final String inlineTarget;
     private final ImageOptions imageOptions;
-//? if <=1.16.5 {
-    private final String boundRegistryId;
-//?} else {
     private final ResourceKey<? extends Registry<?>> boundRegistryKey;
-//?}
 
     private volatile T localValue;
     private volatile T syncedValue;
@@ -79,11 +71,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             ImageOptions imageOptions,
             Supplier<T> remoteScreenValue,
             BooleanSupplier remoteScreenViewAvailable,
-//? if <=1.16.5 {
-            String boundRegistryId
-//?} else {
             ResourceKey<? extends Registry<?>> boundRegistryKey
-//?}
     ) {
         this.path = path;
         this.canonicalizer = canonicalizer == null ? UnaryOperator.identity() : canonicalizer;
@@ -110,11 +98,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         this.inlineLabelTranslationKey = inlineLabelTranslationKey;
         this.inlineTarget = inlineTarget;
         this.imageOptions = imageOptions == null ? ImageOptions.defaults() : imageOptions;
-//? if <=1.16.5 {
-        this.boundRegistryId = boundRegistryId;
-//?} else {
         this.boundRegistryKey = boundRegistryKey;
-//?}
         this.localValue = this.defaultValue;
     }
 
@@ -136,11 +120,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             List<DropdownOptionMetadata> dropdownOptions,
             Supplier<T> remoteScreenValue,
             BooleanSupplier remoteScreenViewAvailable,
-//? if <=1.16.5 {
-            String boundRegistryId
-//?} else {
             ResourceKey<? extends Registry<?>> boundRegistryKey
-//?}
     ) {
         this(
                 path,
@@ -165,11 +145,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
                 null,
                 remoteScreenValue,
                 remoteScreenViewAvailable,
-//? if <=1.16.5 {
-                boundRegistryId
-//?} else {
                 boundRegistryKey
-//?}
         );
     }
 
@@ -353,11 +329,7 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     }
 
     public boolean hasBoundRegistry() {
-//? if <=1.16.5 {
-        return this.boundRegistryId != null && !this.boundRegistryId.isEmpty();
-//?} else {
         return this.boundRegistryKey != null;
-//?}
     }
 
     private static List<String> dropdownOptionValues(List<DropdownOptionMetadata> options) {
@@ -371,15 +343,9 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         return Collections.unmodifiableList(values);
     }
 
-//? if <=1.16.5 {
-    public String boundRegistryId() {
-        return this.boundRegistryId;
-    }
-//?} else {
     public ResourceKey<? extends Registry<?>> boundRegistryKey() {
         return this.boundRegistryKey;
     }
-//?}
 
     private T validateOrFallback(T value) {
         if (value == null) {

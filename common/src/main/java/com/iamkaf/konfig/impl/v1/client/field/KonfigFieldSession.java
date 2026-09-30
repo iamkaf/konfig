@@ -1,4 +1,3 @@
-//? if >=1.17 {
 package com.iamkaf.konfig.impl.v1.client.field;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -342,4 +341,3 @@ public final class KonfigFieldSession implements AutoCloseable {
     }
 //?}
 }
-//?}

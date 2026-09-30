@@ -21,7 +21,7 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.fieldset.FieldsetCodec;
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
 
@@ -195,12 +195,9 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
 //? if >=1.21.11 {
     @Override
     public ConfigBuilder image(Identifier textureId) {
-//?} elif >=1.17 {
-    @Override
-    public ConfigBuilder image(ResourceLocation textureId) {
 //?} else {
     @Override
-    public ConfigBuilder image(Object textureId) {
+    public ConfigBuilder image(ResourceLocation textureId) {
 //?}
         return image(textureId, "", ImageOptions.defaults());
     }
@@ -208,12 +205,9 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
 //? if >=1.21.11 {
     @Override
     public ConfigBuilder image(Identifier textureId, ImageOptions options) {
-//?} elif >=1.17 {
-    @Override
-    public ConfigBuilder image(ResourceLocation textureId, ImageOptions options) {
 //?} else {
     @Override
-    public ConfigBuilder image(Object textureId, ImageOptions options) {
+    public ConfigBuilder image(ResourceLocation textureId, ImageOptions options) {
 //?}
         return image(textureId, "", options);
     }
@@ -221,12 +215,9 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
 //? if >=1.21.11 {
     @Override
     public ConfigBuilder image(Identifier textureId, String caption) {
-//?} elif >=1.17 {
-    @Override
-    public ConfigBuilder image(ResourceLocation textureId, String caption) {
 //?} else {
     @Override
-    public ConfigBuilder image(Object textureId, String caption) {
+    public ConfigBuilder image(ResourceLocation textureId, String caption) {
 //?}
         return image(textureId, caption, ImageOptions.defaults());
     }
@@ -234,12 +225,9 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
 //? if >=1.21.11 {
     @Override
     public ConfigBuilder image(Identifier textureId, String caption, ImageOptions options) {
-//?} elif >=1.17 {
-    @Override
-    public ConfigBuilder image(ResourceLocation textureId, String caption, ImageOptions options) {
 //?} else {
     @Override
-    public ConfigBuilder image(Object textureId, String caption, ImageOptions options) {
+    public ConfigBuilder image(ResourceLocation textureId, String caption, ImageOptions options) {
 //?}
         Objects.requireNonNull(textureId, "textureId");
         addDecoration(EntryKind.IMAGE, caption, textureId.toString(), options);
