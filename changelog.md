@@ -11,20 +11,21 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 ### Changed
 
-- Every feature from 0.7.0 through 0.9.0 now ships on every supported Minecraft line. Fieldsets with their list and catalog editors, negotiated remote editing, registry tag suggestions and previews, and one-step slider keys are available from Minecraft 1.17 through 1.21.10.
-- Konfig's network channels are optional on every line, so Forge and NeoForge clients can join servers without Konfig, and servers with Konfig accept clients without it.
-- Konfig's own debug settings include a sample catalog and a sample slider.
+- Fieldsets, remote editing, tag suggestions, and slider keys now ship on every supported line, from Minecraft 1.17 up.
+- Forge and NeoForge clients can join servers without Konfig on every line.
+- Konfig's debug settings include a sample catalog and slider.
 
 ### Fixed
 
-- Clicking a field in a Fieldset card taller than the list no longer scrolls the field out of view behind its suggestion popup, and keyboard focus scrolls the reached control into view.
-- The Fieldset catalog filter now cycles from All to the first option.
-- The Fieldset catalog's status line no longer disappears right after an edit on Minecraft 1.21.11 and older.
-- Synchronized config snapshots longer than 32,767 characters now arrive intact on Minecraft 1.21.10 and older.
+- Clicking a field in a tall Fieldset card no longer hides it behind its suggestion popup.
+- Keyboard focus scrolls Fieldset fields into view.
+- The Fieldset catalog filter cycles from `All` again.
+- The catalog status line no longer vanishes after an edit on 1.21.11 and older.
+- Large synced configs now arrive on 1.21.10 and older.
 
 ### Removed
 
-- Support for Minecraft 1.14.4 through 1.16.5.
+- Minecraft 1.14.4 through 1.16.5.
 
 ## 0.9.0
 
