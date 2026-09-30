@@ -119,10 +119,11 @@ final class StringListRow extends KonfigConfigRow {
     @Override
     protected void renderRowContent(KonfigRenderContext context, KonfigRowLayout layout, int mouseX, int mouseY, boolean hovered, float partialTick, int tooltipLeft, int tooltipTop, int tooltipRight, int tooltipBottom) {
         super.renderRowContent(context, layout, mouseX, mouseY, hovered, partialTick, tooltipLeft, tooltipTop, tooltipRight, tooltipBottom);
-        this.renderPreviewIcon(context);
+        this.renderPreviewIcon(context, layout);
     }
 
-    private void renderPreviewIcon(KonfigRenderContext context) {
+    // The button was just placed at the layout's control bounds by the base row.
+    private void renderPreviewIcon(KonfigRenderContext context, KonfigRowLayout layout) {
         if (!this.entry.value.hasBoundRegistry() || !supportsRegistryIcon(this.entry.value.boundRegistryKey())) {
             return;
         }
@@ -132,13 +133,8 @@ final class StringListRow extends KonfigConfigRow {
             return;
         }
 
-//? if >=1.19.3 {
-        int previewX = this.button.getX() - PREVIEW_GAP - PREVIEW_SIZE;
-        int previewY = this.button.getY() + (this.host.controlHeight() - PREVIEW_SIZE) / 2;
-//?} else {
-        int previewX = this.button.x - PREVIEW_GAP - PREVIEW_SIZE;
-        int previewY = this.button.y + (this.host.controlHeight() - PREVIEW_SIZE) / 2;
-//?}
+        int previewX = layout.controlX - PREVIEW_GAP - PREVIEW_SIZE;
+        int previewY = layout.controlY + (this.host.controlHeight() - PREVIEW_SIZE) / 2;
         context.renderRegistryIcon(this.entry.value.boundRegistryKey(), values.get(0), previewX, previewY);
     }
 }

@@ -4,13 +4,11 @@ import org.jetbrains.annotations.ApiStatus;
 
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 //?} else {
 import net.minecraft.resources.ResourceLocation;
+//?}
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-//?}
 
 @ApiStatus.Internal
 public final class Constants {

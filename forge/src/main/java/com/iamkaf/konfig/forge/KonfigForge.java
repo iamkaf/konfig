@@ -225,10 +225,8 @@ public final class KonfigForge {
     }
 
     private static Connection connectionOf(ServerPlayer player) {
-//? if >=1.20.2 {
-        return player.connection.getConnection();
-//?} elif >=1.19.4 {
-        // Private in vanilla on these lines; Forge's access transformer opens it.
+//? if >=1.19.4 && <1.20.2 {
+        // Vanilla has no getter on these lines; Forge's access transformer opens the field.
         return player.connection.connection;
 //?} else {
         return player.connection.getConnection();

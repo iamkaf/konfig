@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 //? if <=1.20.4 {
+import com.iamkaf.konfig.impl.v1.sync.SyncSnapshot;
 import io.netty.buffer.Unpooled;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -66,10 +67,11 @@ public final class KonfigFabricClient implements ClientModInitializer {
                 )
         );
 //?} else {
-        ClientPlayNetworking.registerGlobalReceiver(SYNC_CHANNEL, (client, handler, buffer, responseSender) -> {
-            KonfigNetwork.receiveClientSnapshot(KonfigNetwork.decodeSnapshot(buffer));
-        });
         // Raw channel handlers run on the network thread: decode there, then hop to the client thread.
+        ClientPlayNetworking.registerGlobalReceiver(SYNC_CHANNEL, (client, handler, buffer, responseSender) -> {
+            SyncSnapshot snapshot = KonfigNetwork.decodeSnapshot(buffer);
+            client.execute(() -> KonfigNetwork.receiveClientSnapshot(snapshot));
+        });
         ClientPlayNetworking.registerGlobalReceiver(KonfigFabric.REMOTE_CAPABILITIES, (client, handler, buffer, responseSender) -> {
             KonfigRemotePayloads.Capabilities payload = KonfigRemotePayloads.Capabilities.read(buffer);
             client.execute(() -> KonfigNetwork.receiveClientCapabilities(payload));
