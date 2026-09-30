@@ -76,7 +76,6 @@ public interface ValueBuilder<T> {
      */
     ValueBuilder<T> serverOnly();
 
-//? if >=1.21.11 {
     /**
      * Supplies a read-only screen value while connected to a remote authority.
      *
@@ -88,7 +87,6 @@ public interface ValueBuilder<T> {
      * @return this builder
      */
     ValueBuilder<T> remoteScreenView(Supplier<T> value, BooleanSupplier available);
-//?}
 
     /**
      * Adds a validation rule.

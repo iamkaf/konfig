@@ -14,8 +14,6 @@ public enum ConfigFieldKind {
     ENUM,
     COLOR_RGB,
     COLOR_ARGB,
-//? if >=1.21.11 {
     FIELDSET,
-//?}
     CUSTOM
 }

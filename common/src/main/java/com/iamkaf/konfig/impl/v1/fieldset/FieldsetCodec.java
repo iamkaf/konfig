@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.fieldset;
 
 import com.google.gson.JsonArray;
@@ -208,4 +207,3 @@ public final class FieldsetCodec implements KonfigCodec<FieldsetValue> {
         }
     }
 }
-//?}

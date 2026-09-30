@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.api.v1.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -61,7 +60,8 @@ public final class FieldsetBuilder {
      */
     public FieldsetBuilder icon(FieldsetField<String> field) {
         Objects.requireNonNull(field, "field");
-        if (field.kind() != FieldsetFieldKind.REGISTRY_STRING || field.registryKey().isEmpty()) {
+        // registryString is the only REGISTRY_STRING factory and always binds a registry.
+        if (field.kind() != FieldsetFieldKind.REGISTRY_STRING) {
             throw new IllegalArgumentException("Fieldset icons require a registry string field");
         }
         this.iconField = field;
@@ -137,4 +137,3 @@ public final class FieldsetBuilder {
         return FieldsetValue.of(schema, this.entries);
     }
 }
-//?}

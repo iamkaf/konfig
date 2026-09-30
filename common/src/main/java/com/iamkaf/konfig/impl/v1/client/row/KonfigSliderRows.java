@@ -91,11 +91,21 @@ final class IntegerSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
+//? if >=1.21.11 {
             if (this.canChangeValue && (event.isLeft() || event.isRight())) {
                 IntegerSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
                 return true;
             }
             return super.keyPressed(event);
+//?} else {
+            // canChangeValue is private before 1.21.11: keep vanilla stepping and commit its result.
+            int previousValue = IntegerSliderRow.this.currentValue();
+            boolean handled = super.keyPressed(event);
+            if (handled && previousValue != IntegerSliderRow.this.currentValue()) {
+                IntegerSliderRow.this.commitOrRevert(Integer.valueOf(previousValue));
+            }
+            return handled;
+//?}
         }
 //?} else {
         @Override
@@ -192,11 +202,21 @@ final class LongSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
+//? if >=1.21.11 {
             if (this.canChangeValue && (event.isLeft() || event.isRight())) {
                 LongSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
                 return true;
             }
             return super.keyPressed(event);
+//?} else {
+            // canChangeValue is private before 1.21.11: keep vanilla stepping and commit its result.
+            long previousValue = LongSliderRow.this.currentValue();
+            boolean handled = super.keyPressed(event);
+            if (handled && previousValue != LongSliderRow.this.currentValue()) {
+                LongSliderRow.this.commitOrRevert(Long.valueOf(previousValue));
+            }
+            return handled;
+//?}
         }
 //?} else {
         @Override

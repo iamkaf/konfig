@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.api.v1.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -17,4 +16,3 @@ public enum FieldsetFieldKind {
     DROPDOWN,
     REGISTRY_STRING
 }
-//?}

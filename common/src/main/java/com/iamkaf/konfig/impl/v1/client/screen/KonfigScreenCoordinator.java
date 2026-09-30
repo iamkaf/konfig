@@ -19,9 +19,10 @@ import com.iamkaf.konfig.impl.v1.client.toast.KonfigToastSupport;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
-//? if >=1.21.11
+//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
 import com.iamkaf.konfig.impl.v1.state.ConfigSessionObserver;
+//?}
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.Registry;

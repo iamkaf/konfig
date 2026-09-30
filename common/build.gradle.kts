@@ -11,6 +11,11 @@ plugins {
 
 val nightConfigVersion = providers.gradleProperty("nightconfig_version").get()
 
+// JUnit 6 is Java 17 bytecode, so the Java 16 lines stay on JUnit 5.
+val javaLanguageVersion = the<JavaPluginExtension>().toolchain.languageVersion.orNull?.asInt() ?: 17
+val junitJupiterVersion = if (javaLanguageVersion >= 17) "6.1.0" else "5.13.4"
+val junitLauncherVersion = if (javaLanguageVersion >= 17) "6.1.0" else "1.13.4"
+
 if (project.parent?.name == "common") {
     val minecraftVersion = project.name
     val modName = providers.gradleProperty("mod.name").get()
@@ -33,8 +38,8 @@ dependencies {
     implementation("com.electronwill.night-config:core:$nightConfigVersion")
     implementation("com.electronwill.night-config:toml:$nightConfigVersion")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:6.1.0")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher:6.1.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:$junitJupiterVersion")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher:$junitLauncherVersion")
     testRuntimeOnly("org.slf4j:slf4j-simple:2.0.13")
 }
 

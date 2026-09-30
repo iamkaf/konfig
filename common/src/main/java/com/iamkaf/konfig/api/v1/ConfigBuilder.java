@@ -1,6 +1,5 @@
 package com.iamkaf.konfig.api.v1;
 
-//? if >=1.21.11
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
@@ -378,7 +377,6 @@ public interface ConfigBuilder {
      */
     <T> ValueBuilder<T> custom(String key, T defaultValue, KonfigCodec<T> codec);
 
-//? if >=1.21.11 {
     /**
      * Adds an editable flat collection of structured entries.
      *
@@ -388,7 +386,6 @@ public interface ConfigBuilder {
      */
     @org.jetbrains.annotations.ApiStatus.Experimental
     ValueBuilder<FieldsetValue> fieldset(String key, FieldsetValue defaultValue);
-//?}
 
     /**
      * Finalizes this builder and registers the config handle.

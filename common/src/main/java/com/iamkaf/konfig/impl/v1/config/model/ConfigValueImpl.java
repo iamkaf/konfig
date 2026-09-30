@@ -19,10 +19,8 @@ import java.util.Objects;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
-//? if >=1.21.11 {
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
-//?}
 
 @ApiStatus.Internal
 public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
@@ -37,10 +35,8 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
     private final boolean sync;
     private final boolean clientOnly;
     private final boolean serverOnly;
-//? if >=1.21.11 {
     private final Supplier<T> remoteScreenValue;
     private final BooleanSupplier remoteScreenViewAvailable;
-//?}
     private final RestartRequirement restartRequirement;
     private final Number rangeMin;
     private final Number rangeMax;
@@ -81,10 +77,8 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             boolean inlineLabelTranslationKey,
             String inlineTarget,
             ImageOptions imageOptions,
-//? if >=1.21.11 {
             Supplier<T> remoteScreenValue,
             BooleanSupplier remoteScreenViewAvailable,
-//?}
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -102,10 +96,8 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         this.sync = sync;
         this.clientOnly = clientOnly;
         this.serverOnly = serverOnly;
-//? if >=1.21.11 {
         this.remoteScreenValue = remoteScreenValue;
         this.remoteScreenViewAvailable = remoteScreenViewAvailable == null ? () -> false : remoteScreenViewAvailable;
-//?}
         this.restartRequirement = restartRequirement;
         this.rangeMin = rangeMin;
         this.rangeMax = rangeMax;
@@ -142,10 +134,8 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
             Number rangeMin,
             Number rangeMax,
             List<DropdownOptionMetadata> dropdownOptions,
-//? if >=1.21.11 {
             Supplier<T> remoteScreenValue,
             BooleanSupplier remoteScreenViewAvailable,
-//?}
 //? if <=1.16.5 {
             String boundRegistryId
 //?} else {
@@ -173,10 +163,8 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
                 false,
                 null,
                 null,
-//? if >=1.21.11 {
                 remoteScreenValue,
                 remoteScreenViewAvailable,
-//?}
 //? if <=1.16.5 {
                 boundRegistryId
 //?} else {
@@ -255,7 +243,6 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         return this.encoder.apply(this.localValue);
     }
 
-//? if >=1.21.11
     @Override
     public JsonElement encodeValue(T value) {
         return this.encoder.apply(validateOrThrow(value));
@@ -279,7 +266,6 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         return this.syncedValue != null;
     }
 
-//? if >=1.21.11 {
     @Override
     public boolean remoteScreenViewAvailable() {
         return this.remoteScreenValue != null && this.remoteScreenViewAvailable.getAsBoolean();
@@ -292,7 +278,6 @@ public final class ConfigValueImpl<T> implements ConfigScreenValue<T> {
         }
         return validateOrFallback(this.remoteScreenValue.get());
     }
-//?}
 
     public boolean clientOnly() {
         return this.clientOnly;

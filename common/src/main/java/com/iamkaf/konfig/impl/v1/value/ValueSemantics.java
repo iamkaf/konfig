@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.value;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -18,4 +17,3 @@ public interface ValueSemantics<T> {
 
     ValueParseResult<T> parse(String path, Object input);
 }
-//?}

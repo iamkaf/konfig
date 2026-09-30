@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.value;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -9,7 +8,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 @ApiStatus.Internal
-public sealed interface ValueParseResult<T> permits ValueParseResult.Parsed, ValueParseResult.Rejected {
+public interface ValueParseResult<T> {
     Optional<T> value();
 
     ConfigValidation validation();
@@ -43,4 +42,3 @@ public sealed interface ValueParseResult<T> permits ValueParseResult.Parsed, Val
         }
     }
 }
-//?}

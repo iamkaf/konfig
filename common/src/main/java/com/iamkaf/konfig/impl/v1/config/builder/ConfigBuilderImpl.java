@@ -17,9 +17,9 @@ import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
 import com.iamkaf.konfig.impl.v1.config.model.TooltipText;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.fieldset.FieldsetCodec;
+//? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
 //?} elif >=1.17 {
 import net.minecraft.resources.ResourceLocation;
@@ -462,7 +462,6 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
         );
     }
 
-//? if >=1.21.11 {
     @Override
     public ValueBuilder<FieldsetValue> fieldset(String key, FieldsetValue defaultValue) {
         Objects.requireNonNull(defaultValue, "defaultValue");
@@ -481,7 +480,6 @@ public final class ConfigBuilderImpl implements ConfigBuilder {
                 "Fieldset uses a different schema"
         );
     }
-//?}
 
     @Override
     public ConfigHandle build() {
