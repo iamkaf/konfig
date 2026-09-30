@@ -98,10 +98,25 @@ async function stepSampleLevel(ctx: TeaKitTestContext, version: string): Promise
     await ctx.client.click({ x: row.x + row.width - controlWidth / 2, y: row.y + row.height / 2, button: 0 });
     await ctx.runtime.wait(200);
     if (atLeast(version, "1.19.4")) {
-      // From 1.19.4 a focused slider only takes arrows in keyboard-edit mode, which Enter or Space toggles. Vanilla
-      // turns it on for mouse focus but not for arrow-navigation focus. Konfig mirrors the toggle below 1.21.11, so
-      // two Enters must leave the clicked slider editable. Before 1.19.4 a focused slider always takes arrows.
-      await ctx.client.key(257, { release: true });
+      // From 1.19.4 a focused slider only takes arrows in keyboard-edit mode, which mouse focus turns on and Enter or
+      // Space toggles. Konfig mirrors the toggle below 1.21.11. After one Enter editing is off, so Right must change
+      // nothing, neither through Konfig's stepInt nor through vanilla's applyValue; a second Enter turns it back on.
+      // Before 1.19.4 a focused slider always takes arrows.
+      const drafts = await ctx.spy.method(
+        "konfig.slider.drafts",
+        "com.iamkaf.konfig.impl.v1.client.row.IntegerSliderRow#updateDraftFromSlider",
+      );
+      try {
+        await ctx.client.key(257, { release: true });
+        await ctx.client.key(262, { release: true });
+        await ctx.runtime.wait(200);
+        const ignored = [...(await steps.$calls()), ...(await drafts.$calls())];
+        if (ignored.length !== 0) {
+          throw new Error(`Right changed Sample Level while keyboard editing was off: ${JSON.stringify(ignored)}`);
+        }
+      } finally {
+        await ctx.spy.detach(drafts);
+      }
       await ctx.client.key(257, { release: true });
     }
     await ctx.client.key(262, { release: true });
