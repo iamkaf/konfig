@@ -11,15 +11,15 @@ import net.minecraft.client.gui.GuiGraphics;
 import com.mojang.blaze3d.vertex.PoseStack;
 //?}
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
+import net.minecraft.client.gui.components.events.GuiEventListener;
 //? if >=1.21.9 {
-import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
-//?}
-//? if <1.19.4 {
+//?} else {
 import com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter;
-import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.events.GuiEventListener;
+import net.minecraft.client.gui.components.AbstractWidget;
 //?}
+//? if <1.19.4
+import net.minecraft.client.gui.components.EditBox;
 
 /** A list row drawn through KonfigRenderContext inside its content box (the row inset by 2px), on every line. */
 @ApiStatus.Internal
@@ -52,11 +52,10 @@ public abstract class KonfigListRow<E extends KonfigListRow<E>> extends Containe
 //?}
 
     private KonfigSelectionList<E> owner;
-
-//? if >=1.21.9 {
     // Content top at the last render, where renderRow placed the child widgets. The list may have scrolled since.
     private int renderedContentY = Integer.MIN_VALUE;
 
+//? if >=1.21.9 {
     final void attach(KonfigSelectionList<E> owner) {
         this.owner = owner;
     }
@@ -69,15 +68,6 @@ public abstract class KonfigListRow<E extends KonfigListRow<E>> extends Containe
         ScreenRectangle rendered = child.getRectangle();
         return new ScreenRectangle(rendered.left(), rendered.top() - this.renderedContentY + this.getContentY(), rendered.width(), rendered.height());
     }
-
-    // The list selects this row, and may scroll it, before the focused child is set.
-    @Override
-    public void setFocused(GuiEventListener listener) {
-        super.setFocused(listener);
-        if (this.owner != null && listener != null) {
-            this.owner.revealFocusedChild(this, listener);
-        }
-    }
 //?} else {
     private int slotHeight;
 
@@ -88,6 +78,19 @@ public abstract class KonfigListRow<E extends KonfigListRow<E>> extends Containe
 
     final int slotHeight() {
         return this.slotHeight;
+    }
+
+    // KonfigSelectionList draws rows itself below 1.21.9 and reports where each row's content went.
+    final void rendered(int contentY) {
+        this.renderedContentY = contentY;
+    }
+
+    /** Where the top edge of {@code child} is now, or Integer.MIN_VALUE before this row was first rendered. */
+    final int currentTop(AbstractWidget child) {
+        if (this.renderedContentY == Integer.MIN_VALUE) {
+            return Integer.MIN_VALUE;
+        }
+        return KonfigUiAdapter.y(child) - this.renderedContentY + this.getContentY();
     }
 
     // Same names and values as AbstractSelectionList.Entry from 1.21.9, so callers and TeaKit see one geometry on every line.
@@ -113,9 +116,19 @@ public abstract class KonfigListRow<E extends KonfigListRow<E>> extends Containe
     }
 //?}
 
-//? if <1.19.4 {
+//? if >=1.19.4 {
+    // The list selects this row, and may scroll it, before the focused child is set.
+    @Override
+    public void setFocused(GuiEventListener listener) {
+        super.setFocused(listener);
+        if (this.owner != null && listener != null) {
+            this.owner.revealFocusedChild(this, listener);
+        }
+    }
+//?} else {
     // From 1.19.4 ContainerObjectSelectionList.Entry unfocuses the previous child itself; before that a card with
-    // several EditBoxes would keep more than one focused.
+    // several EditBoxes would keep more than one focused. Keyboard focus is revealed in KonfigSelectionList.ensureVisible,
+    // which the list calls after this.
     @Override
     public void setFocused(GuiEventListener listener) {
         GuiEventListener previous = this.getFocused();

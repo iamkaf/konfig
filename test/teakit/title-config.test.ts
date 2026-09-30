@@ -208,7 +208,7 @@ async function exerciseFieldset(ctx: TeaKitTestContext, version: string): Promis
   if (screen.widgets().all().some((widget) => widget.label === "Save" || widget.label === "Cancel")) {
     throw new Error("Auto-saving Fieldset screen still exposes Save or Cancel");
   }
-  if (atLeast(version, "1.21.9")) await assertTabRevealsLastField(ctx, version);
+  await assertTabRevealsFields(ctx, version);
   await screen.widgets().activate({ label: "Done" });
 
   await ctx.client.waitForScreen(CONFIG_SCREEN, { timeoutMs: 10_000 });
@@ -227,35 +227,65 @@ async function exerciseFieldset(ctx: TeaKitTestContext, version: string): Promis
   await ctx.client.screenshot("konfig-fieldset-reopened");
 }
 
-// From 1.21.9 Konfig keeps a partly visible card taller than the list from scrolling when it is selected. Keyboard
-// focus must still scroll the focused control into view: Tab from the clicked Role dropdown to Priority, then to
-// Active, the card's last field, which starts below the list on a short window.
-async function assertTabRevealsLastField(ctx: TeaKitTestContext, version: string): Promise<void> {
-  await pressTab(ctx, version);
-  await ctx.runtime.wait(100);
-  await pressTab(ctx, version);
-  await ctx.runtime.wait(300);
-  const screen = await ctx.client.screen();
-  const card = assertExpandedFieldsetRow(screen, 1);
-  const list = screen.widgets().all().find((widget) => widget.widgetClass.endsWith("$EntryList"));
-  if (!list) throw new Error("Missing the Fieldset card list widget");
-  const activeTop = card.y + FIELD_CONTROL_TOP + 3 * FIELD_HEIGHT;
-  const activeBottom = activeTop + CONTROL_HEIGHT;
-  if (activeTop < list.y || activeBottom > list.y + list.height) {
-    throw new Error(
-      `Tab left the Active field at y=${activeTop}..${activeBottom} outside the list band ${list.y}..${list.y + list.height}`,
-    );
-  }
+// Keyboard focus in a card taller than the list scrolls the focused control, not the whole card, into view. Tab from
+// the clicked Role dropdown to Priority, then to Active, the card's last field, which starts below the list on a short
+// window. Before 1.19.4 a click does not give a button keyboard focus, so the first Tab focuses Role itself.
+// Then scroll to the top, collapse and expand the card, which clears focus and aligns it to the list top, and Tab
+// through the previous card's header and this card's header into Item, its first field, which must stay in view.
+async function assertTabRevealsFields(ctx: TeaKitTestContext, version: string): Promise<void> {
+  await pressTab(ctx, version, atLeast(version, "1.19.4") ? 2 : 3);
+  let screen = await ctx.client.screen();
+  let card = assertExpandedFieldsetRow(screen, 1);
+  assertFieldInListBand(screen, card, 3, "Active");
   await ctx.client.screenshot("konfig-fieldset-tab-revealed");
+
+  await ctx.client.scroll({ x: card.x + card.width / 2, y: fieldsetListBand(screen).top + 10, horizontalAmount: 0, verticalAmount: 20 });
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  card = assertExpandedFieldsetRow(screen, 1);
+  await clickFieldsetCardHeader(ctx, card);
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  const collapsed = assertFieldsetRows(screen, 2, 0).find((row) => row.entryIndex === 1);
+  if (!collapsed) throw new Error("Missing the copied sample rule after collapsing it");
+  await clickFieldsetCardHeader(ctx, collapsed);
+  await ctx.runtime.wait(200);
+  await pressTab(ctx, version, 3);
+  screen = await ctx.client.screen();
+  card = assertExpandedFieldsetRow(screen, 1);
+  assertFieldInListBand(screen, card, 0, "Item");
+  await ctx.client.screenshot("konfig-fieldset-tab-top-revealed");
+}
+
+function assertFieldInListBand(screen: ClientScreen, card: ScreenListEntrySnapshot, fieldIndex: number, name: string): void {
+  const band = fieldsetListBand(screen);
+  const top = card.y + FIELD_CONTROL_TOP + fieldIndex * FIELD_HEIGHT;
+  const bottom = top + CONTROL_HEIGHT;
+  if (top < band.top || bottom > band.bottom) {
+    throw new Error(`Tab left the ${name} field at y=${top}..${bottom} outside the list band ${band.top}..${band.bottom}`);
+  }
+}
+
+function fieldsetListBand(screen: ClientScreen): { top: number; bottom: number } {
+  const list = screen.widgets().all().find((widget) => widget.widgetClass.endsWith("$EntryList"));
+  if (list) return { top: list.y, bottom: list.y + list.height };
+  // Selection lists are not widgets before 1.20.3. KonfigFieldsetListScreen places the list 64px from the top and
+  // ends it 8px above the Add button.
+  const add = screen.widgets().all().find((widget) => widget.label === "Add");
+  if (!add) throw new Error("Missing the Fieldset Add button");
+  return { top: 64, bottom: add.y - 8 };
 }
 
 // From 26.3 Minecraft marks input as keyboard input from the key event's SDL keycode (9 for Tab), while TeaKit passes
 // the GLFW code (258) through as the keycode. Send the SDL keycode and scancode (43) a real Tab press carries.
-async function pressTab(ctx: TeaKitTestContext, version: string): Promise<void> {
-  if (atLeast(version, "26.3")) {
-    await ctx.client.key(9, { scancode: 43, release: true });
-  } else {
-    await ctx.client.key(258, { release: true });
+async function pressTab(ctx: TeaKitTestContext, version: string, times: number): Promise<void> {
+  for (let i = 0; i < times; i++) {
+    if (atLeast(version, "26.3")) {
+      await ctx.client.key(9, { scancode: 43, release: true });
+    } else {
+      await ctx.client.key(258, { release: true });
+    }
+    await ctx.runtime.wait(i + 1 < times ? 100 : 300);
   }
 }
 

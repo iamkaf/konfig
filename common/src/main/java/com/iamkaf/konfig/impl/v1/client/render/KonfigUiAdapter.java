@@ -142,6 +142,14 @@ public final class KonfigUiAdapter {
         widget.setWidth(width);
     }
 
+    public static int y(AbstractWidget widget) {
+//? if >=1.19.3 {
+        return widget.getY();
+//?} else {
+        return widget.y;
+//?}
+    }
+
     public static void focus(EditBox box, boolean focused) {
 //? if >=1.19.4 {
         box.setFocused(focused);

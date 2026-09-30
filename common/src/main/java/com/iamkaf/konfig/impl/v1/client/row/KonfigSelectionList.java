@@ -4,21 +4,20 @@ import org.jetbrains.annotations.ApiStatus;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.ContainerObjectSelectionList;
-//? if >=1.21.9 {
 import net.minecraft.client.gui.components.events.GuiEventListener;
+//? if >=1.21.9 {
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 //?}
 //? if <1.21.9 {
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
+import net.minecraft.client.gui.components.AbstractWidget;
 //? if >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
 //?} else {
 import com.mojang.blaze3d.vertex.PoseStack;
 //?}
-//? if >=1.21.4 {
-import net.minecraft.client.gui.components.events.GuiEventListener;
+//? if >=1.21.4
 import java.util.Optional;
-//?}
 import java.util.List;
 //?}
 
@@ -77,9 +76,8 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
             super.scrollToEntry(row);
         }
 //?} else {
-        int rowY = this.getRowTop(this.children().indexOf(row)) - 2;
-        if (row.slotHeight() > this.listBottom() - this.listTop() - 4) {
-            this.setScrollAmount(this.scrollOffset() + rowY - this.listTop() - 2);
+        if (this.tallerThanList(row)) {
+            this.alignTop(row);
         } else {
             this.ensureVisible(row);
         }
@@ -192,10 +190,23 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
     }
 //?}
 
+    // Vanilla calls this on keyboard focus. A row taller than the list keeps its scroll while partly visible, as in
+    // scrollToEntry from 1.21.9, and its focused control is revealed instead. Before 1.19.4 that control is already
+    // set here; from 1.19.4 it is set afterwards and KonfigListRow.setFocused reveals it.
     @Override
     protected void ensureVisible(E row) {
         int index = row == null ? -1 : this.children().indexOf(row);
         if (index < 0) {
+            return;
+        }
+        if (this.tallerThanList(row)) {
+            int rowY = this.getRowTop(index) - 2;
+            GuiEventListener child = row.getFocused();
+            if (child != null) {
+                this.revealFocusedChild(row, child);
+            } else if (rowY + row.slotHeight() <= this.listTop() || rowY >= this.listBottom()) {
+                this.alignTop(row);
+            }
             return;
         }
         int above = this.getRowTop(index) - 2 - this.listTop() - 2;
@@ -206,6 +217,34 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
         if (below < 0) {
             this.setScrollAmount(this.scrollOffset() - below);
         }
+    }
+
+    /** Scrolls a control that keyboard navigation focused inside a row taller than the list into view. */
+    final void revealFocusedChild(KonfigListRow<E> row, GuiEventListener child) {
+//? if >=1.19.4
+        if (!this.minecraft.getLastInputType().isKeyboard()) { return; }
+        if (!this.tallerThanList(row) || !(child instanceof AbstractWidget widget)) {
+            return;
+        }
+        int top = row.currentTop(widget);
+        if (top == Integer.MIN_VALUE) {
+            return;
+        }
+        int above = top - this.listTop() - 2;
+        int below = this.listBottom() - 2 - (top + widget.getHeight());
+        if (above < 0) {
+            this.setScrollAmount(this.scrollOffset() + above);
+        } else if (below < 0) {
+            this.setScrollAmount(this.scrollOffset() - below);
+        }
+    }
+
+    private boolean tallerThanList(KonfigListRow<E> row) {
+        return row.slotHeight() > this.listBottom() - this.listTop() - 4;
+    }
+
+    private void alignTop(E row) {
+        this.setScrollAmount(this.scrollOffset() + this.getRowTop(this.children().indexOf(row)) - 2 - this.listTop() - 2);
     }
 
     // Hit test: getEntryAtPosition is final and assumes itemHeight, so every caller that affects behaviour goes through rowAt.
@@ -299,6 +338,7 @@ public abstract class KonfigSelectionList<E extends KonfigListRow<E>> extends Co
         for (E row : this.children()) {
             int height = row.slotHeight();
             if (top + height >= this.listTop() && top <= this.listBottom()) {
+                row.rendered(top + 2);
                 row.renderRow(context, x, top + 2, width, height - 4, mouseX, mouseY, row == hovered, partialTick);
             }
             top += height;
