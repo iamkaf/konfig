@@ -68,6 +68,12 @@ describe("Konfig Fieldset catalog", () => {
       screen = await reopenCatalog(ctx);
       screen = await openProfile(ctx, BUILT_IN_PROFILE);
       assertRuleLabels(screen, BUILT_IN_RULES);
+      // The role filter cycles All -> weapon -> utility -> All over the built-in rules' roles.
+      assertRuleLabels(await cycleFilter(ctx, "Role: weapon"), [BUILT_IN_RULES[0]!]);
+      await ctx.client.waitForFrames(3);
+      await ctx.client.screenshot("konfig-catalog-filtered");
+      assertRuleLabels(await cycleFilter(ctx, "Role: utility"), [BUILT_IN_RULES[1]!]);
+      assertRuleLabels(await cycleFilter(ctx, "Role: All"), BUILT_IN_RULES);
       screen = await backToProfiles(ctx);
       screen = await openProfile(ctx, USER_PROFILE);
       assertRuleLabels(screen, []);
@@ -98,6 +104,21 @@ async function cycleRole(ctx: TeaKitTestContext, screen: ClientScreen, expected:
   } finally {
     await ctx.spy.detach(applied);
   }
+}
+
+/** Clicks the rule filter button once and returns the screen after it shows `expected`. */
+async function cycleFilter(ctx: TeaKitTestContext, expected: string): Promise<ClientScreen> {
+  let screen = await ctx.client.screen();
+  const filter = screen.widgets().all().find((widget) => widget.label.startsWith("Role: "));
+  if (!filter) throw new Error("Missing the catalog role filter button");
+  await screen.widgets().activate({ label: filter.label });
+  await ctx.runtime.wait(200);
+  screen = await ctx.client.screen();
+  const labels = screen.widgets().all().map((widget) => widget.label);
+  if (!labels.includes(expected)) {
+    throw new Error(`Expected the filter button to read ${expected}, found ${JSON.stringify(labels)}`);
+  }
+  return screen;
 }
 
 /** Leaves the catalog with Done and opens it again from the config screen. */

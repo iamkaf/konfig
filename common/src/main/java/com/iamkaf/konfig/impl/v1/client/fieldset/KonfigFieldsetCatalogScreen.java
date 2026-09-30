@@ -407,8 +407,9 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
     private void nextFilter() {
         List<String> values = this.model().filterValues(this.selectedProfile);
-        int current = values.indexOf(this.filterValue);
-        this.filterValue = current < 0 || current + 1 >= values.size() ? "" : values.get(current + 1);
+        // "All" is not in the list, so its index of -1 advances to the first option; the last option wraps to "All".
+        int next = values.indexOf(this.filterValue) + 1;
+        this.filterValue = next < values.size() ? values.get(next) : "";
         this.selectedEntryId = "";
         this.filter.setMessage(this.filterLabel());
         if (this.ruleList != null) {
