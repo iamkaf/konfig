@@ -64,7 +64,7 @@ async function selectKonfig(ctx: TeaKitTestContext): Promise<ClientScreen> {
   throw new Error("Timed out selecting Konfig in the mod list");
 }
 
-async function activateFabricConfigure(screen: ClientScreen, version: string) {
+export async function activateFabricConfigure(screen: ClientScreen, version: string) {
   if (screen.widgets().all().some((widget) => widget.label === "Configure...")) {
     await screen.widgets().activate({ label: "Configure..." });
     return;

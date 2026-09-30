@@ -47,7 +47,7 @@ public final class KonfigDebugConfig {
 
         ConfigBuilder builder = Konfig.builder(Constants.MOD_ID, "konfig")
                 .scope(ConfigScope.COMMON)
-                .syncMode(SyncMode.NONE)
+                .syncMode(SyncMode.LOGIN)
                 .fileName("konfig.toml")
                 .comment("Konfig internal debug settings.")
                 .info(info -> info
@@ -102,6 +102,7 @@ public final class KonfigDebugConfig {
         builder.intRange("sample_level", 5, 0, 10)
                 .comment("Sample integer slider for exercising Konfig's slider controls.")
                 .tooltip("Drag, or focus and use the arrow keys to step one value.")
+                .sync(true)
                 .build();
         FieldsetField<String> item = itemField("minecraft:iron_sword");
         FieldsetField<String> role = FieldsetField.dropdown(

@@ -13,7 +13,7 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 - Fieldsets, remote editing, tag suggestions, and slider keys now ship on every supported line, from Minecraft 1.17 up.
 - Forge and NeoForge clients can join servers without Konfig on every line.
-- Konfig's debug settings include a sample catalog and slider.
+- Konfig's debug settings include a sample catalog and a slider that syncs from the server.
 
 ### Fixed
 

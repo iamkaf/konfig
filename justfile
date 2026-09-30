@@ -270,3 +270,9 @@ teakit-check-all timeout="240":
       just teakit-check "$node" "{{timeout}}"; \
     fi; \
   done
+
+# Remote editing between a production client and dedicated server. Publish the node to Maven local first.
+remote-edit-pair node timeout="300":
+  env -u WAYLAND_DISPLAY xvfb-run -a -s "-screen 0 1920x1080x24" ./teakitw pair --node "{{node}}" \
+    --modstage-config modstage.toml --modstage-instance "{{node}}" --server-address 127.0.0.1:25581 \
+    --test-file test/teakit-pair/remote-edit.test.ts --timeout "{{timeout}}"

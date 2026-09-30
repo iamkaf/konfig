@@ -14,5 +14,5 @@
     "strict" : true,
     "target" : "ES2022"
   },
-  "include" : [ "test/teakit/**/*.test.ts" ]
+  "include" : [ "test/teakit/**/*.test.ts", "test/teakit-pair/**/*.test.ts" ]
 }

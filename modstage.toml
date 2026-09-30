@@ -1,0 +1,284 @@
+# Production client and dedicated-server pairs for Konfig's remote editing test (`just remote-edit-pair <node>`).
+# Konfig resolves from Maven local, so publish the node there first. Versions follow the shared catalogs.
+# Servers listen on 25581 so they do not collide with other paired suites on the default port.
+
+[project]
+name = "konfig"
+
+[repositories]
+mavenLocal = "mavenLocal"
+kaf = "https://maven.kaf.sh"
+fabric = "https://maven.fabricmc.net"
+terraformers = "https://maven.terraformersmc.com/releases"
+forge = "https://maven.minecraftforge.net"
+neoforged = "https://maven.neoforged.net/releases"
+
+[[instance]]
+name = "1.17.1-fabric"
+minecraft = "1.17.1"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.17.1",
+  "modrinth:fabric-api:0.46.1+1.17",
+  "maven:com.terraformersmc:modmenu:2.0.17",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.17.1",
+]
+
+[[instance]]
+name = "1.17.1-forge"
+minecraft = "1.17.1"
+loader = "forge"
+loader_version = "37.1.1"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.17.1",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.17.1",
+]
+
+[[instance]]
+name = "1.18.2-fabric"
+minecraft = "1.18.2"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.18.2",
+  "modrinth:fabric-api:0.77.0+1.18.2",
+  "maven:com.terraformersmc:modmenu:3.2.5",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.18.2",
+]
+
+[[instance]]
+name = "1.18.2-forge"
+minecraft = "1.18.2"
+loader = "forge"
+loader_version = "40.3.12"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.18.2",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.18.2",
+]
+
+[[instance]]
+name = "1.19.2-fabric"
+minecraft = "1.19.2"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.19.2",
+  "modrinth:fabric-api:0.77.0+1.19.2",
+  "maven:com.terraformersmc:modmenu:4.2.0-beta.2",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.19.2",
+]
+
+[[instance]]
+name = "1.19.2-forge"
+minecraft = "1.19.2"
+loader = "forge"
+loader_version = "43.5.2"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.19.2",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.19.2",
+]
+
+[[instance]]
+name = "1.19.4-fabric"
+minecraft = "1.19.4"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.19.4",
+  "modrinth:fabric-api:0.87.2+1.19.4",
+  "maven:com.terraformersmc:modmenu:6.3.1",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.19.4",
+]
+
+[[instance]]
+name = "1.19.4-forge"
+minecraft = "1.19.4"
+loader = "forge"
+loader_version = "45.4.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.19.4",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.19.4",
+]
+
+[[instance]]
+name = "1.20.1-fabric"
+minecraft = "1.20.1"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.20.1",
+  "modrinth:fabric-api:0.92.2+1.20.1",
+  "maven:com.terraformersmc:modmenu:7.2.2",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.20.1",
+]
+
+[[instance]]
+name = "1.20.1-forge"
+minecraft = "1.20.1"
+loader = "forge"
+loader_version = "47.4.16"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.20.1",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.20.1",
+]
+
+[[instance]]
+name = "1.20.4-fabric"
+minecraft = "1.20.4"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.20.4",
+  "modrinth:fabric-api:0.97.2+1.20.4",
+  "maven:com.terraformersmc:modmenu:9.2.0",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.20.4",
+]
+
+[[instance]]
+name = "1.20.4-forge"
+minecraft = "1.20.4"
+loader = "forge"
+loader_version = "49.2.0"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.20.4",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.20.4",
+]
+
+[[instance]]
+name = "1.21.1-fabric"
+minecraft = "1.21.1"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.21.1",
+  "modrinth:fabric-api:0.107.0+1.21.1",
+  "maven:com.terraformersmc:modmenu:11.0.3",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.21.1",
+]
+
+[[instance]]
+name = "1.21.1-forge"
+minecraft = "1.21.1"
+loader = "forge"
+loader_version = "52.1.10"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.21.1",
+]
+
+[[instance]]
+name = "1.21.1-neoforge"
+minecraft = "1.21.1"
+loader = "neoforge"
+loader_version = "21.1.62"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-neoforge:0.10.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-neoforge:0.14.0+1.21.1",
+]
+
+[[instance]]
+name = "1.21.8-fabric"
+minecraft = "1.21.8"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.21.8",
+  "modrinth:fabric-api:0.129.0+1.21.8",
+  "maven:com.terraformersmc:modmenu:15.0.0-beta.3",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.21.8",
+]
+
+[[instance]]
+name = "1.21.8-forge"
+minecraft = "1.21.8"
+loader = "forge"
+loader_version = "58.0.0"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.21.8",
+]
+
+[[instance]]
+name = "1.21.8-neoforge"
+minecraft = "1.21.8"
+loader = "neoforge"
+loader_version = "21.8.2-beta"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-neoforge:0.10.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-neoforge:0.14.0+1.21.8",
+]
+
+[[instance]]
+name = "1.21.10-fabric"
+minecraft = "1.21.10"
+loader = "fabric"
+loader_version = "0.19.3"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-fabric:0.10.0+1.21.10",
+  "modrinth:fabric-api:0.138.4+1.21.10",
+  "maven:com.terraformersmc:modmenu:16.0.0-rc.1",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.21.10",
+]
+
+[[instance]]
+name = "1.21.10-forge"
+minecraft = "1.21.10"
+loader = "forge"
+loader_version = "60.1.8"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-forge:0.10.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.21.10",
+]
+
+[[instance]]
+name = "1.21.10-neoforge"
+minecraft = "1.21.10"
+loader = "neoforge"
+loader_version = "21.10.64"
+sides = ["client", "server"]
+server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
+mods = [
+  "maven:com.iamkaf.konfig:konfig-neoforge:0.10.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-neoforge:0.14.0+1.21.10",
+]
