@@ -34,6 +34,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
@@ -126,6 +127,43 @@ public final class KonfigUiAdapter {
         return Button.builder(label, onPress).bounds(x, y, width, height).build();
 //?} else {
         return new Button(x, y, width, height, label, onPress);
+//?}
+    }
+
+    public static void place(AbstractWidget widget, int x, int y, int width) {
+//? if >=1.19.3 {
+        widget.setX(x);
+        widget.setY(y);
+//?} else {
+        widget.x = x;
+        widget.y = y;
+//?}
+        widget.setWidth(width);
+    }
+
+    public static void focus(EditBox box, boolean focused) {
+//? if >=1.19.4 {
+        box.setFocused(focused);
+//?} else {
+        box.setFocus(focused);
+//?}
+    }
+
+    public static void moveCursorToStart(EditBox box) {
+//? if >=1.20.2 {
+        box.moveCursorToStart(false);
+//?} else {
+        box.moveCursorToStart();
+//?}
+    }
+
+    /** Returns false where EditBox has no native hint; the caller then draws the placeholder itself. */
+    public static boolean setHint(EditBox box, Component hint) {
+//? if >=1.19.3 {
+        box.setHint(hint);
+        return true;
+//?} else {
+        return false;
 //?}
     }
 

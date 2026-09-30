@@ -8,31 +8,31 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.core.Holder;
 import net.minecraft.core.component.DataComponentMap;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 //?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
-//?} elif >=1.19.3 {
-import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 //?} else {
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
 //?}
-import net.minecraft.core.Registry;
-//? if >=1.21.11 {
-import net.minecraft.client.Minecraft;
+//? if <=1.19.3
+import com.mojang.blaze3d.systems.RenderSystem;
+//? if >=1.19.3 {
 import net.minecraft.core.HolderLookup;
-import net.minecraft.resources.Identifier;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+//?}
+//? if >=1.18.2 {
 import net.minecraft.tags.TagKey;
+//?} else {
+import net.minecraft.tags.ItemTags;
+//?}
+//? if >=1.21.11 {
+import net.minecraft.resources.Identifier;
 //?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -136,17 +136,11 @@ public final class KonfigRegistryAdapter {
             return ItemStack.EMPTY;
         }
 
-//? if >=1.21.11 {
         if (value != null && value.startsWith("#")) {
             return tagIconStack(registryKey, value);
         }
-//?}
 
-//? if >=1.21.11 {
-        Identifier identifier = parseIdentifier(value);
-//?} else {
-        ResourceLocation identifier = parseIdentifier(value);
-//?}
+        var identifier = parseIdentifier(value);
         if (identifier == null) {
             return ItemStack.EMPTY;
         }
@@ -185,22 +179,23 @@ public final class KonfigRegistryAdapter {
         return iconStack(item);
     }
 
-//? if >=1.21.11 {
+//? if >=1.19.3 {
     private static HolderLookup<Item> itemLookup() {
         var level = Minecraft.getInstance().level;
+//? if >=1.21.2 {
         return level == null ? BuiltInRegistries.ITEM : level.holderLookup(Registries.ITEM);
+//?} else {
+        return level == null ? BuiltInRegistries.ITEM.asLookup() : level.holderLookup(Registries.ITEM);
+//?}
     }
 
     private static ItemStack tagIconStack(ResourceKey<? extends Registry<?>> registryKey, String value) {
-        if (registryKey != Registries.ITEM) {
+        var id = parseIdentifier(value.substring(1));
+        if (registryKey != Registries.ITEM || id == null) {
             return ItemStack.EMPTY;
         }
-        Identifier id = parseIdentifier(value.substring(1));
-        if (id == null) {
-            return ItemStack.EMPTY;
-        }
-        var holders = itemLookup().get(TagKey.create(Registries.ITEM, id));
-        return holders.filter(tag -> tag.size() > 0)
+        return itemLookup().get(TagKey.create(Registries.ITEM, id))
+                .filter(tag -> tag.size() > 0)
                 .map(tag -> iconStack(tag.get(0).value()))
                 .orElse(ItemStack.EMPTY);
     }
@@ -212,6 +207,48 @@ public final class KonfigRegistryAdapter {
         return itemLookup().listTags()
                 .filter(tag -> tag.size() > 0)
                 .map(tag -> "#" + tag.key().location())
+                .sorted()
+                .toList();
+    }
+//?} elif >=1.18.2 {
+    private static ItemStack tagIconStack(ResourceKey<? extends Registry<?>> registryKey, String value) {
+        var id = parseIdentifier(value.substring(1));
+        if (registryKey != Registry.ITEM_REGISTRY || id == null) {
+            return ItemStack.EMPTY;
+        }
+        return Registry.ITEM.getTag(TagKey.create(Registry.ITEM_REGISTRY, id))
+                .filter(tag -> tag.size() > 0)
+                .map(tag -> iconStack(tag.get(0).value()))
+                .orElse(ItemStack.EMPTY);
+    }
+
+    public static List<String> tagSuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+        if (registryKey != Registry.ITEM_REGISTRY) {
+            return List.of();
+        }
+        return Registry.ITEM.getTags()
+                .filter(pair -> pair.getSecond().size() > 0)
+                .map(pair -> "#" + pair.getFirst().location())
+                .sorted()
+                .toList();
+    }
+//?} else {
+    private static ItemStack tagIconStack(ResourceKey<? extends Registry<?>> registryKey, String value) {
+        var id = parseIdentifier(value.substring(1));
+        if (registryKey != Registry.ITEM_REGISTRY || id == null) {
+            return ItemStack.EMPTY;
+        }
+        List<Item> items = ItemTags.getAllTags().getTagOrEmpty(id).getValues();
+        return items.isEmpty() ? ItemStack.EMPTY : iconStack(items.get(0));
+    }
+
+    public static List<String> tagSuggestions(ResourceKey<? extends Registry<?>> registryKey) {
+        if (registryKey != Registry.ITEM_REGISTRY) {
+            return List.of();
+        }
+        return ItemTags.getAllTags().getAllTags().entrySet().stream()
+                .filter(entry -> !entry.getValue().getValues().isEmpty())
+                .map(entry -> "#" + entry.getKey())
                 .sorted()
                 .toList();
     }
@@ -242,26 +279,25 @@ public final class KonfigRegistryAdapter {
         renderRegistryIcon(guiGraphics, registryKey, value, x, y, DEFAULT_ICON_SIZE);
     }
 
-//? if >=1.21.11 {
     public static void renderRegistryIcon(GuiGraphics guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
         ItemStack stack = registryIconStack(registryKey, value);
         if (!stack.isEmpty()) {
             float scale = size / (float) DEFAULT_ICON_SIZE;
+//? if >=1.21.6 {
             guiGraphics.pose().pushMatrix();
             guiGraphics.pose().translate(x, y);
             guiGraphics.pose().scale(scale, scale);
             guiGraphics.renderItem(stack, 0, 0);
             guiGraphics.pose().popMatrix();
-        }
-    }
 //?} else {
-    private static void renderRegistryIcon(GuiGraphics guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
-        ItemStack stack = registryIconStack(registryKey, value);
-        if (!stack.isEmpty()) {
-            guiGraphics.renderItem(stack, x, y);
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(x, y, 0.0F);
+            guiGraphics.pose().scale(scale, scale, 1.0F);
+            guiGraphics.renderItem(stack, 0, 0);
+            guiGraphics.pose().popPose();
+//?}
         }
     }
-//?}
 //?} else {
     public static void renderRegistryIcon(PoseStack guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y) {
         ItemStack stack = registryIconStack(registryKey, value);
@@ -272,6 +308,35 @@ public final class KonfigRegistryAdapter {
             Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(stack, x, y);
 //?}
         }
+    }
+
+    public static void renderRegistryIcon(PoseStack guiGraphics, ResourceKey<? extends Registry<?>> registryKey, String value, int x, int y, int size) {
+        if (size == DEFAULT_ICON_SIZE) {
+            renderRegistryIcon(guiGraphics, registryKey, value, x, y);
+            return;
+        }
+        ItemStack stack = registryIconStack(registryKey, value);
+        if (stack.isEmpty()) {
+            return;
+        }
+        float scale = size / (float) DEFAULT_ICON_SIZE;
+//? if >=1.19.4 {
+        guiGraphics.pushPose();
+        guiGraphics.translate(x, y, 0.0F);
+        guiGraphics.scale(scale, scale, 1.0F);
+        Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(guiGraphics, stack, 0, 0);
+        guiGraphics.popPose();
+//?} else {
+        // Items ignore the screen pose here; ItemRenderer composes onto the global model-view stack.
+        PoseStack modelView = RenderSystem.getModelViewStack();
+        modelView.pushPose();
+        modelView.translate(x, y, 0.0F);
+        modelView.scale(scale, scale, 1.0F);
+        RenderSystem.applyModelViewMatrix();
+        Minecraft.getInstance().getItemRenderer().renderAndDecorateItem(stack, 0, 0);
+        modelView.popPose();
+        RenderSystem.applyModelViewMatrix();
+//?}
     }
 //?}
 

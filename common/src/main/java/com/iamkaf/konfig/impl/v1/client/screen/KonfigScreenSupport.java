@@ -8,7 +8,6 @@ import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-//? if >=1.21.11
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import net.minecraft.network.chat.Component;
 //? if <=1.18.2 {
@@ -53,7 +52,6 @@ public final class KonfigScreenSupport {
             return false;
         }
         if (value.serverOnly() && KonfigRuntime.isClient()
-//? if >=1.21.11
                 && !(KonfigSync.clientConnected() && value.sync())
         ) {
             return false;

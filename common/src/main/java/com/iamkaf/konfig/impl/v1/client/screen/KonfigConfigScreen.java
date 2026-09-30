@@ -15,8 +15,8 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetEditResult;
 import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetScreens;
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
-import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 //?}
+import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelRenderer;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
@@ -115,7 +115,6 @@ public final class KonfigConfigScreen extends Screen {
 
     @Override
     protected void init() {
-//? if >=1.21.11
         KonfigSync.refreshRemoteCapabilities();
         this.rebuildScreenWidgets();
     }
@@ -135,7 +134,6 @@ public final class KonfigConfigScreen extends Screen {
     }
 
     private void closeScreen() {
-//? if >=1.21.11
         this.coordinator.closeSession();
         this.setScreen(this.parent);
     }

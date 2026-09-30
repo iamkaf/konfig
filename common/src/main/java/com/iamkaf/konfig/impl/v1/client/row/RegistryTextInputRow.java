@@ -6,6 +6,7 @@ import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.supp
 
 import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
+import com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
 import net.minecraft.client.gui.Font;
@@ -80,11 +81,7 @@ final class RegistryTextInputRow extends KonfigConfigRow implements RegistryText
 
             @Override
             public void focusInput() {
-//? if >=1.19.4 {
-                RegistryTextInputRow.this.input.setFocused(true);
-//?} else {
-                RegistryTextInputRow.this.input.setFocus(true);
-//?}
+                KonfigUiAdapter.focus(RegistryTextInputRow.this.input, true);
             }
 
             @Override

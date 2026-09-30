@@ -2,11 +2,6 @@ package com.iamkaf.konfig.impl.v1.client.field;
 
 import org.jetbrains.annotations.ApiStatus;
 
-import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.copyDraftValue;
-import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.parseDraft;
-import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.sameValue;
-import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.setRawValue;
-import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.snapshotValue;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.translate;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.translatedDropdownOption;
@@ -19,11 +14,9 @@ import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
 import com.iamkaf.konfig.impl.v1.config.model.DropdownOptionMetadata;
 import com.iamkaf.konfig.impl.v1.config.model.EntryKind;
 import com.iamkaf.konfig.impl.v1.config.model.StringListValueHelper;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
 import com.iamkaf.konfig.impl.v1.state.ConfigMutation;
 import com.iamkaf.konfig.impl.v1.state.ConfigSession;
-//?}
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -32,26 +25,12 @@ import java.util.List;
 @ApiStatus.Internal
 public final class KonfigField {
     private final EntryRef entry;
-//? if >=1.21.11 {
     private final ConfigSession session;
-//?} else {
-    private final Object sessionStartValue;
-    private Object draft;
-//?}
 
-//? if >=1.21.11 {
     KonfigField(EntryRef entry, ConfigSession session) {
         this.entry = entry;
         this.session = session;
     }
-//?} else {
-    KonfigField(EntryRef entry) {
-        this.entry = entry;
-        Object value = entry.value.get();
-        this.draft = copyDraftValue(entry.value, value);
-        this.sessionStartValue = entry.editable ? snapshotValue(entry.value, value) : null;
-    }
-//?}
 
     public EntryRef entry() {
         return this.entry;
@@ -62,57 +41,31 @@ public final class KonfigField {
     }
 
     public boolean editable() {
-//? if >=1.21.11 {
         return this.session.field(this.entry.value.path()).permission().editable();
-//?} else {
-        return this.entry.editable;
-//?}
     }
 
     public String readOnlyMessage() {
-//? if >=1.21.11 {
         var permission = this.session.field(this.entry.value.path()).permission();
         return permission.editable() ? "" : permission.message();
-//?} else {
-        return this.entry.editable ? "" : "This field is read-only";
-//?}
     }
 
     public Object draft() {
-//? if >=1.21.11 {
         return this.session.field(this.entry.value.path()).draftInput();
-//?} else {
-        return this.draft;
-//?}
     }
 
     public Object storedSnapshot() {
-//? if >=1.21.11 {
         return this.session.field(this.entry.value.path()).storedValue();
-//?} else {
-        return snapshotValue(this.entry.value, this.entry.value.get());
-//?}
     }
 
-//? if >=1.21.11 {
     public ConfigChangeResult setDraft(Object draft) {
         return this.session.mutate(new ConfigMutation.SetDraft(this.entry.value.path(), draft));
     }
-//?} else {
-    public void setDraft(Object draft) {
-        this.draft = copyDraftValue(this.entry.value, draft);
-    }
-//?}
 
     public void validateDraft(Object draft) {
-//? if >=1.21.11 {
         var validation = this.session.validateDraft(this.entry.value.path(), draft);
         if (validation.hasErrors()) {
             throw new IllegalArgumentException(validation.issues().get(0).message());
         }
-//?} else {
-        parseDraft(this.entry.value, draft);
-//?}
     }
 
     public boolean booleanValue() {
@@ -285,7 +238,6 @@ public final class KonfigField {
         return metadata == null ? translatedDropdownValue(this.entry, option) : translatedDropdownOption(this.entry, metadata);
     }
 
-//? if >=1.21.11 {
     ConfigChangeResult persist() {
         return this.session.apply(this.session.revision());
     }
@@ -297,44 +249,4 @@ public final class KonfigField {
         }
         return this.session.apply(this.session.revision());
     }
-//?} else {
-    public void persist() {
-        Object previousValue = this.entry.value.get();
-        try {
-            Object parsed = parseDraft(this.entry.value, this.draft);
-            if (sameValue(previousValue, parsed)) {
-                return;
-            }
-
-            setRawValue(this.entry.value, parsed);
-            this.entry.handle.save();
-        } catch (RuntimeException exception) {
-            setRawValue(this.entry.value, previousValue);
-            throw exception;
-        }
-    }
-
-    public void resetToSessionStart() {
-        Object previousValue = this.storedSnapshot();
-        try {
-            Object resetValue = snapshotValue(this.entry.value, this.sessionStartValue);
-            this.setDraft(resetValue);
-            setRawValue(this.entry.value, resetValue);
-            this.entry.handle.save();
-        } catch (RuntimeException exception) {
-            setRawValue(this.entry.value, previousValue);
-            this.setDraft(previousValue);
-            throw exception;
-        }
-    }
-
-    void restoreStoredValue(Object storedValue) {
-        setRawValue(this.entry.value, storedValue);
-        this.setDraft(storedValue);
-    }
-
-    Object sessionStartValue() {
-        return snapshotValue(this.entry.value, this.sessionStartValue);
-    }
-//?}
 }

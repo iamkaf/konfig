@@ -5,7 +5,6 @@ import org.jetbrains.annotations.ApiStatus;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenHandle;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigScreenValue;
-//? if >=1.21.11 {
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -24,17 +23,12 @@ import com.iamkaf.konfig.impl.v1.sync.ConfigEditResult;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditSnapshot;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import com.iamkaf.konfig.impl.v1.value.ConfigValueSemantics;
-//?}
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-//? if >=1.21.11
 import java.util.function.Supplier;
-//? if >=1.21.11
 import java.util.function.Consumer;
 
 @ApiStatus.Internal
@@ -42,7 +36,6 @@ public final class KonfigFieldSession implements AutoCloseable {
     private final List<EntryRef> entries;
     private final Map<ConfigScreenValue<?>, KonfigField> fields = new LinkedHashMap<ConfigScreenValue<?>, KonfigField>();
 
-//? if >=1.21.11 {
     private static final Gson GSON = new Gson();
 
     private final Map<SessionKey, ConfigSession> sessions = new LinkedHashMap<>();
@@ -88,20 +81,13 @@ public final class KonfigFieldSession implements AutoCloseable {
             }
         }
     };
-//?}
 
     public KonfigFieldSession(List<EntryRef> entries) {
         this.entries = List.copyOf(entries);
-//? if >=1.21.11 {
         initializeSessions();
         if (!this.remoteSessions.isEmpty()) {
             KonfigSync.addClientEditListener(this.remoteListener);
         }
-//?} else {
-        for (EntryRef entry : entries) {
-            this.fields.put(entry.value, new KonfigField(entry));
-        }
-//?}
     }
 
     public KonfigField field(EntryRef entry) {
@@ -116,7 +102,6 @@ public final class KonfigFieldSession implements AutoCloseable {
         return field;
     }
 
-//? if >=1.21.11 {
     public ConfigChangeResult persist(EntryRef entry) {
         ConfigSession session = requireSession(entry);
         return session.apply(session.revision());
@@ -309,35 +294,4 @@ public final class KonfigFieldSession implements AutoCloseable {
 
     private record SessionKey(ConfigScreenHandle handle, boolean remote) {
     }
-//?} else {
-    public void resetAll() {
-        Map<KonfigField, Object> previousValues = new LinkedHashMap<KonfigField, Object>();
-        Set<ConfigScreenHandle> handles = new LinkedHashSet<ConfigScreenHandle>();
-        try {
-            for (EntryRef entry : this.entries) {
-                if (!entry.editable) {
-                    continue;
-                }
-                KonfigField field = field(entry);
-                Object resetValue = field.sessionStartValue();
-                previousValues.put(field, KonfigFieldValues.snapshotValue(entry.value, entry.value.get()));
-                field.setDraft(resetValue);
-                KonfigFieldValues.setRawValue(entry.value, resetValue);
-                handles.add(entry.handle);
-            }
-            for (ConfigScreenHandle handle : handles) {
-                handle.save();
-            }
-        } catch (RuntimeException exception) {
-            for (Map.Entry<KonfigField, Object> previousValue : previousValues.entrySet()) {
-                previousValue.getKey().restoreStoredValue(previousValue.getValue());
-            }
-            throw exception;
-        }
-    }
-
-    @Override
-    public void close() {
-    }
-//?}
 }

@@ -8,6 +8,8 @@ import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
 import com.iamkaf.konfig.impl.v1.client.screen.EntryRef;
 import com.iamkaf.konfig.impl.v1.client.screen.KonfigRowHost;
+//? if <=1.21.8
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.gui.components.AbstractWidget;
 //? if >=1.21.9 {
 import net.minecraft.client.input.KeyEvent;
@@ -88,21 +90,11 @@ final class IntegerSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
-//? if >=1.21.11 {
-            if (this.canChangeValue && (event.isLeft() || event.isRight())) {
+            if (this.keyboardEditing() && (event.isLeft() || event.isRight())) {
                 IntegerSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
                 return true;
             }
             return super.keyPressed(event);
-//?} else {
-            // canChangeValue is private before 1.21.11: keep vanilla stepping and commit its result.
-            int previousValue = IntegerSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(event);
-            if (handled && previousValue != IntegerSliderRow.this.currentValue()) {
-                IntegerSliderRow.this.commitOrRevert(Integer.valueOf(previousValue));
-            }
-            return handled;
-//?}
         }
 //?} else {
         @Override
@@ -114,12 +106,11 @@ final class IntegerSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            int previousValue = IntegerSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
-            if (handled && previousValue != IntegerSliderRow.this.currentValue()) {
-                IntegerSliderRow.this.commitOrRevert(Integer.valueOf(previousValue));
+            if (this.keyboardEditing() && (keyCode == InputConstants.KEY_LEFT || keyCode == InputConstants.KEY_RIGHT)) {
+                IntegerSliderRow.this.stepValue(keyCode == InputConstants.KEY_LEFT ? -1 : 1);
+                return true;
             }
-            return handled;
+            return super.keyPressed(keyCode, scanCode, modifiers);
         }
 //?}
     }
@@ -199,21 +190,11 @@ final class LongSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(KeyEvent event) {
-//? if >=1.21.11 {
-            if (this.canChangeValue && (event.isLeft() || event.isRight())) {
+            if (this.keyboardEditing() && (event.isLeft() || event.isRight())) {
                 LongSliderRow.this.stepValue(event.isLeft() ? -1 : 1);
                 return true;
             }
             return super.keyPressed(event);
-//?} else {
-            // canChangeValue is private before 1.21.11: keep vanilla stepping and commit its result.
-            long previousValue = LongSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(event);
-            if (handled && previousValue != LongSliderRow.this.currentValue()) {
-                LongSliderRow.this.commitOrRevert(Long.valueOf(previousValue));
-            }
-            return handled;
-//?}
         }
 //?} else {
         @Override
@@ -225,12 +206,11 @@ final class LongSliderRow extends KonfigConfigRow {
 
         @Override
         public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-            long previousValue = LongSliderRow.this.currentValue();
-            boolean handled = super.keyPressed(keyCode, scanCode, modifiers);
-            if (handled && previousValue != LongSliderRow.this.currentValue()) {
-                LongSliderRow.this.commitOrRevert(Long.valueOf(previousValue));
+            if (this.keyboardEditing() && (keyCode == InputConstants.KEY_LEFT || keyCode == InputConstants.KEY_RIGHT)) {
+                LongSliderRow.this.stepValue(keyCode == InputConstants.KEY_LEFT ? -1 : 1);
+                return true;
             }
-            return handled;
+            return super.keyPressed(keyCode, scanCode, modifiers);
         }
 //?}
     }

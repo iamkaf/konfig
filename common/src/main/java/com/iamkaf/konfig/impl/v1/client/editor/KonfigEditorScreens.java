@@ -6,6 +6,8 @@ import static com.iamkaf.konfig.impl.v1.client.field.KonfigFieldValues.*;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.supportsRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.*;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.focus;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.place;
 
 import com.iamkaf.konfig.impl.v1.client.control.BaseSliderWidget;
 import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
@@ -334,14 +336,7 @@ final class ColorEditorScreen extends KonfigEntryEditorScreen {
         private ChannelSlider(ColorChannel channel, int x, int y) {
             super(ColorEditorScreen.this.currentChannel(channel) / 255.0D);
             this.channel = channel;
-//? if >=1.19.3 {
-            this.setX(x);
-            this.setY(y);
-//?} else {
-            this.x = x;
-            this.y = y;
-//?}
-            this.setWidth(SLIDER_WIDTH);
+            place(this, x, y, SLIDER_WIDTH);
             this.updateMessage();
         }
 
@@ -698,11 +693,7 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
 
                 @Override
                 public void focusInput() {
-//? if >=1.19.4 {
-                    ListEntryRow.this.input.setFocused(true);
-//?} else {
-                    ListEntryRow.this.input.setFocus(true);
-//?}
+                    focus(ListEntryRow.this.input, true);
                 }
 
                 @Override
@@ -854,24 +845,12 @@ final class StringListEditorScreen extends KonfigEntryEditorScreen {
         }
 
         private void layoutInput(int x, int y, int width) {
-            this.input.setX(x);
-//? if >=1.19.3 {
-            this.input.setY(y);
-//?} else {
-            this.input.y = y;
-//?}
-            this.input.setWidth(width);
+            place(this.input, x, y, width);
             this.suggestions.updateInputBounds(x, y, width);
         }
 
         private void positionButton(Button button, int x, int y) {
-//? if >=1.19.3 {
-            button.setX(x);
-            button.setY(y);
-//?} else {
-            button.x = x;
-            button.y = y;
-//?}
+            place(button, x, y, button.getWidth());
         }
 
         private void refreshSuggestions() {
