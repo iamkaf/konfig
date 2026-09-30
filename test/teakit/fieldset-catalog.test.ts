@@ -45,7 +45,7 @@ describe("Konfig Fieldset catalog", () => {
 
       // The role dropdown cycles tool -> weapon -> utility.
       await cycleRole(ctx, screen, "weapon");
-      await ctx.client.waitForFrames(3);
+      await assertIdleFramesKeepStatus(ctx);
       await ctx.client.screenshot("konfig-catalog-edited");
 
       // Reopening reads the rule back from the config value, so the added rule must still be listed.
@@ -103,6 +103,27 @@ async function cycleRole(ctx: TeaKitTestContext, screen: ClientScreen, expected:
     }
   } finally {
     await ctx.spy.detach(applied);
+  }
+}
+
+/**
+ * The status line reads "Saved" after an edit. Before 26.1 moving an EditBox cursor runs its change handler, and the
+ * catalog resets unfocused text fields' cursors every frame, so a handler that is not suppressed there clears the status
+ * on the next frame. The handler is the only per-frame caller of refreshRevertAction.
+ */
+async function assertIdleFramesKeepStatus(ctx: TeaKitTestContext): Promise<void> {
+  const refreshed = await ctx.spy.method(
+    "konfig.catalog.refreshRevert",
+    `${CATALOG_SCREEN}#refreshRevertAction`,
+  );
+  try {
+    await ctx.client.waitForFrames(5);
+    const calls = await refreshed.$calls();
+    if (calls.length !== 0) {
+      throw new Error(`Idle frames ran a text field change handler ${calls.length} times, clearing the status line`);
+    }
+  } finally {
+    await ctx.spy.detach(refreshed);
   }
 }
 

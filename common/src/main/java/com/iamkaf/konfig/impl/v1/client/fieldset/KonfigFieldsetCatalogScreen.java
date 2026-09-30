@@ -1360,9 +1360,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
                     @Override
                     public boolean applySuggestion(String suggestion) {
-                        TextFieldRow.this.suppressResponder = true;
-                        TextFieldRow.this.input.setValue(suggestion);
-                        TextFieldRow.this.suppressResponder = false;
+                        TextFieldRow.this.setInputValue(suggestion);
                         return TextFieldRow.this.commit();
                     }
 
@@ -1430,11 +1428,9 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
 
         private void revert() {
-            this.suppressResponder = true;
-            this.input.setValue(this.committedText());
-            this.suppressResponder = false;
+            this.setInputValue(this.committedText());
             focus(this.input, false);
-            moveCursorToStart(this.input);
+            this.moveInputCursorToStart();
             this.localError = "";
             this.closeSuggestions();
             if (KonfigFieldsetCatalogScreen.this.activeTextField == this) {
@@ -1442,6 +1438,27 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             }
             KonfigFieldsetCatalogScreen.this.message = text("");
             KonfigFieldsetCatalogScreen.this.refreshRevertAction();
+        }
+
+        private void setInputValue(String value) {
+            boolean previouslySuppressed = this.suppressResponder;
+            this.suppressResponder = true;
+            try {
+                this.input.setValue(value);
+            } finally {
+                this.suppressResponder = previouslySuppressed;
+            }
+        }
+
+        // Before 26.1 moving the cursor notifies the responder, which would clear the status line.
+        private void moveInputCursorToStart() {
+            boolean previouslySuppressed = this.suppressResponder;
+            this.suppressResponder = true;
+            try {
+                moveCursorToStart(this.input);
+            } finally {
+                this.suppressResponder = previouslySuppressed;
+            }
         }
 
         private boolean hasLocalDraftError() {
@@ -1543,7 +1560,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         @Override
         void renderDecoration(KonfigRenderContext context, int controlX, int y, int controlWidth) {
             if (!this.input.isFocused()) {
-                moveCursorToStart(this.input);
+                this.moveInputCursorToStart();
             }
             if (this.suggestions == null) {
                 return;
