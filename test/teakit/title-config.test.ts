@@ -59,9 +59,7 @@ describe("Konfig config screen", () => {
     await ctx.runtime.wait(300);
     await ctx.client.screenshot("konfig-translated-value-tooltip");
 
-    if (atLeast(version, "1.21.11")) {
-      await exerciseFieldset(ctx);
-    }
+    await exerciseFieldset(ctx);
   });
 });
 
@@ -315,7 +313,7 @@ async function activateFabricConfigure(screen: ClientScreen, version: string) {
     await screen.widgets().activate({ label: "Configure..." });
     return;
   }
-  if (atLeast(version, "1.17") && atMost(version, "1.19.2")) {
+  if (atMost(version, "1.19.2")) {
     await screen.widgets().activate({ label: "Configure...", nth: 0 });
     return;
   }
