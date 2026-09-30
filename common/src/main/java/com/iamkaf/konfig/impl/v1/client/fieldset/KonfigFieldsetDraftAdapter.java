@@ -1,7 +1,8 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
+
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
@@ -45,7 +46,7 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
         if (titleField.isPresent()) {
             String title = displayValue(read(entry, titleField.get()));
             if (!title.isBlank()) {
-                return Component.literal(title);
+                return text(title);
             }
         }
         for (FieldsetField<?> field : this.session.draft().schema().fields()) {
@@ -57,11 +58,11 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
             }
             String value = displayValue(read(entry, field));
             if (!value.isBlank()) {
-                return Component.literal(value);
+                return text(value);
             }
         }
         int index = this.entries().indexOf(entry);
-        return Component.literal(index < 0 ? "Entry" : "Entry " + (index + 1));
+        return text(index < 0 ? "Entry" : "Entry " + (index + 1));
     }
 
     @Override
@@ -81,7 +82,7 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
                 break;
             }
         }
-        return Component.literal(String.join("  ·  ", parts));
+        return text(String.join("  ·  ", parts));
     }
 
     Optional<EntryIcon> entryIcon(FieldsetEntry entry) {
@@ -148,7 +149,7 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
                     ? KonfigFieldsetEditResult.applied()
                     : KonfigFieldsetEditResult.noChange();
         } catch (RuntimeException exception) {
-            return KonfigFieldsetEditResult.invalid(Component.literal(message(exception)));
+            return KonfigFieldsetEditResult.invalid(text(message(exception)));
         }
     }
 
@@ -176,12 +177,12 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
 
     @Override
     public Component fieldLabel(FieldsetField<?> field) {
-        return Component.literal(pretty(field.key()));
+        return text(pretty(field.key()));
     }
 
     @Override
     public Component fieldDescription(FieldsetField<?> field) {
-        return Component.empty();
+        return text("");
     }
 
     @Override
@@ -201,7 +202,7 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
             issues.add(KonfigFieldsetValidation.Issue.fieldError(
                     issue.entryIdentity(),
                     issue.fieldKey().orElse(""),
-                    Component.literal(issue.message())
+                    text(issue.message())
             ));
         }
         return issues.isEmpty() ? KonfigFieldsetValidation.valid() : new KonfigFieldsetValidation(issues);
@@ -225,7 +226,7 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
                     ? KonfigFieldsetEditResult.applied()
                     : KonfigFieldsetEditResult.noChange();
         } catch (RuntimeException exception) {
-            return KonfigFieldsetEditResult.invalid(Component.literal(message(exception)));
+            return KonfigFieldsetEditResult.invalid(text(message(exception)));
         }
     }
 
@@ -322,4 +323,3 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
         }
     }
 }
-//?}

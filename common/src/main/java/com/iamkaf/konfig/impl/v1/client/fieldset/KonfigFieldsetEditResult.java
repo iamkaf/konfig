@@ -1,7 +1,8 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
+
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import net.minecraft.network.chat.Component;
 
@@ -15,20 +16,20 @@ public record KonfigFieldsetEditResult(Status status, Component message) {
     }
 
     public static KonfigFieldsetEditResult applied() {
-        return new KonfigFieldsetEditResult(Status.APPLIED, Component.empty());
+        return new KonfigFieldsetEditResult(Status.APPLIED, text(""));
     }
 
     public static KonfigFieldsetEditResult noChange() {
-        return new KonfigFieldsetEditResult(Status.NO_CHANGE, Component.empty());
+        return new KonfigFieldsetEditResult(Status.NO_CHANGE, text(""));
     }
 
     public static KonfigFieldsetEditResult pending() {
-        return new KonfigFieldsetEditResult(Status.PENDING, Component.literal("Saving..."));
+        return new KonfigFieldsetEditResult(Status.PENDING, text("Saving..."));
     }
 
     public static KonfigFieldsetEditResult readOnly(Component reason) {
         Component message = reason.getString().isBlank()
-                ? Component.literal("This fieldset is read-only.")
+                ? text("This fieldset is read-only.")
                 : reason;
         return new KonfigFieldsetEditResult(Status.READ_ONLY, message);
     }
@@ -36,27 +37,27 @@ public record KonfigFieldsetEditResult(Status status, Component message) {
     public static KonfigFieldsetEditResult permissionDenied() {
         return new KonfigFieldsetEditResult(
                 Status.PERMISSION_DENIED,
-                Component.literal("The server refused this edit because you do not have permission.")
+                text("The server refused this edit because you do not have permission.")
         );
     }
 
     public static KonfigFieldsetEditResult staleRevision() {
         return new KonfigFieldsetEditResult(
                 Status.STALE_REVISION,
-                Component.literal("This config changed on the server. Reopen it and try again.")
+                text("This config changed on the server. Reopen it and try again.")
         );
     }
 
     public static KonfigFieldsetEditResult malformedSubmission() {
         return new KonfigFieldsetEditResult(
                 Status.MALFORMED_SUBMISSION,
-                Component.literal("The server rejected this edit because the submitted data was malformed.")
+                text("The server rejected this edit because the submitted data was malformed.")
         );
     }
 
     public static KonfigFieldsetEditResult invalid(Component message) {
         Component resolved = message.getString().isBlank()
-                ? Component.literal("The server rejected this edit because one or more values are invalid.")
+                ? text("The server rejected this edit because one or more values are invalid.")
                 : message;
         return new KonfigFieldsetEditResult(Status.INVALID, resolved);
     }
@@ -64,7 +65,7 @@ public record KonfigFieldsetEditResult(Status status, Component message) {
     public static KonfigFieldsetEditResult unsupported() {
         return new KonfigFieldsetEditResult(
                 Status.UNSUPPORTED,
-                Component.literal("This server does not support remote editing for this config.")
+                text("This server does not support remote editing for this config.")
         );
     }
 
@@ -92,4 +93,3 @@ public record KonfigFieldsetEditResult(Status status, Component message) {
         UNSUPPORTED
     }
 }
-//?}

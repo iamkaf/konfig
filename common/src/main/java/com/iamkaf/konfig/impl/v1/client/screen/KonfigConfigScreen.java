@@ -10,12 +10,10 @@ import com.iamkaf.konfig.impl.v1.bootstrap.Constants;
 import com.iamkaf.konfig.impl.v1.bootstrap.KonfigDebugConfig;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.impl.v1.client.editor.KonfigEditorScreens;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetEditResult;
 import com.iamkaf.konfig.impl.v1.client.fieldset.KonfigFieldsetScreens;
 import com.iamkaf.konfig.impl.v1.state.ConfigChangeResult;
-//?}
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelBounds;
 import com.iamkaf.konfig.impl.v1.client.info.KonfigInfoPanelRenderer;
@@ -158,7 +156,6 @@ public final class KonfigConfigScreen extends Screen {
         this.setScreen(KonfigEditorScreens.stringList(this.editorHost, entry));
     }
 
-//? if >=1.21.11 {
     void openFieldsetEditor(EntryRef entry) {
         Object draft = this.coordinator.field(entry).draft();
         if (!(draft instanceof FieldsetValue fieldset)) {
@@ -244,7 +241,6 @@ public final class KonfigConfigScreen extends Screen {
         }
         return matches;
     }
-//?}
 
     void returnToMainScreen() {
         this.rebuildScreenWidgets();

@@ -1,7 +1,8 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
+
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import net.minecraft.network.chat.Component;
 
@@ -51,16 +52,16 @@ public final class KonfigFieldsetValidation {
         int errors = this.errorCount();
         int warnings = this.warningCount();
         if (errors > 0 && warnings > 0) {
-            return Component.literal(errors + plural(errors, " error", " errors")
+            return text(errors + plural(errors, " error", " errors")
                     + ", " + warnings + plural(warnings, " warning", " warnings"));
         }
         if (errors > 0) {
-            return Component.literal(errors + plural(errors, " error", " errors"));
+            return text(errors + plural(errors, " error", " errors"));
         }
         if (warnings > 0) {
-            return Component.literal(warnings + plural(warnings, " warning", " warnings"));
+            return text(warnings + plural(warnings, " warning", " warnings"));
         }
-        return Component.empty();
+        return text("");
     }
 
     private int count(Severity severity) {
@@ -117,4 +118,3 @@ public final class KonfigFieldsetValidation {
         }
     }
 }
-//?}

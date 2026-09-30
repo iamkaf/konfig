@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -157,4 +156,3 @@ public final class KonfigFieldsetCatalogModel {
         }
     }
 }
-//?}
