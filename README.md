@@ -459,7 +459,7 @@ Konfig has three useful runtime validation layers:
 |---------|----------------|
 | `just boot-check <mc>-forge 60` | Starts the client and confirms Konfig initializes from logs |
 | `just teakit-boot-check <mc>-forge 60` | Enables TeaKit as an optional dev runtime dependency, then confirms Konfig and TeaKit initialize |
-| `just teakit-check <mc>-forge 240` | Runs the checked-in TeaKit UI test, opens the title-screen Mods menu, opens Konfig's config screen, asserts that `Enable Debug Logging` is present, and exercises the Fieldset editor |
+| `just teakit-check <mc>-forge 240` | Runs every TeaKit UI test under `test/teakit` in one client launch: opens Konfig's config screen from the title-screen Mods menu, asserts that `Enable Debug Logging` is present, steps an integer slider with the arrow keys, and exercises the Fieldset list editor and the Fieldset catalog |
 
 Matrix-wide helpers:
 
