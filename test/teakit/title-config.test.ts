@@ -246,6 +246,7 @@ async function clickEntryControl(ctx: TeaKitTestContext, screen: ClientScreen, l
 
 async function scrollToVisibleEntry(ctx: TeaKitTestContext, label: string): Promise<ClientScreen> {
   const startedAt = Date.now();
+  let previousY: number | undefined;
   while (Date.now() - startedAt < 10_000) {
     const screen = await ctx.client.screen();
     const list = screen.widgets().all().find((widget) => widget.widgetClass.includes("KonfigEntryList"));
@@ -253,6 +254,12 @@ async function scrollToVisibleEntry(ctx: TeaKitTestContext, label: string): Prom
     if (list && entry && entry.y >= list.y && entry.y + entry.height <= list.y + list.height) {
       return screen;
     }
+    // Selection lists are not widgets before 1.20.3, so their bounds are unknown. Scroll until the entry stops
+    // moving instead; that is the end of the list, where the last entry is fully visible.
+    if (!list && entry && entry.y === previousY) {
+      return screen;
+    }
+    previousY = entry?.y;
     await screen.scroll({ vertical: -2 });
     await ctx.runtime.wait(100);
   }
