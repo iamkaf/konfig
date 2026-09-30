@@ -500,7 +500,7 @@ final class KonfigFieldsetListScreen extends Screen {
         private final boolean selected;
         private final boolean expanded;
         private final Button header;
-        // The card's title and summary. The header button narrates it, and UI tests read it as the row label.
+        // The card's title and summary. UI tests read it as the row label; the header button narrates only the title.
         private Component label = text("");
         private final List<FieldControl> fields = new ArrayList<>();
         private final List<AbstractWidget> controls = new ArrayList<>();
@@ -557,7 +557,7 @@ final class KonfigFieldsetListScreen extends Screen {
             String title = KonfigFieldsetListScreen.this.adapter.entryLabel(entry).getString();
             String summary = KonfigFieldsetListScreen.this.adapter.entrySummary(entry).getString();
             this.label = text(summary.isBlank() ? title : title + ", " + summary);
-            this.header.setMessage(text(action + this.label.getString()));
+            this.header.setMessage(text(action + title));
         }
 
         private boolean hasLocalErrors() {
