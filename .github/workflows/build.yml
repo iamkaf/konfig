@@ -18,5 +18,6 @@ jobs:
   build:
     uses: iamkaf/multiloader-conventions/.github/workflows/mod-build.yml@c04ba0b9b350143f6074a3da4a470dbdefff07cc
     with:
+      max-parallel: 8
       common-task: test
       teakit-runner: wrapper

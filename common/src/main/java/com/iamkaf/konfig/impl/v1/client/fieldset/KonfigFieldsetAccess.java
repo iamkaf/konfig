@@ -1,7 +1,8 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
+
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import net.minecraft.network.chat.Component;
 
@@ -33,7 +34,7 @@ public final class KonfigFieldsetAccess {
     }
 
     public static KonfigFieldsetAccess editable() {
-        return new KonfigFieldsetAccess(true, true, true, true, true, Component.empty());
+        return new KonfigFieldsetAccess(true, true, true, true, true, text(""));
     }
 
     public static KonfigFieldsetAccess readOnly(Component reason) {
@@ -47,12 +48,12 @@ public final class KonfigFieldsetAccess {
                 true,
                 false,
                 false,
-                Component.literal("This entry is built in. Duplicate it to make an editable copy.")
+                text("This entry is built in. Duplicate it to make an editable copy.")
         );
     }
 
     public static KonfigFieldsetAccess remoteReadOnly() {
-        return readOnly(Component.literal("This server allows viewing this config, but not editing it."));
+        return readOnly(text("This server allows viewing this config, but not editing it."));
     }
 
     public static KonfigFieldsetAccess of(
@@ -94,4 +95,3 @@ public final class KonfigFieldsetAccess {
         return this.reason;
     }
 }
-//?}

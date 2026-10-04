@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.storage;
 
 import com.google.gson.JsonPrimitive;
@@ -109,4 +108,3 @@ final class TomlConfigStorageTest {
         return new ConfigStorageDocument(1, values, Map.of("enabled", "Default switch."), "Test config.");
     }
 }
-//?}

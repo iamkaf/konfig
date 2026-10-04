@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -6,6 +5,11 @@ import org.jetbrains.annotations.ApiStatus;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.hasRegistryIcon;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigRegistryAdapter.tagSuggestions;
 import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.button;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.focus;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.moveCursorToStart;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.place;
+import static com.iamkaf.konfig.impl.v1.client.render.KonfigUiAdapter.setHint;
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetCatalog;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
@@ -15,22 +19,27 @@ import com.iamkaf.konfig.api.v1.fieldset.FieldsetValidationIssue;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetValue;
 import com.iamkaf.konfig.impl.v1.client.control.KonfigRegistrySuggestionController;
 import com.iamkaf.konfig.impl.v1.client.render.KonfigRenderContext;
+import com.iamkaf.konfig.impl.v1.client.row.KonfigListRow;
+import com.iamkaf.konfig.impl.v1.client.row.KonfigSelectionList;
 import com.mojang.blaze3d.platform.InputConstants;
 //? if >=26.1 {
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-//?} else {
+//?} elif >=1.20 {
 import net.minecraft.client.gui.GuiGraphics;
+//?} else {
+import com.mojang.blaze3d.vertex.PoseStack;
 //?}
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.ContainerObjectSelectionList;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.events.GuiEventListener;
 import net.minecraft.client.gui.narration.NarratableEntry;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=1.21.9 {
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+//?}
 import net.minecraft.core.Registry;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
@@ -44,9 +53,11 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 
 @ApiStatus.Internal
 final class KonfigFieldsetCatalogScreen extends Screen {
+    private static final int SEARCH_Y = 32;
     private static final int HEADER_BOTTOM = 56;
     private static final int FOOTER_HEIGHT = 30;
     private static final int PROFILE_ROW_HEIGHT = 36;
@@ -73,11 +84,13 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     private String query = "";
     private String filterValue = "";
     private View view = View.OVERVIEW;
-    private Component message = Component.empty();
+    private Component message = text("");
 
     private boolean wide;
     private boolean rebuildPending;
     private EditBox search;
+    private boolean drawSearchHint;
+    private int searchX;
     private Button filter;
     private Button revert;
     private ProfileList profileList;
@@ -115,14 +128,15 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
     @Override
     protected void init() {
+        this.drawSearchHint = false;
         if (this.profileList != null) {
-            this.profileScroll = this.profileList.scrollAmount();
+            this.profileScroll = this.profileList.scrollOffset();
         }
         if (this.ruleList != null) {
-            this.ruleScroll = this.ruleList.scrollAmount();
+            this.ruleScroll = this.ruleList.scrollOffset();
         }
         if (this.detailList != null) {
-            this.detailScroll = this.detailList.scrollAmount();
+            this.detailScroll = this.detailList.scrollOffset();
         }
         this.clearWidgets();
         this.activeTextField = null;
@@ -137,7 +151,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
         if (this.selectedProfile.isEmpty()) {
             this.profileList = this.addRenderableWidget(new ProfileList(contentWidth, bodyHeight, HEADER_BOTTOM, true));
-            this.profileList.setX(contentX);
+            this.profileList.setLeft(contentX);
             this.profileList.setScrollAmount(this.profileScroll);
         } else if (this.wide) {
             int gap = 6;
@@ -147,24 +161,24 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             int detailWidth = remaining - ruleWidth;
 
             this.profileList = this.addRenderableWidget(new ProfileList(profileWidth, bodyHeight, HEADER_BOTTOM, false));
-            this.profileList.setX(contentX);
+            this.profileList.setLeft(contentX);
             this.profileList.setScrollAmount(this.profileScroll);
             this.addRuleSearch(contentX + profileWidth + gap, ruleWidth);
             this.ruleList = this.addRenderableWidget(new RuleList(ruleWidth, bodyHeight - 24, HEADER_BOTTOM + 24));
-            this.ruleList.setX(contentX + profileWidth + gap);
+            this.ruleList.setLeft(contentX + profileWidth + gap);
             this.ruleList.setScrollAmount(this.ruleScroll);
             this.detailList = this.addRenderableWidget(new DetailList(detailWidth, bodyHeight, HEADER_BOTTOM));
-            this.detailList.setX(contentX + profileWidth + gap + ruleWidth + gap);
+            this.detailList.setLeft(contentX + profileWidth + gap + ruleWidth + gap);
             this.detailList.setScrollAmount(this.detailScroll);
         } else if (this.view == View.DETAIL && this.selectedEntry().isPresent()) {
             this.detailList = this.addRenderableWidget(new DetailList(contentWidth, bodyHeight, HEADER_BOTTOM));
-            this.detailList.setX(contentX);
+            this.detailList.setLeft(contentX);
             this.detailList.setScrollAmount(this.detailScroll);
         } else {
             this.view = View.RULES;
             this.addRuleSearch(contentX, contentWidth);
             this.ruleList = this.addRenderableWidget(new RuleList(contentWidth, bodyHeight - 24, HEADER_BOTTOM + 24));
-            this.ruleList.setX(contentX);
+            this.ruleList.setLeft(contentX);
             this.ruleList.setScrollAmount(this.ruleScroll);
         }
 
@@ -177,12 +191,13 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         this.search = this.addRenderableWidget(new EditBox(
                 this.font,
                 x,
-                32,
+                SEARCH_Y,
                 width - filterWidth - gap,
                 20,
-                Component.literal("Search catalog entries")
+                text("Search catalog entries")
         ));
-        this.search.setHint(Component.literal("Search"));
+        this.drawSearchHint = !setHint(this.search, text("Search"));
+        this.searchX = x;
         this.search.setValue(this.query);
         this.search.setResponder(value -> {
             this.query = value == null ? "" : value;
@@ -197,7 +212,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         if (filterWidth > 0) {
             this.filter = this.addRenderableWidget(button(
                     x + width - filterWidth,
-                    32,
+                    SEARCH_Y,
                     filterWidth,
                     20,
                     this.filterLabel(),
@@ -210,7 +225,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         int y = this.height - 26;
         int left = contentX;
         if (!this.selectedProfile.isEmpty()) {
-            this.addRenderableWidget(button(left, y, 72, 20, Component.literal("Back"), ignored -> this.back()));
+            this.addRenderableWidget(button(left, y, 72, 20, text("Back"), ignored -> this.back()));
             left += 76;
         }
 
@@ -220,7 +235,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                     y,
                     112,
                     20,
-                    Component.literal(this.catalog.newEntryLabel()),
+                    text(this.catalog.newEntryLabel()),
                     ignored -> this.addEntry()
             ));
             left += 116;
@@ -236,7 +251,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                             y,
                             88,
                             20,
-                            Component.literal(this.catalog.duplicateLabel()),
+                            text(this.catalog.duplicateLabel()),
                             ignored -> this.duplicateSelected()
                     ));
                     left += 92;
@@ -246,7 +261,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                         y,
                         72,
                         20,
-                        Component.literal(this.catalog.deleteLabel()),
+                        text(this.catalog.deleteLabel()),
                         ignored -> this.deleteSelected()
                 ));
                 left += 76;
@@ -256,7 +271,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                         y,
                         92,
                         20,
-                        Component.literal(this.catalog.overrideLabel()),
+                        text(this.catalog.overrideLabel()),
                         ignored -> this.overrideSelected()
                 ));
                 left += 96;
@@ -264,7 +279,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
 
         if (!this.undoHistory.isEmpty()) {
-            this.addRenderableWidget(button(left, y, 64, 20, Component.literal("Undo"), ignored -> this.undo()));
+            this.addRenderableWidget(button(left, y, 64, 20, text("Undo"), ignored -> this.undo()));
             left += 68;
         }
 
@@ -273,7 +288,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 y,
                 72,
                 20,
-                Component.literal("Revert"),
+                text("Revert"),
                 ignored -> this.revertActiveDraft()
         ));
         this.revert.visible = false;
@@ -283,7 +298,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 y,
                 80,
                 20,
-                Component.literal("Done"),
+                text("Done"),
                 ignored -> this.closeToParent()
         ));
     }
@@ -359,7 +374,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         this.query = "";
         this.filterValue = "";
         this.view = View.RULES;
-        this.message = Component.empty();
+        this.message = text("");
         this.requestRebuild();
     }
 
@@ -370,7 +385,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         this.selectedEntryId = identity;
         this.state.select(identity);
         this.view = View.DETAIL;
-        this.message = Component.empty();
+        this.message = text("");
         this.requestRebuild();
     }
 
@@ -386,14 +401,15 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             this.selectedEntryId = "";
             this.view = View.OVERVIEW;
         }
-        this.message = Component.empty();
+        this.message = text("");
         this.requestRebuild();
     }
 
     private void nextFilter() {
         List<String> values = this.model().filterValues(this.selectedProfile);
-        int current = values.indexOf(this.filterValue);
-        this.filterValue = current < 0 || current + 1 >= values.size() ? "" : values.get(current + 1);
+        // "All" is not in the list, so its index of -1 advances to the first option; the last option wraps to "All".
+        int next = values.indexOf(this.filterValue) + 1;
+        this.filterValue = next < values.size() ? values.get(next) : "";
         this.selectedEntryId = "";
         this.filter.setMessage(this.filterLabel());
         if (this.ruleList != null) {
@@ -406,7 +422,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
     private Component filterLabel() {
         String name = this.catalog.filterField().map(field -> pretty(field.key())).orElse("Filter");
-        return Component.literal(name + ": " + (this.filterValue.isEmpty() ? "All" : this.filterValue));
+        return text(name + ": " + (this.filterValue.isEmpty() ? "All" : this.filterValue));
     }
 
     private void addEntry() {
@@ -461,7 +477,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         if (result.accepted()) {
             result = this.persistDraft(previous, true);
         }
-        this.message = result.accepted() ? Component.literal("Saved") : result.message();
+        this.message = result.accepted() ? text("Saved") : result.message();
         this.state.refresh();
         return result.submitted();
     }
@@ -473,7 +489,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         List<FieldsetValidationIssue> issues = this.session.draft().validate().issues();
         if (!issues.isEmpty()) {
             this.session.restorePersisted();
-            return KonfigFieldsetEditResult.invalid(Component.literal(issues.get(0).message()));
+            return KonfigFieldsetEditResult.invalid(text(issues.get(0).message()));
         }
 
         FieldsetValue candidate = this.session.draft();
@@ -486,7 +502,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         } catch (RuntimeException exception) {
             String detail = exception.getMessage();
             this.session.restorePersisted();
-            return KonfigFieldsetEditResult.invalid(Component.literal(detail == null || detail.isBlank()
+            return KonfigFieldsetEditResult.invalid(text(detail == null || detail.isBlank()
                     ? "The Fieldset could not be saved."
                     : detail));
         }
@@ -516,12 +532,12 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         if (result.accepted()) {
             if (this.pendingUndo) {
                 this.undoHistory.pop();
-                this.message = Component.literal("Change undone");
+                this.message = text("Change undone");
             } else if (pending.recordUndo() && result.changed()) {
                 this.undoHistory.push(pending.previous());
-                this.message = Component.literal("Saved");
+                this.message = text("Saved");
             } else {
-                this.message = Component.literal("Saved");
+                this.message = text("Saved");
             }
         } else {
             this.message = result.message();
@@ -545,7 +561,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         } else if (result.accepted()) {
             this.undoHistory.pop();
             this.session.adoptPersisted(target);
-            this.message = Component.literal("Change undone");
+            this.message = text("Change undone");
             this.state.refresh();
             this.selectedEntryId = "";
             this.requestRebuild();
@@ -567,7 +583,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             this.session.restorePersisted();
             this.state.refresh();
             this.activeTextField = null;
-            this.message = Component.empty();
+            this.message = text("");
             this.requestRebuild();
         }
     }
@@ -609,50 +625,71 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 //?}
     }
 
+//? if >=1.21.9 {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (this.pendingSave != null) {
-            return true;
-        }
-        TextFieldRow active = this.activeTextField;
-        if (active != null && active.handleSuggestionClick(event)) {
-            return true;
-        }
-        if (active != null
-                && active.inputFocused()
-                && !active.isPointInsideInput(event.x(), event.y())
-                && (this.revert == null || !this.revert.isMouseOver(event.x(), event.y()))) {
-            if (!active.commit() || this.pendingSave != null) {
-                return true;
-            }
-        }
-        return super.mouseClicked(event, doubleClick);
+        return this.handleClick(event.x(), event.y(), () -> super.mouseClicked(event, doubleClick));
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        return this.handleKey(event.key(), () -> super.keyPressed(event));
+    }
+//?} else {
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        return this.handleClick(mouseX, mouseY, () -> super.mouseClicked(mouseX, mouseY, button));
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        return this.handleKey(keyCode, () -> super.keyPressed(keyCode, scanCode, modifiers));
+    }
+//?}
+
+    private boolean handleClick(double mouseX, double mouseY, BooleanSupplier vanilla) {
         if (this.pendingSave != null) {
             return true;
         }
         TextFieldRow active = this.activeTextField;
-        if (active != null && active.hasVisibleSuggestions() && active.handleSuggestionKey(event)) {
+        // Only the popup drawn last frame takes clicks; a field scrolled out of the list hides its popup.
+        TextFieldRow shown = this.renderedRegistryField;
+        if (shown != null && shown.handleSuggestionClick(mouseX, mouseY)) {
+            return true;
+        }
+        if (active != null
+                && active.inputFocused()
+                && !active.isPointInsideInput(mouseX, mouseY)
+                && (this.revert == null || !this.revert.isMouseOver(mouseX, mouseY))) {
+            if (!active.commit() || this.pendingSave != null) {
+                return true;
+            }
+        }
+        return vanilla.getAsBoolean();
+    }
+
+    private boolean handleKey(int keyCode, BooleanSupplier vanilla) {
+        if (this.pendingSave != null) {
+            return true;
+        }
+        TextFieldRow active = this.activeTextField;
+        if (active != null && active == this.renderedRegistryField && active.handleSuggestionKey(keyCode)) {
             return true;
         }
         if (active != null && active.inputFocused()) {
-            int key = event.key();
-            if (key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER) {
+            if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
                 return active.commit();
             }
-            if (key == InputConstants.KEY_ESCAPE) {
+            if (keyCode == InputConstants.KEY_ESCAPE) {
                 active.revert();
                 return true;
             }
-            if (key == InputConstants.KEY_TAB) {
+            if (keyCode == InputConstants.KEY_TAB) {
                 active.commit();
                 return true;
             }
         }
-        return super.keyPressed(event);
+        return vanilla.getAsBoolean();
     }
 
 //? if >=26.1 {
@@ -665,9 +702,19 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         this.renderChrome(context);
         this.renderRegistrySuggestions(context, mouseX, mouseY);
     }
-//?} else {
+//?} elif >=1.20 {
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        KonfigRenderContext context = KonfigRenderContext.of(graphics);
+        context.fill(0, 0, this.width, this.height, 0xC0101010);
+        this.renderedRegistryField = null;
+        super.render(graphics, mouseX, mouseY, partialTick);
+        this.renderChrome(context);
+        this.renderRegistrySuggestions(context, mouseX, mouseY);
+    }
+//?} else {
+    @Override
+    public void render(PoseStack graphics, int mouseX, int mouseY, float partialTick) {
         KonfigRenderContext context = KonfigRenderContext.of(graphics);
         context.fill(0, 0, this.width, this.height, 0xC0101010);
         this.renderedRegistryField = null;
@@ -684,13 +731,16 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 : this.selectedEntry().map(entry -> this.adapter.entryLabel(entry).getString())
                         .orElseGet(this::selectedProfileLabel);
         Component subtitle = this.message.getString().isBlank()
-                ? Component.literal(location)
+                ? text(location)
                 : this.message;
         int color = this.message.getString().isBlank() || this.message.getString().equals("Saved")
                 || this.message.getString().equals("Change undone")
                 ? 0xFFA0A0A0
                 : 0xFFFF7070;
         context.drawCenteredText(this.font, subtitle, this.width / 2, 21, color);
+        if (this.drawSearchHint && this.search != null && this.search.getValue().isEmpty() && !this.search.isFocused()) {
+            context.drawText(this.font, text("Search"), this.searchX + 4, SEARCH_Y + 6, 0xFF808080);
+        }
     }
 
     private void renderRegistrySuggestions(KonfigRenderContext context, int mouseX, int mouseY) {
@@ -711,7 +761,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             return value;
         }
         String suffix = "...";
-        return Component.literal(this.font.plainSubstrByWidth(text, Math.max(0, width - this.font.width(suffix))) + suffix);
+        return text(this.font.plainSubstrByWidth(text, Math.max(0, width - this.font.width(suffix))) + suffix);
     }
 
     private String selectedProfileLabel() {
@@ -733,10 +783,10 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     private Optional<Component> entryWarning(FieldsetEntry entry) {
         Optional<String> configured = this.catalog.warning(entry).filter(message -> !message.isBlank());
         if (configured.isPresent()) {
-            return Optional.of(Component.literal(configured.get()));
+            return Optional.of(text(configured.get()));
         }
         return this.missingRegistryEntry(entry)
-                ? Optional.of(Component.literal("Missing registry entry"))
+                ? Optional.of(text("Missing registry entry"))
                 : Optional.empty();
     }
 
@@ -766,14 +816,14 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         DETAIL
     }
 
-    private final class ProfileList extends ContainerObjectSelectionList<ProfileRow> {
+    private final class ProfileList extends KonfigSelectionList<ProfileRow> {
         private final int rowWidth;
 
         private ProfileList(int width, int height, int y, boolean overview) {
             super(KonfigFieldsetCatalogScreen.this.minecraft, width, height, y, PROFILE_ROW_HEIGHT);
             this.rowWidth = width - 14;
             for (KonfigFieldsetCatalogModel.Profile profile : KonfigFieldsetCatalogScreen.this.profiles()) {
-                this.addEntry(new ProfileRow(profile, overview), PROFILE_ROW_HEIGHT);
+                this.addRow(new ProfileRow(profile, overview), PROFILE_ROW_HEIGHT);
             }
         }
 
@@ -781,21 +831,9 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         public int getRowWidth() {
             return this.rowWidth;
         }
-
-//? if >=26.1 {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - this.scrollbarWidth();
-        }
-//?} else {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - 6;
-        }
-//?}
     }
 
-    private final class ProfileRow extends ContainerObjectSelectionList.Entry<ProfileRow> {
+    private final class ProfileRow extends KonfigListRow<ProfileRow> {
         private final KonfigFieldsetCatalogModel.Profile profile;
         private final boolean overview;
         private final Component label;
@@ -804,26 +842,24 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         private ProfileRow(KonfigFieldsetCatalogModel.Profile profile, boolean overview) {
             this.profile = profile;
             this.overview = overview;
-            this.label = Component.literal(profile.label());
+            this.label = text(profile.label());
             this.hitbox = button(0, 0, 100, PROFILE_ROW_HEIGHT - 4, this.label, ignored -> {
                 KonfigFieldsetCatalogScreen.this.selectProfile(this.profile.key());
             });
         }
 
-        private void renderRow(KonfigRenderContext context, int x, int y, int width, boolean hovered) {
+        @Override
+        protected void renderRow(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             boolean selected = this.profile.key().equals(KonfigFieldsetCatalogScreen.this.selectedProfile);
             int border = selected ? 0xFFE0E0E0 : hovered ? 0xFF777777 : 0xFF454545;
             context.fill(x, y, x + width, y + PROFILE_ROW_HEIGHT - 4, border);
             context.fill(x + 1, y + 1, x + width - 1, y + PROFILE_ROW_HEIGHT - 5, 0xE81B1B1B);
-            this.hitbox.setX(x);
-            this.hitbox.setY(y);
-            this.hitbox.setWidth(width);
-            this.hitbox.setHeight(PROFILE_ROW_HEIGHT - 4);
+            place(this.hitbox, x, y, width);
 
             int titleX = x + (this.overview ? 12 : 7);
             context.drawText(
                     KonfigFieldsetCatalogScreen.this.font,
-                    KonfigFieldsetCatalogScreen.this.fit(Component.literal(this.profile.label()), width - 66),
+                    KonfigFieldsetCatalogScreen.this.fit(text(this.profile.label()), width - 66),
                     titleX,
                     y + 7,
                     0xFFFFFFFF
@@ -831,7 +867,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             String count = this.profile.entryCount() + (this.profile.entryCount() == 1 ? " item" : " items");
             context.drawText(
                     KonfigFieldsetCatalogScreen.this.font,
-                    Component.literal(count),
+                    text(count),
                     titleX,
                     y + 20,
                     0xFFA0A0A0
@@ -839,24 +875,12 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             String status = this.profile.editable() ? "Editable" : "Active";
             context.drawText(
                     KonfigFieldsetCatalogScreen.this.font,
-                    Component.literal(status),
+                    text(status),
                     x + width - KonfigFieldsetCatalogScreen.this.font.width(status) - 8,
                     y + 13,
                     this.profile.editable() ? 0xFFFFD66B : 0xFF8FB98F
             );
         }
-
-//? if >=26.1 {
-        @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth(), hovered);
-        }
-//?} else {
-        @Override
-        public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth(), hovered);
-        }
-//?}
 
         @Override
         public List<? extends GuiEventListener> children() {
@@ -869,7 +893,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
     }
 
-    private final class RuleList extends ContainerObjectSelectionList<RuleRow> {
+    private final class RuleList extends KonfigSelectionList<RuleRow> {
         private final int rowWidth;
 
         private RuleList(int width, int height, int y) {
@@ -879,10 +903,10 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
 
         private void rebuild() {
-            double scroll = this.scrollAmount();
+            double scroll = this.scrollOffset();
             this.clearEntries();
             for (FieldsetEntry entry : KonfigFieldsetCatalogScreen.this.visibleRules()) {
-                this.addEntry(new RuleRow(entry), RULE_ROW_HEIGHT);
+                this.addRow(new RuleRow(entry), RULE_ROW_HEIGHT);
             }
             this.setScrollAmount(scroll);
         }
@@ -891,30 +915,16 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         public int getRowWidth() {
             return this.rowWidth;
         }
-
-//? if >=26.1 {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - this.scrollbarWidth();
-        }
-//?} else {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - 6;
-        }
-//?}
     }
 
-    private final class RuleRow extends ContainerObjectSelectionList.Entry<RuleRow> {
+    private final class RuleRow extends KonfigListRow<RuleRow> {
         private final String entryId;
         private final Component label;
         private final Button hitbox;
 
         private RuleRow(FieldsetEntry entry) {
             this.entryId = entry.identity();
-            this.label = entry == null
-                    ? Component.empty()
-                    : KonfigFieldsetCatalogScreen.this.adapter.entryLabel(entry);
+            this.label = KonfigFieldsetCatalogScreen.this.adapter.entryLabel(entry);
             this.hitbox = button(0, 0, 100, RULE_ROW_HEIGHT - 3, this.label, ignored -> {
                 KonfigFieldsetCatalogScreen.this.selectEntry(this.entryId);
             });
@@ -927,7 +937,8 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                     .orElseThrow();
         }
 
-        private void renderRow(KonfigRenderContext context, int x, int y, int width, boolean hovered) {
+        @Override
+        protected void renderRow(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             FieldsetEntry entry = this.entry();
             boolean selected = this.entryId.equals(KonfigFieldsetCatalogScreen.this.selectedEntryId);
             KonfigFieldsetValidation validation = KonfigFieldsetCatalogScreen.this.validation.forEntry(this.entryId);
@@ -939,10 +950,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                             : selected ? 0xFFE0E0E0 : hovered ? 0xFF777777 : 0xFF454545;
             context.fill(x, y, x + width, y + RULE_ROW_HEIGHT - 3, border);
             context.fill(x + 1, y + 1, x + width - 1, y + RULE_ROW_HEIGHT - 4, 0xE81B1B1B);
-            this.hitbox.setX(x);
-            this.hitbox.setY(y);
-            this.hitbox.setWidth(width);
-            this.hitbox.setHeight(RULE_ROW_HEIGHT - 3);
+            place(this.hitbox, x, y, width);
 
             int titleX = x + 7;
             Optional<KonfigFieldsetDraftAdapter.EntryIcon> icon = KonfigFieldsetCatalogScreen.this.adapter.entryIcon(entry);
@@ -973,18 +981,6 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             }
         }
 
-//? if >=26.1 {
-        @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth(), hovered);
-        }
-//?} else {
-        @Override
-        public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth(), hovered);
-        }
-//?}
-
         @Override
         public List<? extends GuiEventListener> children() {
             return List.of(this.hitbox);
@@ -996,7 +992,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
     }
 
-    private final class DetailList extends ContainerObjectSelectionList<DetailRow> {
+    private final class DetailList extends KonfigSelectionList<DetailRow> {
         private final int rowWidth;
 
         private DetailList(int width, int height, int y) {
@@ -1012,14 +1008,14 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 return;
             }
             FieldsetEntry entry = selected.get();
-            this.addEntry(new DetailHeaderRow(entry), 48);
+            this.addRow(new DetailHeaderRow(entry), 48);
 
             Set<FieldsetField<?>> included = new LinkedHashSet<FieldsetField<?>>();
             for (FieldsetCatalog.Section section : KonfigFieldsetCatalogScreen.this.catalog.sections()) {
-                this.addEntry(new SectionRow(section.label()), DETAIL_SECTION_HEIGHT);
+                this.addRow(new SectionRow(section.label()), DETAIL_SECTION_HEIGHT);
                 for (FieldsetField<?> field : section.fields()) {
                     included.add(field);
-                    this.addEntry(this.fieldRow(entry, field), DETAIL_FIELD_HEIGHT);
+                    this.addRow(this.fieldRow(entry, field), DETAIL_FIELD_HEIGHT);
                 }
             }
             List<FieldsetField<?>> remaining = new ArrayList<FieldsetField<?>>();
@@ -1029,9 +1025,9 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 }
             }
             if (!remaining.isEmpty()) {
-                this.addEntry(new SectionRow(KonfigFieldsetCatalogScreen.this.catalog.sections().isEmpty() ? "Details" : "Other"), DETAIL_SECTION_HEIGHT);
+                this.addRow(new SectionRow(KonfigFieldsetCatalogScreen.this.catalog.sections().isEmpty() ? "Details" : "Other"), DETAIL_SECTION_HEIGHT);
                 for (FieldsetField<?> field : remaining) {
-                    this.addEntry(this.fieldRow(entry, field), DETAIL_FIELD_HEIGHT);
+                    this.addRow(this.fieldRow(entry, field), DETAIL_FIELD_HEIGHT);
                 }
             }
         }
@@ -1068,21 +1064,9 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         public int getRowWidth() {
             return this.rowWidth;
         }
-
-//? if >=26.1 {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - this.scrollbarWidth();
-        }
-//?} else {
-        @Override
-        protected int scrollBarX() {
-            return this.getRight() - 6;
-        }
-//?}
     }
 
-    private abstract class DetailRow extends ContainerObjectSelectionList.Entry<DetailRow> {
+    private abstract class DetailRow extends KonfigListRow<DetailRow> {
         void tick() {
         }
     }
@@ -1094,7 +1078,8 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             this.entry = entry;
         }
 
-        private void renderRow(KonfigRenderContext context, int x, int y, int width) {
+        @Override
+        protected void renderRow(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             int titleX = x + 6;
             Optional<KonfigFieldsetDraftAdapter.EntryIcon> icon = KonfigFieldsetCatalogScreen.this.adapter.entryIcon(this.entry);
             if (icon.isPresent() && hasRegistryIcon(icon.get().registryKey(), icon.get().value())) {
@@ -1111,11 +1096,11 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             String source = this.entry.editable()
                     ? KonfigFieldsetCatalogScreen.this.catalog.editableProfileLabel()
                     : this.entry.source().orElse("Built in");
-            context.drawText(KonfigFieldsetCatalogScreen.this.font, Component.literal(source), titleX, y + 22, 0xFFFFD66B);
+            context.drawText(KonfigFieldsetCatalogScreen.this.font, text(source), titleX, y + 22, 0xFFFFD66B);
             Optional<Component> warning = KonfigFieldsetCatalogScreen.this.entryWarning(this.entry);
             context.drawText(
                     KonfigFieldsetCatalogScreen.this.font,
-                    warning.orElseGet(() -> Component.literal(
+                    warning.orElseGet(() -> text(
                             this.entry.editable() ? "Editable declaration" : "Effective read-only rule"
                     )),
                     titleX,
@@ -1123,18 +1108,6 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                     warning.isPresent() ? 0xFFFFC45C : 0xFFA0A0A0
             );
         }
-
-//? if >=26.1 {
-        @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth());
-        }
-//?} else {
-        @Override
-        public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth());
-        }
-//?}
 
         @Override
         public List<? extends GuiEventListener> children() {
@@ -1151,25 +1124,14 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         private final Component label;
 
         private SectionRow(String label) {
-            this.label = Component.literal(label);
+            this.label = text(label);
         }
 
-        private void renderRow(KonfigRenderContext context, int x, int y, int width) {
+        @Override
+        protected void renderRow(KonfigRenderContext context, int x, int y, int width, int height, int mouseX, int mouseY, boolean hovered, float partialTick) {
             context.fill(x + 4, y + 18, x + width - 4, y + 19, 0xFF454545);
             context.drawText(KonfigFieldsetCatalogScreen.this.font, this.label, x + 6, y + 6, 0xFFFFD66B);
         }
-
-//? if >=26.1 {
-        @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth());
-        }
-//?} else {
-        @Override
-        public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(KonfigRenderContext.of(graphics), this.getContentX(), this.getContentY(), this.getContentWidth());
-        }
-//?}
 
         @Override
         public List<? extends GuiEventListener> children() {
@@ -1199,7 +1161,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 List<FieldsetValidationIssue> issues = KonfigFieldsetCatalogScreen.this.session.draft().validate().issues();
                 if (!issues.isEmpty()) {
                     this.localError = "";
-                    KonfigFieldsetCatalogScreen.this.message = Component.literal(issues.get(0).message());
+                    KonfigFieldsetCatalogScreen.this.message = text(issues.get(0).message());
                     KonfigFieldsetCatalogScreen.this.refreshRevertAction();
                     return true;
                 }
@@ -1207,7 +1169,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             }
             this.localError = result.submitted() ? "" : result.message().getString();
             KonfigFieldsetCatalogScreen.this.message = result.accepted()
-                    ? Component.literal("Saved")
+                    ? text("Saved")
                     : result.message();
             if (result.submitted()) {
                 KonfigFieldsetCatalogScreen.this.state.refresh();
@@ -1225,13 +1187,16 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             return issues.isEmpty() ? "" : issues.get(0).message().getString();
         }
 
-        final void renderRow(
+        @Override
+        protected final void renderRow(
                 KonfigRenderContext context,
                 int x,
                 int y,
                 int width,
+                int height,
                 int mouseX,
                 int mouseY,
+                boolean hovered,
                 float partialTick
         ) {
             int controlX = x + Math.max(106, width * 40 / 100);
@@ -1246,7 +1211,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             if (!validation.isBlank()) {
                 context.drawText(
                         KonfigFieldsetCatalogScreen.this.font,
-                        KonfigFieldsetCatalogScreen.this.fit(Component.literal(validation), controlWidth),
+                        KonfigFieldsetCatalogScreen.this.fit(text(validation), controlWidth),
                         controlX,
                         y + 27,
                         0xFFFF7070
@@ -1258,34 +1223,6 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
 
         abstract void layoutControls(int x, int y, int width);
-
-//? if >=26.1 {
-        @Override
-        public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(
-                    KonfigRenderContext.of(graphics),
-                    this.getContentX(),
-                    this.getContentY(),
-                    this.getContentWidth(),
-                    mouseX,
-                    mouseY,
-                    partialTick
-            );
-        }
-//?} else {
-        @Override
-        public void renderContent(GuiGraphics graphics, int mouseX, int mouseY, boolean hovered, float partialTick) {
-            this.renderRow(
-                    KonfigRenderContext.of(graphics),
-                    this.getContentX(),
-                    this.getContentY(),
-                    this.getContentWidth(),
-                    mouseX,
-                    mouseY,
-                    partialTick
-            );
-        }
-//?}
 
         @Override
         public List<? extends GuiEventListener> children() {
@@ -1303,7 +1240,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
         private BooleanFieldRow(KonfigFieldsetEntryEditorState.FieldState<FieldsetField<?>> field) {
             super(field);
-            this.toggle = button(0, 0, 100, CONTROL_HEIGHT, Component.empty(), ignored -> {
+            this.toggle = button(0, 0, 100, CONTROL_HEIGHT, text(""), ignored -> {
                 Object current = this.field.value().draft();
                 this.apply(Boolean.valueOf(!(current instanceof Boolean) || !((Boolean) current).booleanValue()));
             });
@@ -1313,14 +1250,12 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
 
         private void sync() {
-            this.toggle.setMessage(Component.literal(Boolean.TRUE.equals(this.field.value().draft()) ? "On" : "Off"));
+            this.toggle.setMessage(text(Boolean.TRUE.equals(this.field.value().draft()) ? "On" : "Off"));
         }
 
         @Override
         void layoutControls(int x, int y, int width) {
-            this.toggle.setX(x);
-            this.toggle.setY(y);
-            this.toggle.setWidth(width);
+            place(this.toggle, x, y, width);
         }
     }
 
@@ -1329,7 +1264,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
         private DropdownFieldRow(KonfigFieldsetEntryEditorState.FieldState<FieldsetField<?>> field) {
             super(field);
-            this.dropdown = button(0, 0, 100, CONTROL_HEIGHT, Component.empty(), ignored -> this.next());
+            this.dropdown = button(0, 0, 100, CONTROL_HEIGHT, text(""), ignored -> this.next());
             this.dropdown.active = field.value().access().canEdit();
             this.controls.add(this.dropdown);
             this.sync();
@@ -1348,14 +1283,12 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
 
         private void sync() {
-            this.dropdown.setMessage(Component.literal(String.valueOf(this.field.value().draft())));
+            this.dropdown.setMessage(text(String.valueOf(this.field.value().draft())));
         }
 
         @Override
         void layoutControls(int x, int y, int width) {
-            this.dropdown.setX(x);
-            this.dropdown.setY(y);
-            this.dropdown.setWidth(width);
+            place(this.dropdown, x, y, width);
         }
     }
 
@@ -1376,14 +1309,14 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             );
             this.input.setMaxLength(512);
             this.input.setValue(this.committedText());
-            this.input.moveCursorToStart(false);
+            moveCursorToStart(this.input);
             boolean editable = field.value().access().canEdit();
             this.input.setEditable(editable);
             this.input.active = editable;
             this.input.setResponder(value -> {
                 if (!this.suppressResponder) {
                     this.localError = "";
-                    KonfigFieldsetCatalogScreen.this.message = Component.empty();
+                    KonfigFieldsetCatalogScreen.this.message = text("");
                     this.refreshSuggestions();
                     KonfigFieldsetCatalogScreen.this.refreshRevertAction();
                 }
@@ -1427,15 +1360,13 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
                     @Override
                     public boolean applySuggestion(String suggestion) {
-                        TextFieldRow.this.suppressResponder = true;
-                        TextFieldRow.this.input.setValue(suggestion);
-                        TextFieldRow.this.suppressResponder = false;
+                        TextFieldRow.this.setInputValue(suggestion);
                         return TextFieldRow.this.commit();
                     }
 
                     @Override
                     public void focusInput() {
-                        TextFieldRow.this.input.setFocused(true);
+                        focus(TextFieldRow.this.input, true);
                     }
 
                     @Override
@@ -1477,19 +1408,19 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 parsed = this.parse(this.input.getValue());
             } catch (IllegalArgumentException exception) {
                 this.localError = exception.getMessage() == null ? "Invalid value" : exception.getMessage();
-                KonfigFieldsetCatalogScreen.this.message = Component.literal(this.localError);
-                this.input.setFocused(true);
+                KonfigFieldsetCatalogScreen.this.message = text(this.localError);
+                focus(this.input, true);
                 KonfigFieldsetCatalogScreen.this.activeTextField = this;
                 KonfigFieldsetCatalogScreen.this.refreshRevertAction();
                 return false;
             }
             boolean accepted = this.apply(parsed);
             if (accepted) {
-                this.input.setFocused(false);
+                focus(this.input, false);
                 this.closeSuggestions();
                 KonfigFieldsetCatalogScreen.this.activeTextField = null;
             } else {
-                this.input.setFocused(true);
+                focus(this.input, true);
                 KonfigFieldsetCatalogScreen.this.activeTextField = this;
             }
             KonfigFieldsetCatalogScreen.this.refreshRevertAction();
@@ -1497,18 +1428,37 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
 
         private void revert() {
-            this.suppressResponder = true;
-            this.input.setValue(this.committedText());
-            this.suppressResponder = false;
-            this.input.setFocused(false);
-            this.input.moveCursorToStart(false);
+            this.setInputValue(this.committedText());
+            focus(this.input, false);
+            this.moveInputCursorToStart();
             this.localError = "";
             this.closeSuggestions();
             if (KonfigFieldsetCatalogScreen.this.activeTextField == this) {
                 KonfigFieldsetCatalogScreen.this.activeTextField = null;
             }
-            KonfigFieldsetCatalogScreen.this.message = Component.empty();
+            KonfigFieldsetCatalogScreen.this.message = text("");
             KonfigFieldsetCatalogScreen.this.refreshRevertAction();
+        }
+
+        private void setInputValue(String value) {
+            boolean previouslySuppressed = this.suppressResponder;
+            this.suppressResponder = true;
+            try {
+                this.input.setValue(value);
+            } finally {
+                this.suppressResponder = previouslySuppressed;
+            }
+        }
+
+        // Before 26.1 moving the cursor notifies the responder, which would clear the status line.
+        private void moveInputCursorToStart() {
+            boolean previouslySuppressed = this.suppressResponder;
+            this.suppressResponder = true;
+            try {
+                moveCursorToStart(this.input);
+            } finally {
+                this.suppressResponder = previouslySuppressed;
+            }
         }
 
         private boolean hasLocalDraftError() {
@@ -1561,12 +1511,12 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             return this.suggestions != null && this.suggestions.hasVisibleSuggestions();
         }
 
-        private boolean handleSuggestionClick(MouseButtonEvent event) {
-            return this.suggestions != null && this.suggestions.handleClick(event.x(), event.y());
+        private boolean handleSuggestionClick(double mouseX, double mouseY) {
+            return this.suggestions != null && this.suggestions.handleClick(mouseX, mouseY);
         }
 
-        private boolean handleSuggestionKey(KeyEvent event) {
-            return this.suggestions != null && this.suggestions.handleKey(event.key());
+        private boolean handleSuggestionKey(int keyCode) {
+            return this.suggestions != null && this.suggestions.handleKey(keyCode);
         }
 
         private ResourceKey<? extends Registry<?>> registryKey() {
@@ -1601,9 +1551,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
 
         @Override
         void layoutControls(int x, int y, int width) {
-            this.input.setX(x);
-            this.input.setY(y);
-            this.input.setWidth(width);
+            place(this.input, x, y, width);
             if (this.suggestions != null) {
                 this.suggestions.updateInputBounds(x, y, width);
             }
@@ -1612,7 +1560,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         @Override
         void renderDecoration(KonfigRenderContext context, int controlX, int y, int controlWidth) {
             if (!this.input.isFocused()) {
-                this.input.moveCursorToStart(false);
+                this.moveInputCursorToStart();
             }
             if (this.suggestions == null) {
                 return;
@@ -1624,7 +1572,10 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 KonfigFieldsetCatalogScreen.this.activeTextField = this;
                 this.refreshSuggestions();
             }
-            if (KonfigFieldsetCatalogScreen.this.activeTextField == this && this.hasVisibleSuggestions()) {
+            DetailList list = KonfigFieldsetCatalogScreen.this.detailList;
+            if (KonfigFieldsetCatalogScreen.this.activeTextField == this
+                    && this.hasVisibleSuggestions()
+                    && this.suggestions.isInputWithin(list.listTop(), list.listBottom())) {
                 KonfigFieldsetCatalogScreen.this.renderedRegistryField = this;
             }
         }
@@ -1633,4 +1584,3 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     private record PendingSave(FieldsetValue previous, FieldsetValue candidate, boolean recordUndo) {
     }
 }
-//?}

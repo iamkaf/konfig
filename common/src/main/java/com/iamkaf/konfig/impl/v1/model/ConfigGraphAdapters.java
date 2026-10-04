@@ -120,10 +120,8 @@ public final class ConfigGraphAdapters {
                 return ConfigFieldKind.COLOR_RGB;
             case COLOR_ARGB:
                 return ConfigFieldKind.COLOR_ARGB;
-//? if >=1.21.11 {
             case FIELDSET:
                 return ConfigFieldKind.FIELDSET;
-//?}
             case CUSTOM:
                 return ConfigFieldKind.CUSTOM;
             default:
@@ -141,10 +139,8 @@ public final class ConfigGraphAdapters {
                 return ConfigDisplayNode.Kind.TEXT;
             case URL:
                 return ConfigDisplayNode.Kind.LINK;
-//? if >=1.21.11 {
             case FIELDSET:
                 return ConfigDisplayNode.Kind.FIELDSET;
-//?}
             default:
                 return ConfigDisplayNode.Kind.FIELD;
         }
@@ -168,9 +164,7 @@ public final class ConfigGraphAdapters {
     private static ConfigLegacyFlattening.Strategy legacyStrategy(ConfigDisplayNode.Kind kind) {
         switch (kind) {
             case FIELD:
-//? if >=1.21.11 {
             case FIELDSET:
-//?}
                 return ConfigLegacyFlattening.Strategy.FIELD;
             case HEADER:
                 return ConfigLegacyFlattening.Strategy.HEADER;

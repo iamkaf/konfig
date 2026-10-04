@@ -203,11 +203,9 @@ public final class ConfigPresentationResolver {
             ConfigPlacement placement = new ConfigPlacement(defaultPage, defaultTab, group, ConfigPlacement.Region.BODY);
             ConfigPresentationIdentity identity = identity(config.identity(), "field/" + field.identity().path().value());
             ConfigDisplayNode.Kind kind = ConfigDisplayNode.Kind.FIELD;
-//? if >=1.21.11 {
             if (field.kind() == ConfigFieldKind.FIELDSET) {
                 kind = ConfigDisplayNode.Kind.FIELDSET;
             }
-//?}
             ConfigDisplayNode node = createDefaultFieldNode(config, field, identity, placement, kind, pages, tabs, groups);
             putUnique(nodes, identity, node, "display node");
         }
@@ -225,17 +223,13 @@ public final class ConfigPresentationResolver {
             Map<ConfigPresentationIdentity, ConfigGroup> groups
     ) {
         boolean fieldKind = source.kind() == ConfigDisplayNode.Kind.FIELD;
-//? if >=1.21.11 {
         fieldKind = fieldKind || source.kind() == ConfigDisplayNode.Kind.FIELDSET;
-//?}
         if (fieldKind != (field != null)) {
             throw new IllegalStateException("Display node field reference does not match its kind: " + identity);
         }
-//? if >=1.21.11 {
         if (field != null && (source.kind() == ConfigDisplayNode.Kind.FIELDSET) != (field.kind() == ConfigFieldKind.FIELDSET)) {
             throw new IllegalStateException("Fieldset display kind does not match config field kind: " + identity);
         }
-//?}
         ConfigSearchMetadata search = source.search();
         if (search == null) {
             search = defaultSearch(field, source.label(), source.description(), source.tooltip(), locationLabels(placement, pages, tabs, groups));
@@ -501,9 +495,7 @@ public final class ConfigPresentationResolver {
     private static ConfigLegacyFlattening.Strategy defaultLegacyStrategy(ConfigDisplayNode.Kind kind) {
         switch (kind) {
             case FIELD:
-//? if >=1.21.11 {
             case FIELDSET:
-//?}
                 return ConfigLegacyFlattening.Strategy.FIELD;
             case HEADER:
                 return ConfigLegacyFlattening.Strategy.HEADER;

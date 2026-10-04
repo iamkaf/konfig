@@ -23,9 +23,7 @@ import com.iamkaf.konfig.impl.v1.config.io.PathToml;
 import com.iamkaf.konfig.impl.v1.config.migration.ConfigMigrationContextImpl;
 import com.iamkaf.konfig.impl.v1.config.migration.ConfigMigrationSupport;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditTarget;
-//?}
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -420,7 +418,6 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
         return this.newerSchemaReadOnly;
     }
 
-//? if >=1.21.11 {
     ConfigEditTarget remoteEditTarget() {
         return new ConfigEditTarget() {
             @Override
@@ -570,7 +567,6 @@ public final class ConfigHandleImpl implements ConfigScreenHandle {
             }
         }
     }
-//?}
 
     private void requireWritable() {
         if (this.newerSchemaReadOnly) {

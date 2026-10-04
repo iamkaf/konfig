@@ -8,14 +8,10 @@ import com.iamkaf.konfig.impl.v1.bootstrap.KonfigCommon;
 import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
-//? if >=1.17 {
-// Modern server lifecycle events expose ServerPlayer directly; legacy Forge
-// still passes loader-specific player objects through the same facade.
 import net.minecraft.server.level.ServerPlayer;
-//?}
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
 
@@ -45,11 +41,9 @@ public final class KonfigRuntime {
         return RuntimeEnvironment.isClient();
     }
 
-//? if <=1.16.5 {
-    public static String resource(String path) {
-//?} elif >=1.21.11 {
+//? if >=1.21.11 {
     public static Identifier resource(String path) {
-//?} elif >=1.17 {
+//?} else {
     public static ResourceLocation resource(String path) {
 //?}
         return Constants.resource(path);
@@ -66,19 +60,11 @@ public final class KonfigRuntime {
         );
     }
 
-//? if <=1.16.5 {
-    public static void playerJoined(Object player) {
-//?} else {
     public static void playerJoined(ServerPlayer player) {
-//?}
         KonfigSync.onPlayerJoin(player);
     }
 
-//? if <=1.16.5 {
-    public static void playerLeft(Object player) {
-//?} else {
     public static void playerLeft(ServerPlayer player) {
-//?}
         KonfigSync.onPlayerLeave(player);
     }
 
@@ -96,10 +82,6 @@ public final class KonfigRuntime {
 
     @FunctionalInterface
     public interface SyncSender {
-//? if <=1.16.5 {
-        void send(Object player, String configId, String jsonPayload);
-//?} else {
         void send(ServerPlayer player, String configId, String jsonPayload);
-//?}
     }
 }

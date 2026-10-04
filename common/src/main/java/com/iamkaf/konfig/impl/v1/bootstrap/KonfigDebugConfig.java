@@ -8,11 +8,14 @@ import com.iamkaf.konfig.api.v1.ConfigValue;
 import com.iamkaf.konfig.api.v1.ImageOptions;
 import com.iamkaf.konfig.api.v1.Konfig;
 import com.iamkaf.konfig.api.v1.SyncMode;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetBuilder;
+import com.iamkaf.konfig.api.v1.fieldset.FieldsetCatalog;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetEntry;
 import com.iamkaf.konfig.api.v1.fieldset.FieldsetField;
+//? if >=1.19.3 {
 import net.minecraft.core.registries.Registries;
+//?} else {
+import net.minecraft.core.Registry;
 //?}
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
@@ -21,9 +24,7 @@ import com.iamkaf.konfig.impl.v1.bootstrap.RuntimeEnvironment;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collection;
-//? if >=1.21.11 {
 import java.util.List;
-//?}
 
 @ApiStatus.Internal
 public final class KonfigDebugConfig {
@@ -46,7 +47,7 @@ public final class KonfigDebugConfig {
 
         ConfigBuilder builder = Konfig.builder(Constants.MOD_ID, "konfig")
                 .scope(ConfigScope.COMMON)
-                .syncMode(SyncMode.NONE)
+                .syncMode(SyncMode.LOGIN)
                 .fileName("konfig.toml")
                 .comment("Konfig internal debug settings.")
                 .info(info -> info
@@ -98,8 +99,12 @@ public final class KonfigDebugConfig {
                         .inlineText("This can help diagnose issues but may produce a lot of log output.")
                         .inlineText("Default: OFF"))
                 .build();
-//? if >=1.21.11 {
-        FieldsetField<String> item = FieldsetField.registryString("item", "minecraft:iron_sword", Registries.ITEM);
+        builder.intRange("sample_level", 5, 0, 10)
+                .comment("Sample integer slider for exercising Konfig's slider controls.")
+                .tooltip("Drag, or focus and use the arrow keys to step one value.")
+                .sync(true)
+                .build();
+        FieldsetField<String> item = itemField("minecraft:iron_sword");
         FieldsetField<String> role = FieldsetField.dropdown(
                 "role",
                 "tool",
@@ -127,7 +132,49 @@ public final class KonfigDebugConfig {
                 .comment("Sample item rules for exercising Konfig's structured entry editor.")
                 .tooltip("Open the sample rules editor.")
                 .build();
-//?}
+
+        FieldsetField<String> catalogItem = itemField("minecraft:iron_pickaxe");
+        FieldsetField<String> catalogRole = FieldsetField.dropdown(
+                "role",
+                "tool",
+                List.of("tool", "weapon", "utility")
+        );
+        FieldsetField<Integer> catalogPriority = FieldsetField.intRange("priority", 2, 1, 10);
+        FieldsetField<Boolean> catalogActive = FieldsetField.bool("active", true);
+        // Role comes first so its control stays on screen in the narrow detail page.
+        FieldsetCatalog catalog = FieldsetCatalog.create()
+                .editableProfile("User Rules")
+                .newEntryLabel("New Rule")
+                .overrideLabel("Override")
+                .filter(catalogRole)
+                .section("Rule", catalogRole, catalogPriority)
+                .section("Item", catalogItem, catalogActive)
+                .build();
+
+        builder.fieldset("sample_catalog", FieldsetBuilder.create()
+                .field(catalogItem)
+                .field(catalogRole)
+                .field(catalogPriority)
+                .field(catalogActive)
+                .key(catalogItem)
+                .title(catalogItem)
+                .icon(catalogItem)
+                .summary(catalogRole, catalogPriority)
+                .catalog(catalog)
+                .entry(FieldsetEntry.builtin("konfig:iron_sword", "Konfig Samples")
+                        .with(catalogItem, "minecraft:iron_sword")
+                        .with(catalogRole, "weapon")
+                        .with(catalogPriority, 4)
+                        .with(catalogActive, true))
+                .entry(FieldsetEntry.builtin("konfig:shears", "Konfig Samples")
+                        .with(catalogItem, "minecraft:shears")
+                        .with(catalogRole, "utility")
+                        .with(catalogPriority, 2)
+                        .with(catalogActive, true))
+                .build())
+                .comment("Sample item rules for exercising Konfig's catalog editor.")
+                .tooltip("Open the sample rule catalog.")
+                .build();
         builder.pop();
 
         builder.build();
@@ -140,6 +187,14 @@ public final class KonfigDebugConfig {
                 Constants.LOG.info("[Konfig/Debug] config not found, created defaults at {}", configPath.toAbsolutePath());
             }
         }
+    }
+
+    private static FieldsetField<String> itemField(String defaultValue) {
+//? if >=1.19.3 {
+        return FieldsetField.registryString("item", defaultValue, Registries.ITEM);
+//?} else {
+        return FieldsetField.registryString("item", defaultValue, Registry.ITEM_REGISTRY);
+//?}
     }
 
     public static boolean enabled() {

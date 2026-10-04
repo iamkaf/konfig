@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -274,22 +271,11 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
         );
     }
 
-//? if >=1.19.3 {
-    private void captureButtonBounds() {
-        this.lastButtonX = this.button.getX();
-        this.lastButtonY = this.button.getY();
-        this.lastButtonWidth = this.button.getWidth();
-    }
-//?}
-
+    // The button was just placed at these bounds by the base row layout.
     private void captureButtonBounds(KonfigRowLayout layout) {
-//? if >=1.19.3 {
-        this.captureButtonBounds();
-//?} else {
-        this.lastButtonX = this.button.x;
-        this.lastButtonY = this.button.y;
+        this.lastButtonX = layout.controlX;
+        this.lastButtonY = layout.controlY;
         this.lastButtonWidth = layout.controlWidth;
-//?}
     }
 
     private void renderButtonLabel(KonfigRenderContext context) {
@@ -379,4 +365,3 @@ final class DropdownRow extends KonfigConfigRow implements DropdownRowHandle {
         }
     }
 }
-//?}

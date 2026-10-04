@@ -6,10 +6,8 @@ import com.iamkaf.konfig.api.v1.ConfigHandle;
 import com.iamkaf.konfig.impl.v1.model.ConfigGraph;
 import com.iamkaf.konfig.impl.v1.model.ConfigGraphAdapters;
 import com.iamkaf.konfig.impl.v1.presentation.ConfigPresentationGraph;
-//? if >=1.21.11 {
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditTarget;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
-//?}
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -24,7 +22,6 @@ public final class KonfigManager {
 
     private final Map<String, ConfigHandleImpl> handles = new LinkedHashMap<>();
     private final Map<Path, String> pathOwners = new LinkedHashMap<>();
-//? if >=1.21.11
     private final Map<ConfigHandleImpl, ConfigEditTarget> remoteTargets = new LinkedHashMap<>();
 
     private KonfigManager() {
@@ -56,7 +53,6 @@ public final class KonfigManager {
         register(handle);
         try {
             handle.load();
-//? if >=1.21.11 {
             if (handle.scope() != com.iamkaf.konfig.api.v1.ConfigScope.CLIENT
                     && handle.syncMode() != com.iamkaf.konfig.api.v1.SyncMode.NONE) {
                 ConfigEditTarget target = handle.remoteEditTarget();
@@ -65,7 +61,6 @@ public final class KonfigManager {
                     this.remoteTargets.put(handle, target);
                 }
             }
-//?}
         } catch (RuntimeException exception) {
             unregister(handle);
             throw exception;
@@ -73,12 +68,10 @@ public final class KonfigManager {
     }
 
     private synchronized void unregister(ConfigHandleImpl handle) {
-//? if >=1.21.11 {
         ConfigEditTarget remoteTarget = this.remoteTargets.remove(handle);
         if (remoteTarget != null) {
             KonfigSync.authority().unregister(remoteTarget);
         }
-//?}
         if (this.handles.get(handle.id()) != handle) {
             return;
         }

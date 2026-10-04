@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig;
 
 import com.google.gson.JsonParser;
@@ -385,4 +384,3 @@ final class FieldsetPersistenceTest {
         }
     }
 }
-//?}

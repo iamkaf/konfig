@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.storage;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -194,4 +193,3 @@ public final class TomlConfigStorage implements ConfigStorage {
         return Objects.requireNonNull(path, "path").toAbsolutePath().normalize();
     }
 }
-//?}

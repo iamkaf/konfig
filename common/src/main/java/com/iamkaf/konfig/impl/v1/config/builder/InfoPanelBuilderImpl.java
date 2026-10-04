@@ -9,7 +9,7 @@ import com.iamkaf.konfig.impl.v1.config.model.InfoPanelItem;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigModels;
 //? if >=1.21.11 {
 import net.minecraft.resources.Identifier;
-//?} elif >=1.17 {
+//?} else {
 import net.minecraft.resources.ResourceLocation;
 //?}
 
@@ -37,12 +37,9 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
 //? if >=1.21.11 {
     @Override
     public InfoPanelBuilder image(Identifier textureId) {
-//?} elif >=1.17 {
-    @Override
-    public InfoPanelBuilder image(ResourceLocation textureId) {
 //?} else {
     @Override
-    public InfoPanelBuilder image(Object textureId) {
+    public InfoPanelBuilder image(ResourceLocation textureId) {
 //?}
         return image(textureId, "", ImageOptions.defaults());
     }
@@ -50,12 +47,9 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
 //? if >=1.21.11 {
     @Override
     public InfoPanelBuilder image(Identifier textureId, ImageOptions options) {
-//?} elif >=1.17 {
-    @Override
-    public InfoPanelBuilder image(ResourceLocation textureId, ImageOptions options) {
 //?} else {
     @Override
-    public InfoPanelBuilder image(Object textureId, ImageOptions options) {
+    public InfoPanelBuilder image(ResourceLocation textureId, ImageOptions options) {
 //?}
         return image(textureId, "", options);
     }
@@ -63,12 +57,9 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
 //? if >=1.21.11 {
     @Override
     public InfoPanelBuilder image(Identifier textureId, String caption) {
-//?} elif >=1.17 {
-    @Override
-    public InfoPanelBuilder image(ResourceLocation textureId, String caption) {
 //?} else {
     @Override
-    public InfoPanelBuilder image(Object textureId, String caption) {
+    public InfoPanelBuilder image(ResourceLocation textureId, String caption) {
 //?}
         return image(textureId, caption, ImageOptions.defaults());
     }
@@ -76,12 +67,9 @@ final class InfoPanelBuilderImpl implements InfoPanelBuilder {
 //? if >=1.21.11 {
     @Override
     public InfoPanelBuilder image(Identifier textureId, String caption, ImageOptions options) {
-//?} elif >=1.17 {
-    @Override
-    public InfoPanelBuilder image(ResourceLocation textureId, String caption, ImageOptions options) {
 //?} else {
     @Override
-    public InfoPanelBuilder image(Object textureId, String caption, ImageOptions options) {
+    public InfoPanelBuilder image(ResourceLocation textureId, String caption, ImageOptions options) {
 //?}
         Objects.requireNonNull(textureId, "textureId");
         this.add(EntryKind.IMAGE, caption == null ? "" : caption.trim(), textureId.toString(), options);

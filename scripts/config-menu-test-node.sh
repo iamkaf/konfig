@@ -18,7 +18,6 @@ fi
 
 version="${node%-*}"
 loader="${node##*-}"
-test_file="test/teakit/title-config.test.ts"
 
 workspace_root="$(git rev-parse --show-superproject-working-tree 2>/dev/null || true)"
 catalog_root="${KONFIG_VERSION_CATALOG_ROOT:-}"
@@ -48,8 +47,9 @@ if [ "$loader" = "forge" ] || [ "$loader" = "neoforge" ]; then
   export GLFW_PLATFORM=x11
 fi
 
-./teakitw run \
+# check runs every *.test.ts under test/teakit in one Minecraft launch.
+./teakitw check \
   --background \
   --node "$node" \
-  --test-file "$test_file" \
+  --test-dir test/teakit \
   --timeout "$timeout_seconds"

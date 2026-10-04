@@ -1,7 +1,8 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
+
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.text;
 
 import net.minecraft.network.chat.Component;
 
@@ -39,11 +40,11 @@ public final class KonfigFieldsetEntryEditorState<E, F> {
     }
 
     public Component label() {
-        return this.entry().map(this.adapter::entryLabel).orElse(Component.empty());
+        return this.entry().map(this.adapter::entryLabel).orElse(text(""));
     }
 
     public Component summary() {
-        return this.entry().map(this.adapter::entrySummary).orElse(Component.empty());
+        return this.entry().map(this.adapter::entrySummary).orElse(text(""));
     }
 
     public KonfigFieldsetAccess access() {
@@ -53,7 +54,7 @@ public final class KonfigFieldsetEntryEditorState<E, F> {
         }
         return this.entry()
                 .map(this.adapter::entryAccess)
-                .orElseGet(() -> KonfigFieldsetAccess.readOnly(Component.literal("This entry no longer exists.")));
+                .orElseGet(() -> KonfigFieldsetAccess.readOnly(text("This entry no longer exists.")));
     }
 
     public KonfigFieldsetValidation validation() {
@@ -109,4 +110,3 @@ public final class KonfigFieldsetEntryEditorState<E, F> {
         }
     }
 }
-//?}

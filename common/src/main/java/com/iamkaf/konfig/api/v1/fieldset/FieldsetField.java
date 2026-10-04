@@ -1,4 +1,3 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.api.v1.fieldset;
 
 import net.minecraft.core.Registry;
@@ -309,4 +308,3 @@ public final class FieldsetField<T> {
         }
     }
 }
-//?}

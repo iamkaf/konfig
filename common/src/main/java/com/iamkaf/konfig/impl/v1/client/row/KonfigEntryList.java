@@ -1,6 +1,3 @@
-//? if >=1.17 {
-// Modern config-screen stack only: 1.16.x keeps legacy loader-specific screens,
-// so these shared UI internals begin at the 1.17 client API baseline.
 package com.iamkaf.konfig.impl.v1.client.row;
 
 import org.jetbrains.annotations.ApiStatus;
@@ -32,9 +29,7 @@ public final class KonfigEntryList extends ContainerObjectSelectionList<KonfigCo
 //?}
         this.rowFactory = new KonfigRowFactory(host);
         this.rowWidth = rowWidth;
-//? if <=1.16.3 {
-        this.setRenderHeader(false, 0);
-//?} elif <=1.20.4 {
+//? if <=1.20.4 {
         this.setRenderBackground(false);
 //?}
     }
@@ -117,4 +112,3 @@ public final class KonfigEntryList extends ContainerObjectSelectionList<KonfigCo
         context.fill(left, top, right, bottom, 0x66000000);
     }
 }
-//?}

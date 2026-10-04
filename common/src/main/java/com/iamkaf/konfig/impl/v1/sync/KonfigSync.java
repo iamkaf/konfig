@@ -9,11 +9,7 @@ import com.iamkaf.konfig.api.v1.ReloadCause;
 import com.iamkaf.konfig.api.v1.SyncMode;
 import com.iamkaf.konfig.impl.v1.config.model.ConfigHandleImpl;
 import com.iamkaf.konfig.impl.v1.config.model.KonfigManager;
-//? if >=1.17 {
-// Modern sync tracks ServerPlayer directly; legacy Forge/Fabric player types
-// are kept as Object at the runtime facade edge.
 import net.minecraft.server.level.ServerPlayer;
-//?}
 
 import java.util.Collections;
 import java.util.Map;
@@ -26,12 +22,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class KonfigSync {
     private static SyncSender sender;
     private static final ConfigSyncAuthority authority = new ConfigSyncAuthority();
-//? if <=1.16.5 {
-    private static final Set<Object> players = Collections.newSetFromMap(new ConcurrentHashMap<Object, Boolean>());
-//?} else {
     private static final Set<ServerPlayer> players = Collections.newSetFromMap(new ConcurrentHashMap<ServerPlayer, Boolean>());
-//?}
-//? if >=1.21.11 {
     private static final Set<ServerPlayer> remotePeers = Collections.newSetFromMap(new ConcurrentHashMap<ServerPlayer, Boolean>());
     private static final Map<String, Long> clientRevisions = new ConcurrentHashMap<String, Long>();
     private static final CopyOnWriteArrayList<ClientEditListener> clientEditListeners = new CopyOnWriteArrayList<ClientEditListener>();
@@ -42,7 +33,6 @@ public final class KonfigSync {
     private static volatile boolean clientConnected;
     private static volatile boolean clientTransportAvailable;
     private static volatile ConfigEditCapabilities clientCapabilities = readOnlyCapabilities();
-//?}
 
     private KonfigSync() {
     }
@@ -55,7 +45,6 @@ public final class KonfigSync {
         return authority;
     }
 
-//? if >=1.21.11 {
     public static void setRemoteSender(RemoteSender sender) {
         KonfigSync.remoteSender = sender;
     }
@@ -63,13 +52,8 @@ public final class KonfigSync {
     public static void setClientRequestSender(ClientRequestSender sender) {
         KonfigSync.clientRequestSender = sender;
     }
-//?}
 
-//? if <=1.16.5 {
-    public static void onPlayerJoin(Object player) {
-//?} else {
     public static void onPlayerJoin(ServerPlayer player) {
-//?}
         players.add(player);
         if (sender == null) {
             return;
@@ -94,11 +78,7 @@ public final class KonfigSync {
                 Constants.LOG.info(
                         "[Konfig/Debug] Syncing '{}' to player '{}' ({} bytes).",
                         handle.id(),
-//? if <=1.16.5 {
-                        String.valueOf(player),
-//?} else {
                         player.getName().getString(),
-//?}
                         payload.length()
                 );
             }
@@ -107,28 +87,18 @@ public final class KonfigSync {
         if (debug) {
             Constants.LOG.info(
                     "[Konfig/Debug] Player join sync complete for '{}': sent={} totalBytes={}",
-//? if <=1.16.5 {
-                    String.valueOf(player),
-//?} else {
                     player.getName().getString(),
-//?}
                     sentCount,
                     totalBytes
             );
         }
     }
 
-//? if <=1.16.5 {
-    public static void onPlayerLeave(Object player) {
-//?} else {
     public static void onPlayerLeave(ServerPlayer player) {
-//?}
         players.remove(player);
-//? if >=1.21.11
         remotePeers.remove(player);
     }
 
-//? if >=1.21.11 {
     public static void onClientHello(ServerPlayer player, int protocolVersion, boolean permitted) {
         if (remoteSender == null) {
             return;
@@ -274,14 +244,11 @@ public final class KonfigSync {
     public static void removeClientEditListener(ClientEditListener listener) {
         clientEditListeners.remove(listener);
     }
-//?}
 
     public static void onReload(ConfigHandleImpl handle, ReloadCause cause) {
-//? if >=1.21.11 {
         if (Boolean.TRUE.equals(remoteApply.get())) {
             return;
         }
-//?}
         if (sender == null || handle.scope() == ConfigScope.CLIENT || handle.syncMode() != SyncMode.LOGIN_AND_RELOAD) {
             return;
         }
@@ -299,16 +266,11 @@ public final class KonfigSync {
 
         String payload = handle.snapshotJson();
         int sentCount = 0;
-//? if <=1.16.5 {
-        for (Object player : players) {
-//?} else {
         for (ServerPlayer player : players) {
-//?}
             sender.send(player, new SyncSnapshot(handle.id(), payload));
             sentCount++;
         }
 
-//? if >=1.21.11 {
         if (remoteSender != null) {
             ConfigEditSnapshot snapshot = authority.snapshot(handle.id());
             if (snapshot != null) {
@@ -317,7 +279,6 @@ public final class KonfigSync {
                 }
             }
         }
-//?}
 
         if (KonfigDebugConfig.enabled()) {
             Constants.LOG.info(
@@ -346,7 +307,6 @@ public final class KonfigSync {
             Constants.LOG.info("[Konfig/Debug] Clearing synced config overlays.");
         }
         KonfigManager.get().clearAllSynced();
-//? if >=1.21.11 {
         clientCapabilities = readOnlyCapabilities();
         clientConnected = false;
         clientTransportAvailable = false;
@@ -354,10 +314,8 @@ public final class KonfigSync {
         for (ClientEditListener listener : clientEditListeners) {
             listener.onDisconnected();
         }
-//?}
     }
 
-//? if >=1.21.11 {
     private static void broadcastLegacySnapshot(String configId, String jsonPayload) {
         if (sender == null) {
             return;
@@ -398,18 +356,12 @@ public final class KonfigSync {
         requestIds.compareAndSet(requestId + 1L, 1L);
         return 0L;
     }
-//?}
 
     @FunctionalInterface
     public interface SyncSender {
-//? if <=1.16.5 {
-        void send(Object player, SyncSnapshot snapshot);
-//?} else {
         void send(ServerPlayer player, SyncSnapshot snapshot);
-//?}
     }
 
-//? if >=1.21.11 {
     public interface RemoteSender {
         void sendCapabilities(ServerPlayer player, ConfigEditCapabilities capabilities);
 
@@ -437,5 +389,4 @@ public final class KonfigSync {
         default void onDisconnected() {
         }
     }
-//?}
 }

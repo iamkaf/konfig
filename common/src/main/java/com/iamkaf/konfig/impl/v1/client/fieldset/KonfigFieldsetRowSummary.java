@@ -1,7 +1,8 @@
-//? if >=1.21.11 {
 package com.iamkaf.konfig.impl.v1.client.fieldset;
 
 import org.jetbrains.annotations.ApiStatus;
+
+import static com.iamkaf.konfig.impl.v1.client.screen.KonfigScreenSupport.translate;
 
 import net.minecraft.network.chat.Component;
 
@@ -32,7 +33,7 @@ public record KonfigFieldsetRowSummary(
         return new KonfigFieldsetRowSummary(
                 label,
                 entryCount,
-                Component.translatable("konfig.screen.list.count", Integer.valueOf(entryCount)),
+                translate("konfig.screen.list.count", Integer.valueOf(entryCount)),
                 validation.errorCount(),
                 validation.warningCount(),
                 validation.summary(),
@@ -41,4 +42,3 @@ public record KonfigFieldsetRowSummary(
         );
     }
 }
-//?}
