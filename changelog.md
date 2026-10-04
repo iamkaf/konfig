@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.10.1
+
+### Fixed
+
+- Konfig no longer crashes at startup on Forge for Minecraft 1.20.4 and older.
+
 ## 0.10.0
 
 ### Changed
