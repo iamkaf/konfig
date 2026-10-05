@@ -206,7 +206,7 @@ build-all:
 
 headless-test version="1.21.11" *args:
   @test -f "versions/{{version}}/gradle.properties" || (echo "Version {{version}} not found" >&2; exit 1)
-  @just run "{{version}}" ":common:{{version}}:test" --rerun-tasks {{args}}
+  @just run "{{version}}" ":common:{{version}}:test" --rerun-tasks -Pmultiloader.target.versions={{version}} -Pmultiloader.target.loaders=fabric {{args}}
 
 publish-version version *args:
   @tasks=(":common:{{version}}:publishAllPublicationsToKafMavenRepository"); for loader in $(just list-loaders "{{version}}"); do tasks+=(":$loader:{{version}}:publishAllPublicationsToKafMavenRepository"); done; ./gradlew --configure-on-demand "${tasks[@]}" {{args}} --console=plain
