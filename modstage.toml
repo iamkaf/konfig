@@ -24,7 +24,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.17.1",
   "modrinth:fabric-api:0.46.1+1.17",
   "maven:com.terraformersmc:modmenu:2.0.17",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.17.1",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.17.1",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.17.1",
 ]
 
 [[instance]]
@@ -36,7 +37,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.17.1",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.17.1",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.17.1",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.17.1",
 ]
 
 [[instance]]
@@ -50,7 +52,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.18.2",
   "modrinth:fabric-api:0.77.0+1.18.2",
   "maven:com.terraformersmc:modmenu:3.2.5",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.18.2",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.18.2",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.18.2",
 ]
 
 [[instance]]
@@ -62,7 +65,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.18.2",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.18.2",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.18.2",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.18.2",
 ]
 
 [[instance]]
@@ -76,7 +80,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.19.2",
   "modrinth:fabric-api:0.77.0+1.19.2",
   "maven:com.terraformersmc:modmenu:4.2.0-beta.2",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.19.2",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.19.2",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.19.2",
 ]
 
 [[instance]]
@@ -88,7 +93,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.19.2",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.19.2",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.19.2",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.19.2",
 ]
 
 [[instance]]
@@ -102,7 +108,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.19.4",
   "modrinth:fabric-api:0.87.2+1.19.4",
   "maven:com.terraformersmc:modmenu:6.3.1",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.19.4",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.19.4",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.19.4",
 ]
 
 [[instance]]
@@ -114,7 +121,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.19.4",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.19.4",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.19.4",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.19.4",
 ]
 
 [[instance]]
@@ -128,7 +136,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.20.1",
   "modrinth:fabric-api:0.92.2+1.20.1",
   "maven:com.terraformersmc:modmenu:7.2.2",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.20.1",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.20.1",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.20.1",
 ]
 
 [[instance]]
@@ -140,7 +149,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.20.1",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.20.1",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.20.1",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.20.1",
 ]
 
 [[instance]]
@@ -154,7 +164,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.20.4",
   "modrinth:fabric-api:0.97.2+1.20.4",
   "maven:com.terraformersmc:modmenu:9.2.0",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.20.4",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.20.4",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.20.4",
 ]
 
 [[instance]]
@@ -166,7 +177,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.20.4",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.20.4",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.20.4",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.20.4",
 ]
 
 [[instance]]
@@ -180,7 +192,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.21.1",
   "modrinth:fabric-api:0.107.0+1.21.1",
   "maven:com.terraformersmc:modmenu:11.0.3",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.21.1",
 ]
 
 [[instance]]
@@ -192,7 +205,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.21.1",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.21.1",
 ]
 
 [[instance]]
@@ -204,7 +218,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-neoforge:0.10.1+1.21.1",
-  "maven:com.iamkaf.teakit:teakit-neoforge:0.14.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-neoforge:0.19.0+1.21.1",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-neoforge:0.19.0+1.21.1",
 ]
 
 [[instance]]
@@ -218,7 +233,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.21.8",
   "modrinth:fabric-api:0.129.0+1.21.8",
   "maven:com.terraformersmc:modmenu:15.0.0-beta.3",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.21.8",
 ]
 
 [[instance]]
@@ -230,7 +246,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.21.8",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.21.8",
 ]
 
 [[instance]]
@@ -242,7 +259,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-neoforge:0.10.1+1.21.8",
-  "maven:com.iamkaf.teakit:teakit-neoforge:0.14.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-neoforge:0.19.0+1.21.8",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-neoforge:0.19.0+1.21.8",
 ]
 
 [[instance]]
@@ -256,7 +274,8 @@ mods = [
   "maven:com.iamkaf.konfig:konfig-fabric:0.10.1+1.21.10",
   "modrinth:fabric-api:0.138.4+1.21.10",
   "maven:com.terraformersmc:modmenu:16.0.0-rc.1",
-  "maven:com.iamkaf.teakit:teakit-fabric:0.14.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-fabric:0.19.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-fabric:0.19.0+1.21.10",
 ]
 
 [[instance]]
@@ -268,7 +287,8 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-forge:0.10.1+1.21.10",
-  "maven:com.iamkaf.teakit:teakit-forge:0.14.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-forge:0.19.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-forge:0.19.0+1.21.10",
 ]
 
 [[instance]]
@@ -280,5 +300,6 @@ sides = ["client", "server"]
 server_properties = { online-mode = "false", enforce-secure-profile = "false", white-list = "false", server-port = "25581" }
 mods = [
   "maven:com.iamkaf.konfig:konfig-neoforge:0.10.1+1.21.10",
-  "maven:com.iamkaf.teakit:teakit-neoforge:0.14.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-neoforge:0.19.0+1.21.10",
+  "maven:com.iamkaf.teakit:teakit-playerdriver-neoforge:0.19.0+1.21.10",
 ]
