@@ -11,12 +11,12 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 ### Changed
 
-- Config screens before Minecraft 26.1 now show the mod's name as their title and short setting names, like newer lines.
+- Config screens before 26.1 show the mod's name and short setting names.
 
 ### Fixed
 
-- Config files no longer gain another copy of their header comment on every save. Repeated headers are cleaned up on the next save.
-- An invalid number or rejected value in a Fieldset catalog no longer traps focus.
+- Config files no longer repeat their header comment on every save.
+- Invalid Fieldset catalog values no longer trap focus.
 
 ## 0.10.1
 
