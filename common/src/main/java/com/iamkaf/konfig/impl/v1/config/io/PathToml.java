@@ -23,6 +23,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -40,6 +42,7 @@ public final class PathToml {
     }
 
     public static void write(Path path, CommentedConfig root, String fileComment) throws IOException {
+        stripHeaderCopies(root, fileComment);
         StringWriter writer = new StringWriter();
         new TomlWriter().write(root, writer);
 
@@ -198,6 +201,51 @@ public final class PathToml {
 
     private static JsonElement nullableJson(JsonElement element) {
         return element == null ? JsonNull.INSTANCE : element;
+    }
+
+    /**
+     * The TOML parser attaches the file header to whichever top-level entry follows it, and that entry
+     * can move once the file is rewritten. Drop every leading copy of the header from top-level comments
+     * so writing it again never accumulates, and files that already accumulated copies heal.
+     */
+    private static void stripHeaderCopies(CommentedConfig root, String fileComment) {
+        if (isBlank(fileComment)) {
+            return;
+        }
+        List<String> header = trimmedLines(fileComment);
+        for (Map.Entry<String, String> entry : new ArrayList<Map.Entry<String, String>>(root.commentMap().entrySet())) {
+            String comment = entry.getValue();
+            if (comment == null) {
+                continue;
+            }
+            List<String> lines = Arrays.asList(comment.split("\\R", -1));
+            int start = 0;
+            while (lines.size() - start >= header.size()
+                    && header.equals(trimmedLines(lines.subList(start, start + header.size())))) {
+                start += header.size();
+            }
+            if (start == 0) {
+                continue;
+            }
+            List<String> key = Collections.singletonList(entry.getKey());
+            if (start == lines.size()) {
+                root.removeComment(key);
+            } else {
+                root.setComment(key, String.join("\n", lines.subList(start, lines.size())));
+            }
+        }
+    }
+
+    private static List<String> trimmedLines(String text) {
+        return trimmedLines(Arrays.asList(text.split("\\R", -1)));
+    }
+
+    private static List<String> trimmedLines(List<String> lines) {
+        List<String> trimmed = new ArrayList<String>(lines.size());
+        for (String line : lines) {
+            trimmed.add(line.trim());
+        }
+        return trimmed;
     }
 
     private static String renderHeaderComment(String comment) {

@@ -8,6 +8,7 @@ import com.iamkaf.konfig.impl.v1.sync.KonfigNetwork;
 import com.iamkaf.konfig.impl.v1.sync.KonfigRemotePayloads;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
 import com.iamkaf.konfig.neoforge.api.v1.KonfigNeoForgeClientScreens;
+import net.minecraft.client.Minecraft;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.fml.ModContainer;
@@ -42,6 +43,10 @@ public final class KonfigNeoForgeClient {
     }
 
     private static void sendToServer(CustomPacketPayload payload) {
+        // A config screen opened from the title screen has no server to talk to.
+        if (Minecraft.getInstance().getConnection() == null) {
+            return;
+        }
 //? if >=1.21.7 {
         ClientPacketDistributor.sendToServer(payload);
 //?} else {

@@ -1,6 +1,6 @@
 import { Capability, Readiness, describe, test } from "@teakit/test";
 import type { ClientScreen, ScreenListEntrySnapshot, TeaKitTestContext } from "@teakit/test";
-import { CONFIG_SCREEN, clickEntryControl, openKonfig, returnToTitle, scrollToVisibleEntry } from "./konfig-screens";
+import { CONFIG_SCREEN, atLeast, clickEntryControl, openKonfig, returnToTitle, scrollToVisibleEntry } from "./konfig-screens";
 
 describe.configure({
   timeout: "4m",
@@ -58,6 +58,7 @@ describe("Konfig Fieldset catalog", () => {
       await ctx.client.screenshot("konfig-catalog-reopened");
       // weapon -> utility only happens if the reopened rule kept the edited role.
       await cycleRole(ctx, screen, "utility");
+      await assertInvalidNumberReleasesFocus(ctx, version);
 
       screen = await ctx.client.screen();
       await screen.widgets().activate({ label: "Delete" });
@@ -104,6 +105,27 @@ async function cycleRole(ctx: TeaKitTestContext, screen: ClientScreen, expected:
   } finally {
     await ctx.spy.detach(applied);
   }
+}
+
+/**
+ * A number that does not parse keeps its error but must not hold focus. Clear Priority, then click the role control,
+ * which only cycles once Priority lets go.
+ */
+async function assertInvalidNumberReleasesFocus(ctx: TeaKitTestContext, version: string): Promise<void> {
+  const priority = rowsOf(await ctx.client.screen(), "TextFieldRow")[0];
+  if (!priority) throw new Error("Missing the priority field in the rule's detail");
+  // Clicking past the text puts the cursor after it.
+  await ctx.client.click({ x: priority.x + priority.width * 0.75, y: priority.y + 14, button: 0 });
+  for (let i = 0; i < 3; i++) {
+    // From 26.3 Minecraft expects the SDL keycode and scancode a real Backspace carries.
+    if (atLeast(version, "26.3")) {
+      await ctx.client.key(8, { scancode: 42, release: true });
+    } else {
+      await ctx.client.key(259, { release: true });
+    }
+  }
+  await ctx.runtime.wait(200);
+  await cycleRole(ctx, await ctx.client.screen(), "tool");
 }
 
 /**

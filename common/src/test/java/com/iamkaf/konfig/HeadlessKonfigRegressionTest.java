@@ -321,6 +321,34 @@ final class HeadlessKonfigRegressionTest {
     }
 
     @Test
+    void fileHeaderStaysSingleAcrossReloadsAndHealsDuplicatedCopies() throws IOException {
+        String name = uniqueName("header");
+        Path path = this.configDirectory.resolve("headless").resolve(name + ".toml");
+        Files.createDirectories(path.getParent());
+        String header = "# Server settings\n#\n# Second line\n";
+        Files.writeString(
+                path,
+                header + header + "# user note\n[rules]\nenabled = true\n\n"
+                        + header + "[unknown]\ncount = 3\n\n[__konfig]\nversion = 0\n"
+        );
+
+        ConfigBuilder builder = Konfig.builder("headless", name).comment("Server settings\n\nSecond line");
+        builder.push("rules").bool("enabled", false).build();
+        builder.pop();
+        ConfigHandle handle = builder.build();
+        handle.reload();
+        handle.save();
+        handle.reload();
+
+        String stored = Files.readString(path);
+        String separator = System.lineSeparator();
+        assertTrue(stored.startsWith("# Server settings" + separator + "#" + separator + "# Second line" + separator));
+        assertEquals(1, stored.split("Server settings", -1).length - 1);
+        assertEquals(1, stored.split("Second line", -1).length - 1);
+        assertTrue(stored.contains("# user note"));
+    }
+
+    @Test
     void remoteScreenViewDoesNotReplaceTheStoredValue() {
         AtomicReference<String> remote = new AtomicReference<>("server");
         AtomicBoolean available = new AtomicBoolean();

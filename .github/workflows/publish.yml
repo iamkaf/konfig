@@ -93,4 +93,4 @@ jobs:
         env:
           MAVEN_PUBLISH_USERNAME: ${{ secrets.MAVEN_PUBLISH_USERNAME }}
           MAVEN_PUBLISH_PASSWORD: ${{ secrets.MAVEN_PUBLISH_PASSWORD }}
-        run: just publish-version "${{ matrix.version }}"
+        run: just publish-version "${{ matrix.version }}" kaf-maven

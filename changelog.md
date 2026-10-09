@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.10.2
+
+### Changed
+
+- Config screens before 26.1 show the mod's name and short setting names.
+
+### Fixed
+
+- Config files no longer repeat their header comment on every save.
+- Invalid Fieldset catalog values no longer trap focus.
+
 ## 0.10.1
 
 ### Fixed

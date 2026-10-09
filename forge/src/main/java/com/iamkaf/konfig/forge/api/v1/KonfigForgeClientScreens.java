@@ -6,8 +6,10 @@ import net.minecraftforge.client.ConfigScreenHandler;
 import net.minecraftforge.fml.ModList;
 //?} elif >=1.19 {
 import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 //?} else {
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 //? if >=1.18 {
 import net.minecraftforge.client.ConfigGuiHandler;
@@ -40,15 +42,25 @@ public final class KonfigForgeClientScreens {
                 )
         );
 //?} elif >=1.19 {
+        String displayName = displayName(modId);
         ModLoadingContext.get().registerExtensionPoint(
                 ConfigScreenHandler.ConfigScreenFactory.class,
-                () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> KonfigClientScreens.create(modId, parent))
+                () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> KonfigClientScreens.create(modId, displayName, parent))
         );
 //?} else {
+        String displayName = displayName(modId);
         ModLoadingContext.get().registerExtensionPoint(
                 ConfigGuiHandler.ConfigGuiFactory.class,
-                () -> new ConfigGuiHandler.ConfigGuiFactory((minecraft, parent) -> KonfigClientScreens.create(modId, parent))
+                () -> new ConfigGuiHandler.ConfigGuiFactory((minecraft, parent) -> KonfigClientScreens.create(modId, displayName, parent))
         );
 //?}
     }
+
+//? if <26.1 {
+    private static String displayName(String modId) {
+        return ModList.get().getModContainerById(modId)
+                .map(container -> container.getModInfo().getDisplayName())
+                .orElse(modId);
+    }
+//?}
 }
