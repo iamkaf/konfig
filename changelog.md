@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.10.2
+
+### Changed
+
+- Config screens before Minecraft 26.1 now show the mod's name as their title and short setting names, like newer lines.
+
+### Fixed
+
+- Config files no longer gain another copy of their header comment on every save. Repeated headers are cleaned up on the next save.
+- An invalid number or rejected value in a Fieldset catalog no longer traps focus.
+
 ## 0.10.1
 
 ### Fixed
