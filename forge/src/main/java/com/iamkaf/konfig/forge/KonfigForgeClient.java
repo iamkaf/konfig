@@ -6,6 +6,7 @@ import com.iamkaf.konfig.forge.api.v1.KonfigForgeClientScreens;
 import com.iamkaf.konfig.impl.v1.runtime.KonfigRuntime;
 import com.iamkaf.konfig.impl.v1.sync.ConfigEditRequest;
 import com.iamkaf.konfig.impl.v1.sync.KonfigSync;
+import net.minecraft.client.Minecraft;
 import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 //? if <=1.21.5 {
 import net.minecraftforge.common.MinecraftForge;
@@ -21,12 +22,16 @@ final class KonfigForgeClient {
         KonfigSync.setClientRequestSender(new KonfigSync.ClientRequestSender() {
             @Override
             public void sendHello(int protocolVersion) {
-                KonfigForge.sendRemoteHello(protocolVersion);
+                if (connected()) {
+                    KonfigForge.sendRemoteHello(protocolVersion);
+                }
             }
 
             @Override
             public void sendEdit(ConfigEditRequest request) {
-                KonfigForge.sendRemoteEdit(request);
+                if (connected()) {
+                    KonfigForge.sendRemoteEdit(request);
+                }
             }
         });
 //? if >=1.21.6 {
@@ -50,5 +55,10 @@ final class KonfigForgeClient {
         );
         MinecraftForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggedOutEvent event) -> KonfigRuntime.clientDisconnected());
 //?}
+    }
+
+    // A config screen opened from the title screen has no server to talk to.
+    private static boolean connected() {
+        return Minecraft.getInstance().getConnection() != null;
     }
 }
