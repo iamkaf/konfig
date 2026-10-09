@@ -84,7 +84,7 @@ public final class KonfigScreenSupport {
 
         String legacyKey = handle.modId() + ".config." + lastPathSegment(value.path());
         translated = translationOrNull(legacyKey);
-        return translated == null ? text(fallbackLabel(handle, value)) : translated;
+        return translated == null ? text(fallbackLabel(value)) : translated;
     }
 
     public static Component translatedEnumValue(EntryRef entry, Enum<?> value) {
@@ -182,19 +182,9 @@ public final class KonfigScreenSupport {
         return text(String.join(" / ", parts));
     }
 
-    public static String fallbackLabel(ConfigScreenHandle handle, ConfigScreenValue<?> value) {
-//? if >=26.1 {
+    public static String fallbackLabel(ConfigScreenValue<?> value) {
         String[] pathParts = value.path().split("\\.");
         return prettySegment(pathParts[pathParts.length - 1]);
-//?} else {
-        List<String> parts = new ArrayList<String>();
-        parts.add(prettySegment(handle.name()));
-        String[] pathParts = value.path().split("\\.");
-        for (String pathPart : pathParts) {
-            parts.add(prettySegment(pathPart));
-        }
-        return String.join(" > ", parts);
-//?}
     }
 
     public static String prettySegment(String raw) {
