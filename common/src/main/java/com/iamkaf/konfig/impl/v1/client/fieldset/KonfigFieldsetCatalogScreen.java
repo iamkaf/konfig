@@ -366,9 +366,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     }
 
     private void selectProfile(String profile) {
-        if (!this.commitOrRevertBeforeNavigation()) {
-            return;
-        }
+        this.commitOrRevertBeforeNavigation();
         this.selectedProfile = profile;
         this.selectedEntryId = "";
         this.query = "";
@@ -379,9 +377,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     }
 
     private void selectEntry(String identity) {
-        if (!this.commitOrRevertBeforeNavigation()) {
-            return;
-        }
+        this.commitOrRevertBeforeNavigation();
         this.selectedEntryId = identity;
         this.state.select(identity);
         this.view = View.DETAIL;
@@ -390,9 +386,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     }
 
     private void back() {
-        if (!this.commitOrRevertBeforeNavigation()) {
-            return;
-        }
+        this.commitOrRevertBeforeNavigation();
         if (!this.wide && this.view == View.DETAIL) {
             this.view = View.RULES;
             this.selectedEntryId = "";
@@ -571,9 +565,12 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         }
     }
 
-    private boolean commitOrRevertBeforeNavigation() {
+    // An invalid draft cannot be saved, so leaving the rule or profile discards it rather than blocking the way out.
+    private void commitOrRevertBeforeNavigation() {
         TextFieldRow active = this.activeTextField;
-        return active == null || !active.inputFocused() || active.commit();
+        if (active != null && active.inputFocused() && !active.commit()) {
+            active.revert();
+        }
     }
 
     private void revertActiveDraft() {
@@ -661,7 +658,8 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 && active.inputFocused()
                 && !active.isPointInsideInput(mouseX, mouseY)
                 && (this.revert == null || !this.revert.isMouseOver(mouseX, mouseY))) {
-            if (!active.commit() || this.pendingSave != null) {
+            active.leave();
+            if (this.pendingSave != null) {
                 return true;
             }
         }
@@ -685,7 +683,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 return true;
             }
             if (keyCode == InputConstants.KEY_TAB) {
-                active.commit();
+                active.leave();
                 return true;
             }
         }
@@ -1425,6 +1423,13 @@ final class KonfigFieldsetCatalogScreen extends Screen {
             }
             KonfigFieldsetCatalogScreen.this.refreshRevertAction();
             return accepted;
+        }
+
+        // Leaving a field never traps focus. An invalid draft stays visible with its error until it is fixed or reverted.
+        private void leave() {
+            if (!this.commit()) {
+                focus(this.input, false);
+            }
         }
 
         private void revert() {
