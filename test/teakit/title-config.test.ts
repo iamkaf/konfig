@@ -158,6 +158,7 @@ async function exerciseFieldset(ctx: TeaKitTestContext, version: string): Promis
   screen = await ctx.client.screen();
   screen = await removeUserFieldsetRows(ctx, screen);
   assertFieldsetRows(screen, 1, 0);
+  await assertIdleFramesSkipValidation(ctx);
   await ctx.client.screenshot("konfig-fieldset-collapsed");
 
   await screen.widgets().activate({ label: "Copy" });
@@ -299,6 +300,20 @@ const CONTROL_HEIGHT = 20;
 function assertCardSummary(row: ScreenListEntrySnapshot, role: string): void {
   if (!row.label.includes(`, ${role}`)) {
     throw new Error(`Expected Fieldset card ${row.entryIndex} to have role ${role}, found label ${JSON.stringify(row.label)}`);
+  }
+}
+
+// Fieldset rows render every frame; the Fieldset should be validated only when the draft changes.
+async function assertIdleFramesSkipValidation(ctx: TeaKitTestContext): Promise<void> {
+  const validated = await ctx.spy.method("konfig.fieldset.validate", "com.iamkaf.konfig.api.v1.fieldset.FieldsetValue#validate");
+  try {
+    await ctx.client.waitForFrames(5);
+    const calls = await validated.$calls();
+    if (calls.length !== 0) {
+      throw new Error(`Idle frames validated the Fieldset ${calls.length} times`);
+    }
+  } finally {
+    await ctx.spy.detach(validated);
   }
 }
 

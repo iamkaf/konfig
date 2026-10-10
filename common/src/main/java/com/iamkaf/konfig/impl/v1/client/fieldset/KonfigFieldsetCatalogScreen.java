@@ -47,9 +47,11 @@ import net.minecraft.resources.ResourceKey;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -101,6 +103,8 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     private PendingSave pendingSave;
     private boolean pendingUndo;
     private KonfigFieldsetValidation validation = KonfigFieldsetValidation.valid();
+    // Rule rows ask for their warning every frame, and a mod's warning callback can be expensive.
+    private final Map<FieldsetEntry, Optional<Component>> warnings = new IdentityHashMap<FieldsetEntry, Optional<Component>>();
     private double profileScroll;
     private double ruleScroll;
     private double detailScroll;
@@ -143,6 +147,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         this.renderedRegistryField = null;
         this.wide = this.width >= WIDE_MINIMUM;
         this.validation = this.adapter.validation();
+        this.warnings.clear();
         this.reconcileSelection();
 
         int contentWidth = Math.min(920, Math.max(280, this.width - 24));
@@ -483,7 +488,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         List<FieldsetValidationIssue> issues = this.session.draft().validate().issues();
         if (!issues.isEmpty()) {
             this.session.restorePersisted();
-            return KonfigFieldsetEditResult.invalid(text(issues.get(0).message()));
+            return KonfigFieldsetEditResult.invalid(this.firstIssue(issues));
         }
 
         FieldsetValue candidate = this.session.draft();
@@ -735,7 +740,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 || this.message.getString().equals("Change undone")
                 ? 0xFFA0A0A0
                 : 0xFFFF7070;
-        context.drawCenteredText(this.font, subtitle, this.width / 2, 21, color);
+        context.drawCenteredText(this.font, this.fit(subtitle, this.width - 16), this.width / 2, 21, color);
         if (this.drawSearchHint && this.search != null && this.search.getValue().isEmpty() && !this.search.isFocused()) {
             context.drawText(this.font, text("Search"), this.searchX + 4, SEARCH_Y + 6, 0xFF808080);
         }
@@ -751,6 +756,15 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 layer -> {
                 }
         );
+    }
+
+    // Prefer the rule being edited, so another half-filled rule's message never shows up as this one's.
+    private Component firstIssue(List<FieldsetValidationIssue> issues) {
+        FieldsetValidationIssue issue = issues.stream()
+                .filter(candidate -> candidate.entryIdentity().equals(this.selectedEntryId))
+                .findFirst()
+                .orElse(issues.get(0));
+        return text(issue.message());
     }
 
     private Component fit(Component value, int width) {
@@ -779,6 +793,10 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     }
 
     private Optional<Component> entryWarning(FieldsetEntry entry) {
+        return this.warnings.computeIfAbsent(entry, this::resolveWarning);
+    }
+
+    private Optional<Component> resolveWarning(FieldsetEntry entry) {
         Optional<String> configured = this.catalog.warning(entry).filter(message -> !message.isBlank());
         if (configured.isPresent()) {
             return Optional.of(text(configured.get()));
@@ -1159,7 +1177,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 List<FieldsetValidationIssue> issues = KonfigFieldsetCatalogScreen.this.session.draft().validate().issues();
                 if (!issues.isEmpty()) {
                     this.localError = "";
-                    KonfigFieldsetCatalogScreen.this.message = text(issues.get(0).message());
+                    KonfigFieldsetCatalogScreen.this.message = KonfigFieldsetCatalogScreen.this.firstIssue(issues);
                     KonfigFieldsetCatalogScreen.this.refreshRevertAction();
                     return true;
                 }

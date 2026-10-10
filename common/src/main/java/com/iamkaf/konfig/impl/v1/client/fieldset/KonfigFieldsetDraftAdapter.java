@@ -24,6 +24,8 @@ import java.util.Set;
 final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<FieldsetEntry, FieldsetField<?>> {
     private final KonfigFieldsetDraftSession session;
     private final KonfigFieldsetAccess access;
+    private FieldsetValue validatedDraft;
+    private KonfigFieldsetValidation validation;
 
     KonfigFieldsetDraftAdapter(KonfigFieldsetDraftSession session, KonfigFieldsetAccess access) {
         this.session = Objects.requireNonNull(session, "session");
@@ -197,15 +199,21 @@ final class KonfigFieldsetDraftAdapter implements KonfigFieldsetUiAdapter<Fields
 
     @Override
     public KonfigFieldsetValidation validation() {
-        List<KonfigFieldsetValidation.Issue> issues = new ArrayList<>();
-        for (FieldsetValidationIssue issue : this.session.draft().validate().issues()) {
-            issues.add(KonfigFieldsetValidation.Issue.fieldError(
-                    issue.entryIdentity(),
-                    issue.fieldKey().orElse(""),
-                    text(issue.message())
-            ));
+        // Field rows ask on every frame. Drafts are immutable and replaced on each edit, so validate each one once.
+        FieldsetValue draft = this.session.draft();
+        if (draft != this.validatedDraft) {
+            List<KonfigFieldsetValidation.Issue> issues = new ArrayList<>();
+            for (FieldsetValidationIssue issue : draft.validate().issues()) {
+                issues.add(KonfigFieldsetValidation.Issue.fieldError(
+                        issue.entryIdentity(),
+                        issue.fieldKey().orElse(""),
+                        text(issue.message())
+                ));
+            }
+            this.validation = issues.isEmpty() ? KonfigFieldsetValidation.valid() : new KonfigFieldsetValidation(issues);
+            this.validatedDraft = draft;
         }
-        return issues.isEmpty() ? KonfigFieldsetValidation.valid() : new KonfigFieldsetValidation(issues);
+        return this.validation;
     }
 
     private FieldsetEntry requireEntry(String identity) {

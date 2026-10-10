@@ -17,6 +17,9 @@ See the full changelog at https://github.com/iamkaf/konfig
 
 - Config files no longer repeat their header comment on every save.
 - Invalid Fieldset catalog values no longer trap focus.
+- Fieldset catalogs show the error for the rule being edited.
+- Long Fieldset catalog messages fit narrow windows.
+- Fieldset screens no longer recheck every rule on each frame.
 
 ## 0.10.1
 
