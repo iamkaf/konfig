@@ -69,6 +69,7 @@ describe("Konfig Fieldset catalog", () => {
       screen = await reopenCatalog(ctx);
       screen = await openProfile(ctx, BUILT_IN_PROFILE);
       assertRuleLabels(screen, BUILT_IN_RULES);
+      await assertIdleFramesKeepWarnings(ctx);
       // The role filter cycles All -> weapon -> utility -> All over the built-in rules' roles.
       assertRuleLabels(await cycleFilter(ctx, "Role: weapon"), [BUILT_IN_RULES[0]!]);
       await ctx.client.waitForFrames(3);
@@ -146,6 +147,20 @@ async function assertIdleFramesKeepStatus(ctx: TeaKitTestContext): Promise<void>
     }
   } finally {
     await ctx.spy.detach(refreshed);
+  }
+}
+
+/** Rule rows reuse their warnings between frames; a mod's warning callback can be expensive. */
+async function assertIdleFramesKeepWarnings(ctx: TeaKitTestContext): Promise<void> {
+  const resolved = await ctx.spy.method("konfig.catalog.warnings", `${CATALOG_SCREEN}#resolveWarning`);
+  try {
+    await ctx.client.waitForFrames(5);
+    const calls = await resolved.$calls();
+    if (calls.length !== 0) {
+      throw new Error(`Idle frames resolved rule warnings ${calls.length} times`);
+    }
+  } finally {
+    await ctx.spy.detach(resolved);
   }
 }
 

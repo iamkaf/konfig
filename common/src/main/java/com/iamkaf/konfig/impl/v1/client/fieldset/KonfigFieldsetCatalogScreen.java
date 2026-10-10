@@ -47,9 +47,11 @@ import net.minecraft.resources.ResourceKey;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -101,6 +103,8 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     private PendingSave pendingSave;
     private boolean pendingUndo;
     private KonfigFieldsetValidation validation = KonfigFieldsetValidation.valid();
+    // Rule rows ask for their warning every frame, and a mod's warning callback can be expensive.
+    private final Map<FieldsetEntry, Optional<Component>> warnings = new IdentityHashMap<FieldsetEntry, Optional<Component>>();
     private double profileScroll;
     private double ruleScroll;
     private double detailScroll;
@@ -143,6 +147,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         this.renderedRegistryField = null;
         this.wide = this.width >= WIDE_MINIMUM;
         this.validation = this.adapter.validation();
+        this.warnings.clear();
         this.reconcileSelection();
 
         int contentWidth = Math.min(920, Math.max(280, this.width - 24));
@@ -788,6 +793,10 @@ final class KonfigFieldsetCatalogScreen extends Screen {
     }
 
     private Optional<Component> entryWarning(FieldsetEntry entry) {
+        return this.warnings.computeIfAbsent(entry, this::resolveWarning);
+    }
+
+    private Optional<Component> resolveWarning(FieldsetEntry entry) {
         Optional<String> configured = this.catalog.warning(entry).filter(message -> !message.isBlank());
         if (configured.isPresent()) {
             return Optional.of(text(configured.get()));
