@@ -483,7 +483,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
         List<FieldsetValidationIssue> issues = this.session.draft().validate().issues();
         if (!issues.isEmpty()) {
             this.session.restorePersisted();
-            return KonfigFieldsetEditResult.invalid(text(issues.get(0).message()));
+            return KonfigFieldsetEditResult.invalid(this.firstIssue(issues));
         }
 
         FieldsetValue candidate = this.session.draft();
@@ -735,7 +735,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 || this.message.getString().equals("Change undone")
                 ? 0xFFA0A0A0
                 : 0xFFFF7070;
-        context.drawCenteredText(this.font, subtitle, this.width / 2, 21, color);
+        context.drawCenteredText(this.font, this.fit(subtitle, this.width - 16), this.width / 2, 21, color);
         if (this.drawSearchHint && this.search != null && this.search.getValue().isEmpty() && !this.search.isFocused()) {
             context.drawText(this.font, text("Search"), this.searchX + 4, SEARCH_Y + 6, 0xFF808080);
         }
@@ -751,6 +751,15 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 layer -> {
                 }
         );
+    }
+
+    // Prefer the rule being edited, so another half-filled rule's message never shows up as this one's.
+    private Component firstIssue(List<FieldsetValidationIssue> issues) {
+        FieldsetValidationIssue issue = issues.stream()
+                .filter(candidate -> candidate.entryIdentity().equals(this.selectedEntryId))
+                .findFirst()
+                .orElse(issues.get(0));
+        return text(issue.message());
     }
 
     private Component fit(Component value, int width) {
@@ -1159,7 +1168,7 @@ final class KonfigFieldsetCatalogScreen extends Screen {
                 List<FieldsetValidationIssue> issues = KonfigFieldsetCatalogScreen.this.session.draft().validate().issues();
                 if (!issues.isEmpty()) {
                     this.localError = "";
-                    KonfigFieldsetCatalogScreen.this.message = text(issues.get(0).message());
+                    KonfigFieldsetCatalogScreen.this.message = KonfigFieldsetCatalogScreen.this.firstIssue(issues);
                     KonfigFieldsetCatalogScreen.this.refreshRevertAction();
                     return true;
                 }
