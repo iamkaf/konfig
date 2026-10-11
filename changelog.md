@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 See the full changelog at https://github.com/iamkaf/konfig
 
+## 0.10.3
+
+### Fixed
+
+- Forge downloads for Minecraft 1.17.1 and 1.20.1 include Konfig's code again.
+
 ## 0.10.2
 
 ### Changed
