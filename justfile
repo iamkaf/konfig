@@ -26,14 +26,6 @@ run first="" second="" *rest:
   @first="{{first}}"; \
   second="{{second}}"; \
   rest=( {{rest}} ); \
-  task_suffix() { \
-    local version="$1"; \
-    local loader="$2"; \
-    local digits loader_cap; \
-    digits="${version//./}"; \
-    loader_cap="${loader^}"; \
-    printf '%s%s' "$digits" "$loader_cap"; \
-  }; \
   ensure_loader_enabled() { \
     local version="$1"; \
     local loader="$2"; \
@@ -100,16 +92,6 @@ run first="" second="" *rest:
         runClient) \
           tasks=( ":$loader:$version:runClient" "${extra[@]}" ); \
           ;; \
-        publishMod|publishRelease) \
-          suffix=$(task_suffix "$version" "$loader"); \
-          tasks=( "publishCurseforge$suffix" "publishModrinth$suffix" "${extra[@]}" ); \
-          ;; \
-        publishModrinth) \
-          tasks=( "publishModrinth$(task_suffix "$version" "$loader")" "${extra[@]}" ); \
-          ;; \
-        publishCurseforge) \
-          tasks=( "publishCurseforge$(task_suffix "$version" "$loader")" "${extra[@]}" ); \
-          ;; \
         *) \
           if [[ "$task" == :* ]]; then \
             tasks=( "$task" "${extra[@]}" ); \
@@ -151,25 +133,6 @@ run first="" second="" *rest:
           done; \
           tasks+=( --max-workers=1 "${extra[@]}" ); \
           ;; \
-        publishMod|publishRelease) \
-          for loader in $(just list-loaders "$version"); do \
-            suffix=$(task_suffix "$version" "$loader"); \
-            tasks+=( "publishCurseforge$suffix" "publishModrinth$suffix" ); \
-          done; \
-          tasks+=( "${extra[@]}" ); \
-          ;; \
-        publishModrinth) \
-          for loader in $(just list-loaders "$version"); do \
-            tasks+=( "publishModrinth$(task_suffix "$version" "$loader")" ); \
-          done; \
-          tasks+=( "${extra[@]}" ); \
-          ;; \
-        publishCurseforge) \
-          for loader in $(just list-loaders "$version"); do \
-            tasks+=( "publishCurseforge$(task_suffix "$version" "$loader")" ); \
-          done; \
-          tasks+=( "${extra[@]}" ); \
-          ;; \
         *) \
           tasks=( "$task" "${extra[@]}" ); \
           ;; \
@@ -209,26 +172,14 @@ headless-test version="1.21.11" *args:
   @test -f "versions/{{version}}/gradle.properties" || (echo "Version {{version}} not found" >&2; exit 1)
   @just run "{{version}}" ":common:{{version}}:test" --rerun-tasks -Pmultiloader.target.versions={{version}} -Pmultiloader.target.loaders=fabric {{args}}
 
-# Local publishes use one worker: parallel ones can read each other's half-written maven-metadata-local.xml.
-# Publish to Maven local, or to Kaf Maven with to=kaf-maven.
-publish-version version to="local" *args:
-  @case "{{to}}" in \
-    local) task=publishToMavenLocal; workers=--max-workers=1 ;; \
-    kaf-maven) \
-      test -n "${MAVEN_PUBLISH_USERNAME:-}" || { echo "MAVEN_PUBLISH_USERNAME is required" >&2; exit 1; }; \
-      test -n "${MAVEN_PUBLISH_PASSWORD:-}" || { echo "MAVEN_PUBLISH_PASSWORD is required" >&2; exit 1; }; \
-      task=publishAllPublicationsToKafMavenRepository; workers= ;; \
-    *) echo "Unknown publish target {{to}}: use local or kaf-maven" >&2; exit 1 ;; \
-  esac; \
-  tasks=(":common:{{version}}:$task"); \
-  for loader in $(just list-loaders "{{version}}"); do tasks+=(":$loader:{{version}}:$task"); done; \
-  ./gradlew --configure-on-demand "${tasks[@]}" $workers {{args}} --console=plain
+# Publishes to Maven local with one worker: parallel ones can read each other's half-written maven-metadata-local.xml.
+publish-version version *args:
+  @tasks=(":common:{{version}}:publishToMavenLocal"); \
+  for loader in $(just list-loaders "{{version}}"); do tasks+=(":$loader:{{version}}:publishToMavenLocal"); done; \
+  ./gradlew --configure-on-demand "${tasks[@]}" --max-workers=1 {{args}} --console=plain
 
-publish-all to="local" *args:
-  @for version in $(just list-versions); do echo "==> publish $version to {{to}}"; just publish-version "$version" "{{to}}" {{args}}; done
-
-publish-platforms-all *args:
-  @./gradlew publishingRelease {{args}} --console=plain
+publish-all *args:
+  @for version in $(just list-versions); do echo "==> publish $version"; just publish-version "$version" {{args}}; done
 
 boot-check node timeout="120":
   @if ! just list-nodes | grep -Fxq "{{node}}"; then echo "Unknown node: {{node}}"; exit 1; fi

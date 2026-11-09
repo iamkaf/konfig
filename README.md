@@ -440,7 +440,7 @@ Common commands:
 | `./gradlew build` | Build the full Gradle graph |
 | `just list-nodes` | Print every enabled Minecraft/loader node |
 | `just run <mc> forge runClient` | Run the Forge client for one Minecraft line |
-| `just run <mc> publish` | Publish all enabled loader artifacts for one Minecraft line |
+| `just run <mc> publish` | Publish all enabled loader artifacts for one Minecraft line to Maven local |
 | `just run downloadTranslations` | Download translations |
 
 `just run` accepts three forms:
@@ -448,7 +448,7 @@ Common commands:
 | Form | Example |
 |------|---------|
 | `just run <version> <loader> <task...>` | `just run <mc> fabric build` |
-| `just run <version> <aggregate-task...>` | `just run <mc> publishMod` |
+| `just run <version> <aggregate-task...>` | `just run <mc> build` |
 | `just run <root-task...>` | `just run downloadTranslations` |
 
 ## Runtime Validation
